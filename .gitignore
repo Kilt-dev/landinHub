@@ -1,7 +1,12 @@
-/node_modules
-**/node_modules/
-/dist
-/build
+/node_modules/
+!/node_modules/.bin/
+!.pnpmfile.cjs
+!.pnpm-lock.yaml
+/dist/
+!/dist/
+!.distignore
+/build/
+!.build/
 *.log
 .env
 *.env.local
@@ -11,15 +16,26 @@
 *.swp
 *.swo
 # Android
-apps/mobile/android/app/build
-apps/mobile/android/.gradle
+apps/mobile/android/app/build/
+apps/mobile/android/.gradle/
 apps/mobile/android/local.properties
 # iOS
-apps/mobile/ios/build
+apps/mobile/ios/build/
 apps/mobile/ios/Pods
 apps/mobile/ios/Podfile.lock
 # Backend
-backend/node_modules
-backend/dist
+backend/node_modules/
+backend/dist/
+# Shared và API
+packages/shared/node_modules/
+packages/api/node_modules/
 # Test
-coverage
+coverage/
+# IDE Files
+*.idea/
+*.vscode/
+# Lock Files (tránh commit nếu không cần)
+pnpm-lock.yaml
+# Build Artifacts
+*.zip
+*.tar.gz
