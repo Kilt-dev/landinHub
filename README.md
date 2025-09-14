@@ -12,7 +12,7 @@ Landing Hub là nền tảng SaaS hỗ trợ tạo landing page, marketplace, AI
 
 ## Hướng Dẫn Chạy
 1. Cài đặt: `pnpm install`
-2. Chạy web: `pnpm --filter web start`
+2. Chạy web: `pnpm --filter landinghub-web build`
 3. Chạy mobile: `pnpm --filter mobile start`
 4. Chạy backend: `pnpm --filter backend start`
 

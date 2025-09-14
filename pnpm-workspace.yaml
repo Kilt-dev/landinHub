@@ -1,4 +1,9 @@
 packages:
-  - "apps/*"
-  - "packages/*"
-  - "backend"
+  - 'apps/*'
+  - 'packages/*'
+  - 'backend'
+
+ignoredBuiltDependencies:
+  - aws-sdk
+  - core-js
+  - core-js-pure

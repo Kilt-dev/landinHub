@@ -5,12 +5,12 @@
   "description": "A monorepo for Landing Hub SaaS platform with web, mobile, and backend",
   "scripts": {
     "install:all": "pnpm install",
-    "start:web": "pnpm --filter web start",
-    "start:mobile": "pnpm --filter mobile start",
-    "start:backend": "pnpm --filter backend start",
-    "build:web": "pnpm --filter web build",
+    "start:web": "pnpm --filter landinghub-web start",
+    "start:mobile": "pnpm --filter landinghub-mobile start",
+    "start:backend": "pnpm --filter landinghub-backend start",
+    "build:web": "pnpm --filter landinghub-web build",
     "build:mobile": "pnpm --filter mobile build",
-    "test:all": "pnpm --filter web test && pnpm --filter mobile test && pnpm --filter backend test",
+    "test:all": "pnpm --filter landinghub-web test && pnpm --filter mobile test && pnpm --filter backend test",
     "clean": "rm -rf node_modules && pnpm install"
   },
   "workspaces": [
@@ -31,6 +31,6 @@
     "type": "git",
     "url": "https://github.com/vicute0707/landing-hub.git"
   },
-  "author": "Nguyen Thi Dong Phuong",
+  "author": "Nguyen Thi Tuong Vi",
   "license": "MIT"
 }
