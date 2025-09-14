@@ -1,0 +1,167 @@
+/* Container tổng thể */
+.auth-page {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background-color: #f5f5f5;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Tab container */
+.auth-page .tab-container {
+    position: relative;
+    display: flex;
+    background-color: #e0e0e0;
+    border-radius: 12px;
+    padding: 3px;
+    margin-bottom: 10px;
+}
+
+/* Tab labels */
+.auth-page .tab-container .tab_label {
+    width: 160px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    z-index: 2;
+    transition: color 0.2s ease;
+}
+
+.auth-page .tab-container .tab_label:hover {
+    color: #000;
+}
+
+/* Indicator */
+.auth-page .tab-container .indicator {
+    width: 160px;
+    height: 40px;
+    background-color: #ffffff;
+    position: absolute;
+    top: 3px;
+    border-radius: 10px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.12);
+    transition: all 0.3s ease;
+    z-index: 1;
+}
+
+.auth-page .tab-container .indicator.login {
+    left: 3px;
+}
+
+.auth-page .tab-container .indicator.register {
+    left: calc(160px + 3px);
+}
+
+/* Tab content */
+.auth-page .tab-content {
+    width: 420px;          /* width cố định */
+    max-width: 90vw;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;  /* căn giữa form */
+    justify-content: center; /* căn giữa theo chiều dọc nếu muốn */
+}
+
+/* Form trong tab */
+.auth-page .tab-content form {
+    max-width: 500px;     /* giới hạn tối đa */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 0 auto;       /* căn giữa trong tab-content */
+    gap: 12px;
+}
+
+/* Input, label, button giống nhau cho cả 2 form */
+.auth-page .tab-content .flex-column > label {
+    color: #151717;
+    font-weight: 600;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.auth-page .tab-content .inputForm {
+    border: 1.5px solid #ecedec;
+    border-radius: 10px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    transition: 0.2s ease-in-out;
+    width: 100%;
+}
+
+.auth-page .tab-content .inputForm:focus-within {
+    border: 1.5px solid #2d79f3;
+}
+
+.auth-page .tab-content .input {
+    margin-left: 10px;
+    border-radius: 10px;
+    border: none;
+    width: 100%;
+    height: 100%;
+}
+
+.auth-page .tab-content .input:focus {
+    outline: none;
+}
+
+.auth-page .tab-content .button-submit {
+    margin: 20px 0 10px 0;
+    background-color: #151717;
+    border: none;
+    color: white;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 10px;
+    height: 50px;
+    width: 100%;
+    cursor: pointer;
+}
+
+.auth-page .tab-content .p {
+    text-align: center;
+    color: black;
+    font-size: 14px;
+    margin: 5px 0;
+}
+
+.auth-page .tab-content .span {
+    font-size: 14px;
+    color: #2d79f3;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* Google login button */
+.auth-page .tab-content .btn.google {
+    margin-top: 10px;
+    width: 100%;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 500;
+    gap: 10px;
+    border: 1px solid #ededef;
+    background-color: white;
+    cursor: pointer;
+    transition: 0.2s ease-in-out;
+}
+
+.auth-page .tab-content .btn.google:hover {
+    border: 1px solid #2d79f3;
+}

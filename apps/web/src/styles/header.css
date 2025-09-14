@@ -1,0 +1,90 @@
+.header-container .navbar {
+    position: relative;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.header-container .navbar-container {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding:0px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-image {
+    width: 120px;
+    height: auto;
+    cursor: pointer;
+}
+
+/* User info bên phải */
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 15px;
+    color: #374151;
+}
+
+/* Avatar user */
+.user-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    cursor: pointer;
+    border: 2px solid #3b82f6;
+    transition: transform 0.2s ease;
+}
+
+.user-avatar:hover {
+    transform: scale(1.05);
+}
+
+/* Nút logout & login */
+.user-info button {
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s ease;
+}
+
+.user-info button:hover {
+    background: #2563eb;
+}
+
+/* Popup profile */
+.profile-popup {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    width: 320px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    padding: 16px;
+    z-index: 100;
+    animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
