@@ -1,0 +1,134 @@
+
+.login-container {
+    width:80%;
+    background-color: #f5f5f5;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+}
+
+/* Form bên trong */
+.login-container .form {
+    display: flex;
+    gap: 15px;
+    padding: 10px;
+    flex-direction: column;
+    background-color: #ffffff;
+    border-radius: 20px;
+    width: 100%;
+    max-width:480px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Tiêu đề form */
+.login-container .form h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #151717;
+    font-weight: 700;
+}
+
+/* Nhãn input */
+.login-container .flex-column > label {
+    color: #151717;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+/* Khung input */
+.login-container .inputForm {
+    border: 1.5px solid #ecedec;
+    border-radius: 10px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    transition: 0.2s ease-in-out;
+    width: 100%;
+}
+
+.login-container .input {
+    margin-left: 10px;
+    border-radius: 10px;
+    border: none;
+    width: 100%;
+    height: 100%;
+}
+
+.login-container .input:focus {
+    outline: none;
+}
+
+.login-container .inputForm:focus-within {
+    border: 1.5px solid #2d79f3;
+}
+
+/* Hàng checkbox và forgot password */
+.login-container .flex-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.login-container .flex-row > div > label {
+    font-size: 14px;
+    color: black;
+    font-weight: 400;
+}
+
+.login-container .span {
+    font-size: 14px;
+    color: #2d79f3;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* Nút đăng nhập */
+.login-container .button-submit {
+    margin: 20px 0 10px 0;
+    background-color: #151717;
+    border: none;
+    color: white;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 10px;
+    height: 50px;
+    width: 100%;
+    cursor: pointer;
+}
+
+.login-container .button-submit:disabled {
+    background-color: #444;
+    cursor: not-allowed;
+}
+
+/* Chữ và link bên dưới */
+.login-container .p {
+    text-align: center;
+    color: black;
+    font-size: 14px;
+    margin: 5px 0;
+}
+
+/* Nút Google */
+.login-container .btn.google {
+    margin-top: 10px;
+    width: 100%;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 500;
+    gap: 10px;
+    border: 1px solid #ededef;
+    background-color: white;
+    cursor: pointer;
+    transition: 0.2s ease-in-out;
+}
+
+.login-container .btn.google:hover {
+    border: 1px solid #2d79f3;
+}
