@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar';
 import { jwtDecode } from 'jwt-decode';
 import '../styles/Dashboard.css';
 import { useLocation } from 'react-router-dom';
-import DogLoader from "../components/DogLoader";
+import DogLoader from "../components/Loader";
 
 const UserDashboard = React.lazy(() => import('../components/UserDashboard'));
 const AdminDashboard = React.lazy(() => import('../components/AdminDashboard'));

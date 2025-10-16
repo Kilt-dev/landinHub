@@ -5,8 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import '../styles/login.css';
-import LoadingDog from '../components/DogLoader';
-
+import Loader from '../components/Loader';
 const Login = () => {
     const navigate = useNavigate();
     const [form, setForm] = useState({ email: '', password: '' });
@@ -88,7 +87,7 @@ const Login = () => {
 
     // 👇 Nếu đang redirect → hiện loader full màn hình
     if (redirecting) {
-        return <LoadingDog />;
+        return <Loader />;
     }
 
     return (

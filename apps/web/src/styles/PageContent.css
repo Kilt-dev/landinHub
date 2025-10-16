@@ -1,0 +1,169 @@
+
+/* ============================= */
+/* Header Component trong PageContent */
+/* ============================= */
+.pages-main{
+    display: flex;
+    padding-top: 70px;
+}
+
+.page-content {
+    flex: 1 1;
+    padding: 20px;
+    margin-left: 50px;
+    transition: margin-left 0.3s
+    ease;
+}
+.page-content .content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 16px 40px;
+    border-bottom: 1px solid #e5e7eb;
+    background-color: #fff;
+    position: sticky; /* giữ header khi scroll */
+    top: 0;
+    z-index: 10;
+}
+
+.page-content .content-header h1 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.page-content .create-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    background-color: #2563eb; /* xanh đậm */
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.page-content .create-btn:hover {
+    background-color: #1e40af; /* xanh đậm hơn */
+}
+
+.page-content .create-btn:active {
+    transform: scale(0.97);
+}
+
+.page-content .create-btn svg {
+    flex-shrink: 0;
+}
+
+
+.page-content .create-btn {
+    background: #0284c7;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.page-content .controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    max-width: 96%;
+    margin-left: 60px;
+}
+
+.page-content .search-box {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 6px 10px;
+    gap: 6px;
+}
+
+.page-content .search-box input {
+    border: none;
+    outline: none;
+    flex: 1;
+    font-size: 14px;
+}
+
+.page-content .filters {
+    display: flex;
+    gap: 10px;
+}
+
+.page-content .filter-select {
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+}
+
+
+
+
+.page-content1 .page-url a {
+    font-size: 12px;
+    color: #0284c7;
+    text-decoration: none;
+}
+
+.page-content1 .status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: white;
+}
+
+.page-content1 .status.green {
+    background: #22c55e;
+}
+
+.page-content1 .status.gray {
+    background: #94a3b8;
+}
+
+.page-content1 .status-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #73a1e5;
+    margin-top: 4px;
+}
+
+.page-content1 .metric {
+    text-align: center;
+}
+
+.page-content1 .more-btn {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+.page-content1 .more-btn:hover {
+    background: #f1f5f9;
+}
+
+/* Pagination */
+.page-content1 .pagination {
+    font-size: 13px;
+    color: #475569;
+}

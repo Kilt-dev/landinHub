@@ -78,8 +78,6 @@ const Header = () => {
                                         </svg>
                                     )}
                                 </div>
-
-
                                 <button onClick={handleLogout}>Đăng xuất</button>
                                 {showProfile && (
                                     <div className="profile-popup">
