@@ -134,7 +134,7 @@
 }
 
 /* Main Content Area */
-.main-content {
+.main-content-lo {
     position: relative;
     z-index: 10;
     display: flex;

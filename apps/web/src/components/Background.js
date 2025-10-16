@@ -1,7 +1,9 @@
 import React from 'react';
 import '../styles/Background.css';
 import logo from '../assets/logo.png'
-const Background = ({ children }) => {
+import { Link } from "react-router-dom";
+
+const Background = ({ children, fullWidth = false }) => {
     return (
         <div className="background-container">
             {/* Clean 3D shapes matching the reference image */}
@@ -33,12 +35,11 @@ const Background = ({ children }) => {
 
                     {/* Menu Items */}
                     <div className="menu-items">
-                        <a href="#" className="menu-link">Giới thiệu</a>
-                        <a href="#" className="menu-link">Bài viết</a>
-                        <a href="#" className="menu-link">Pages</a>
-                        <a href="#" className="menu-link">Liên hệ</a>
+                        <Link to="/public/gioithieu" className="menu-link">Giới thiệu</Link>
+                        <Link to="/public/bai-viet" className="menu-link">Bài viết</Link>
+                        <Link to="/public/pages" className="menu-link">Pages</Link>
+                        <Link to="/public/lienhe" className="menu-link">Liên hệ</Link>
                     </div>
-
                     {/* Language selector */}
                     <select className="language-selector">
                         <option>Tiếng việt</option>
@@ -48,14 +49,21 @@ const Background = ({ children }) => {
             </nav>
 
             {/* Main Content Area */}
-            <div className="main-content">
-                <div className="content-wrapper">
-                    {/* Clean form container */}
-                    <div className="form-container">
-                        {children}
+            {fullWidth ? (
+                // Cho trang giới thiệu - full width
+                <div style={{ position: 'relative', zIndex: 10 }}>
+                    {children}
+                </div>
+            ) : (
+                // Cho form đăng nhập/đăng ký - centered
+                <div className="main-content-lo">
+                    <div className="content-wrapper">
+                        <div className="form-container">
+                            {children}
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

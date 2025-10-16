@@ -1,0 +1,633 @@
+/* Element Properties Panel */
+.element-properties-panel {
+    position: absolute;
+    top: 90px;
+    right: 20px;
+    width: 280px;
+    max-height: 80vh;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    display: flex;
+    flex-direction: column;
+    z-index: 1002;
+    overflow: hidden;
+    animation: slideIn 0.3s ease-out;
+}
+
+.element-properties-panel-collapsed {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1002;
+}
+
+/* Header */
+.element-properties-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.element-properties-panel .panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    color: #111827;
+}
+
+.element-properties-panel .panel-title-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    background: transparent;
+}
+
+.element-properties-panel .panel-title-input::placeholder {
+    color: #9ca3af;
+}
+
+.element-properties-panel .toggle-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: #6b7280;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.element-properties-panel .toggle-button:hover {
+    background: #f3f4f6;
+}
+
+/* Empty State */
+.element-properties-panel .panel-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #9ca3af;
+    padding: 32px 20px;
+    text-align: center;
+}
+
+.element-properties-panel .empty-icon {
+    margin-bottom: 12px;
+}
+
+.element-properties-panel .empty-text {
+    font-size: 13px;
+    font-weight: 500;
+    margin: 0;
+}
+
+/* Tabs */
+.element-properties-panel .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.element-properties-panel .tab-button {
+    flex: 1;
+    padding: 10px 12px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 12px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.element-properties-panel .tab-button:hover {
+    background: #f3f4f6;
+}
+
+.element-properties-panel .tab-button.active {
+    background: #ffffff;
+    border-bottom-color: #667eea;
+    color: #667eea;
+}
+
+/* Content */
+.element-properties-panel .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px;
+}
+
+.element-properties-panel .panel-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.element-properties-panel .panel-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.element-properties-panel .panel-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.element-properties-panel .panel-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Sections */
+.element-properties-panel .panel-section {
+    margin-bottom: 20px;
+}
+
+.element-properties-panel .panel-section:last-child {
+    margin-bottom: 0;
+}
+
+.element-properties-panel .section-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: #111827;
+}
+
+/* Input Groups */
+.element-properties-panel .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.element-properties-panel .input-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 4px;
+}
+
+.element-properties-panel .input-field,
+.element-properties-panel .input-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #111827;
+    background: #ffffff;
+    transition: border-color 0.2s ease;
+}
+
+.element-properties-panel .input-field:focus,
+.element-properties-panel .input-select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.element-properties-panel .input-select {
+    cursor: pointer;
+}
+
+/* Input with Unit */
+.element-properties-panel .input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.element-properties-panel .input-with-unit .input-field {
+    flex: 1;
+}
+
+.element-properties-panel .input-unit {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Format Buttons */
+.element-properties-panel .format-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.element-properties-panel .format-btn {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #ffffff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    transition: all 0.2s ease;
+}
+
+.element-properties-panel .format-btn:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+}
+
+.element-properties-panel .format-btn.active {
+    background: #eef2ff;
+    border-color: #667eea;
+    color: #667eea;
+}
+
+/* Color Input */
+.element-properties-panel .color-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.element-properties-panel .color-picker {
+    width: 40px;
+    height: 40px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 2px;
+}
+
+.element-properties-panel .color-input-group .input-field {
+    flex: 1;
+}
+
+/* Color Presets */
+.element-properties-panel .color-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.element-properties-panel .color-preset-item {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.element-properties-panel .color-preset-item:hover {
+    transform: scale(1.1);
+    border-color: #94a3b8;
+}
+
+.element-properties-panel .color-preset-item.active {
+    border-color: #667eea;
+    transform: scale(1.15);
+}
+
+/* Range Input */
+.element-properties-panel .input-range {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #e5e7eb;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.element-properties-panel .input-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #667eea;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.element-properties-panel .input-range::-webkit-slider-thumb:hover {
+    background: #5568d3;
+    transform: scale(1.2);
+}
+
+.element-properties-panel .input-range::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #667eea;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+}
+
+.element-properties-panel .input-range::-moz-range-thumb:hover {
+    background: #5568d3;
+    transform: scale(1.2);
+}
+
+.element-properties-panel .range-value {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Size Inputs */
+.element-properties-panel .size-inputs {
+    display: flex;
+    gap: 8px;
+}
+
+.element-properties-panel .size-input-item {
+    flex: 1;
+}
+
+.element-properties-panel .size-input-item .input-label {
+    text-align: center;
+}
+
+/* Checkbox */
+.element-properties-panel .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #374151;
+    cursor: pointer;
+    user-select: none;
+}
+
+.element-properties-panel .checkbox-input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #667eea;
+}
+
+/* Animation */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+.upload-btn{
+    background-color: rgba(50, 60, 80, 0.21);
+    border-radius: 15px;
+    position: relative;
+    display: flex;
+    align-content: center;
+    justify-content: center;
+    color: #434d52;
+    width: 150px;
+    padding: 10px 0px;
+    margin-left: 50px;
+;
+}
+/* Responsive */
+@media (max-width: 768px) {
+    .element-properties-panel {
+        width: 260px;
+        max-height: 70vh;
+    }
+
+    .element-properties-panel .color-preset-grid {
+        grid-template-columns: repeat(8, 1fr);
+    }
+}
+.tab-button {
+    flex: 1;
+    padding: 12px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.tab-button.active {
+    color: #2563eb;
+    border-bottom: 2px solid #2563eb;
+}
+
+.tab-button:hover {
+    background: #f3f4f6;
+}
+.input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.input-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.input-field {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.input-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #ffffff;
+}
+
+.input-select:focus {
+    outline: none;
+    border-color: #2563eb;
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.input-unit {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.format-buttons {
+    display: flex;
+    gap: 4px;
+}
+
+.format-btn {
+    background: #f3f4f6;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.format-btn.active, .format-btn:hover {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.color-input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.color-picker {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+}
+
+.color-preset-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-top: 8px;
+}
+
+.color-preset-item {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.color-preset-item.active {
+    border: 2px solid #2563eb;
+}
+
+.input-range {
+    width: 100%;
+    margin: 8px 0;
+}
+
+.range-value {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.checkbox-label {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.size-inputs {
+    display: flex;
+    gap: 16px;
+}
+
+.size-input-item {
+    flex: 1;
+}
+
+.panel-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #9ca3af;
+}
+
+.empty-icon {
+    margin-bottom: 16px;
+}
+
+.empty-text {
+    font-size: 14px;
+    text-align: center;
+}
+
+.image-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.image-item {
+    position: relative;
+    width: 64px;
+    height: 64px;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.image-item:hover .remove-image-btn {
+    opacity: 1;
+}

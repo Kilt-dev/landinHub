@@ -1,5 +1,5 @@
 import React from "react";
-import "../styles/DogLoader.css"; // import CSS riêng cho loader
+import "../styles/DogLoader.css";
 
 const DogLoader = () => {
     return (

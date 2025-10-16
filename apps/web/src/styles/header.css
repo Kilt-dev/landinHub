@@ -1,12 +1,17 @@
 .header-container .navbar {
-    position: relative;
-    z-index: 10;
+    position: fixed; /* giữ cố định */
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000; /* cao hơn các phần khác */
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    height: 70px; /* cố định chiều cao */
+    display: initial;
+    align-items: center;
 }
-
 .header-container .navbar-container {
     max-width: 1920px;
     margin: 0 auto;

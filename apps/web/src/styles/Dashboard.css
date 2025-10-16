@@ -1,6 +1,6 @@
 
 .dashboard-container {
-    min-height: 60vh;
+    height: 100vh;
     background: linear-gradient(135deg, #fafafa 0%, #f8fafc 100%);
     position: relative;
     font-family: system-ui, -apple-system, sans-serif;
@@ -37,9 +37,7 @@
 /* Main layout */
 .dashboard-main {
     display: flex;
-    position: relative;
-    z-index: 5;
-    min-height: 100vh;
+    padding-top: 70px;
 }
 
 /* Content wrapper */

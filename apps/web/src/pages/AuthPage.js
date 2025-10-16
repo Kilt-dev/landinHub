@@ -7,7 +7,6 @@ import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from 'jwt-decode';
 import api from '@landinghub/api';
 import '../styles/AuthPage.css';
-import LoadingDog from '../components/DogLoader';
 const AuthPage = () => {
     const { setUser } = useContext(UserContext);
     const [activeTab, setActiveTab] = useState('login');
