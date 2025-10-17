@@ -30,8 +30,15 @@ const Templates = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-    const categories = ['Tất cả', 'Bất động sản', 'Thương mại điện tử', 'Nhà hàng', 'Sức khỏe', 'Giáo dục', 'Khác'];
-    const designTypes = ['Tất cả', '1 Page', 'Long Form', 'Mobile First', 'E-commerce', 'Lead Gen'];
+    const categories = [ "Thương mại điện tử",
+        "Landing Page",
+        "Blog",
+        "Portfolio",
+        "Doanh nghiệp",
+        "Giáo dục",
+        "Sự kiện",
+        "Bất động sản",
+        "Khác"];
     const sortOptions = [
         { value: 'usage_count', label: 'Phổ biến nhất' },
         { value: 'created_at', label: 'Mới nhất' },
@@ -212,7 +219,7 @@ const Templates = () => {
                         <div className="banner-overlay">
                             <h2>Khám Phá Marketplace Templates</h2>
                             <p>200+ Mẫu Thiết Kế Chuyên Nghiệp - Nhận Ưu Đãi 20% Hôm Nay!</p>
-                            <button className="banner-cta" onClick={() => navigate('/premium')}>
+                            <button className="banner-cta" onClick={() => navigate('/market')}>
                                 Mua Ngay
                             </button>
                         </div>
@@ -234,15 +241,6 @@ const Templates = () => {
                         </form>
 
                         <div className="sub-filters">
-                            <select
-                                value={designType}
-                                onChange={e => setDesignType(e.target.value)}
-                                className="filter-select"
-                            >
-                                {designTypes.map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
                             <select
                                 value={sortBy}
                                 onChange={e => setSortBy(e.target.value)}
