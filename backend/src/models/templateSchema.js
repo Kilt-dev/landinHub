@@ -44,12 +44,6 @@ const TemplateSchema = new mongoose.Schema({
         type: String,
         trim: true,
     },
-    // Thumbnail/screenshot của template
-    thumbnail_url: {
-        type: String,
-        trim: true,
-        required: true
-    },
     // Screenshot URL để preview
     screenshot_url: {
         type: String,
