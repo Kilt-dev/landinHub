@@ -19,6 +19,7 @@ import { parseHTMLToPageData, renderStaticHTML } from '../utils/pageUtils';
 import { ErrorBoundary } from './create-page/ErrorBoundary';
 import DogLoader from './Loader'; // Import the DogLoader component
 import '../styles/CreateLanding.css';
+import PreviewModal from '../components/PreviewModal'; // Import PreviewModal
 
 
 // Constants
@@ -120,7 +121,7 @@ const CreateLanding = () => {
     const [showPopup, setShowPopup] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const [guideLine, setGuideLine] = useState({ show: true, y: 0 });
-
+    const [previewHtml, setPreviewHtml] = useState(''); // State for preview HTML
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
 
@@ -848,8 +849,10 @@ const CreateLanding = () => {
 
     // Preview
     const handlePreview = useCallback(() => {
+        const htmlContent = renderStaticHTML(pageData);
+        setPreviewHtml(htmlContent);
         setShowPreview(true);
-    }, []);
+    }, [pageData]);
 
     // Generate code
     const handleGenerateCode = useCallback(async () => {
@@ -1100,21 +1103,13 @@ const CreateLanding = () => {
                         />
                     </ErrorBoundary>
                     {showPreview && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div className="bg-white w-11/12 h-5/6 rounded-lg overflow-hidden relative">
-                                <button
-                                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full"
-                                    onClick={() => setShowPreview(false)}
-                                >
-                                    ✕
-                                </button>
-                                <iframe
-                                    srcDoc={renderStaticHTML(pageData)}
-                                    className="w-full h-full border-none"
-                                    title="Preview"
-                                />
-                            </div>
-                        </div>
+                        <PreviewModal
+                            selectedTemplate={{ name: 'Page Preview' }}
+                            setShowPreviewModal={setShowPreview}
+                            setPreviewHtml={setPreviewHtml}
+                            previewHtml={previewHtml}
+                            fullScreen={false}
+                        />
                     )}
                 </div>
                 <ErrorBoundary>

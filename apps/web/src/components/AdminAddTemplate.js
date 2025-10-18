@@ -1,47 +1,36 @@
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { useNavigate } from "react-router-dom"
-import { jwtDecode } from "jwt-decode"
-import api from "@landinghub/api"
-import Header from "../components/Header"
-import Sidebar from "../components/Sidebar"
-import DogLoader from "../components/Loader"
-import { toast } from "react-toastify"
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+import api from "@landinghub/api";
+import Header from "../components/Header";
+import Sidebar from "../components/Sidebar";
+import DogLoader from "../components/Loader";
+import { parseHTMLToPageData } from '../utils/pageUtils';
+import { toast } from "react-toastify";
 import {
-    Upload,
-    Camera,
-    Search,
-    Eye,
-    Edit,
-    Trash2,
-    Star,
-    Crown,
-    ImageIcon,
-    X,
-    Save,
-    Loader,
-    BarChart3,
-    TrendingUp,
-    Package,
-    Zap,
-} from "lucide-react"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import "../styles/AdminTemplate.css"
+    Upload, Search, Eye, Edit, Trash2, Star, Crown, ImageIcon, X, Save, Loader, BarChart3, TrendingUp, Package, Zap,
+} from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import "../styles/AdminTemplate.css";
+import PreviewModal from "./PreviewModal";
 
 const Templates = () => {
-    const navigate = useNavigate()
-    const [userRole, setUserRole] = useState(null)
-    const [templates, setTemplates] = useState([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [isSaving, setIsSaving] = useState(false)
-    const [showUploadModal, setShowUploadModal] = useState(false)
-    const [showPreviewModal, setShowPreviewModal] = useState(false)
-    const [showEditModal, setShowEditModal] = useState(false)
-    const [selectedTemplate, setSelectedTemplate] = useState(null)
-    const [previewHtml, setPreviewHtml] = useState("")
-    const [searchQuery, setSearchQuery] = useState("")
-    const [filterCategory, setFilterCategory] = useState("all")
-    const [filterPremium, setFilterPremium] = useState("all")
-    const [stats, setStats] = useState(null)
+    const navigate = useNavigate();
+    const [userRole, setUserRole] = useState(null);
+    const [templates, setTemplates] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [previewHtml, setPreviewHtml] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterCategory, setFilterCategory] = useState("all");
+    const [filterPremium, setFilterPremium] = useState("all");
+    const [filterStatus, setFilterStatus] = useState("all");
+    const [showAllStatus, setShowAllStatus] = useState(true);
+    const [stats, setStats] = useState(null);
 
     const [uploadForm, setUploadForm] = useState({
         file: null,
@@ -52,7 +41,7 @@ const Templates = () => {
         tags: "",
         is_premium: false,
         is_featured: false,
-    })
+    });
 
     const [editForm, setEditForm] = useState({
         name: "",
@@ -63,141 +52,191 @@ const Templates = () => {
         is_premium: false,
         is_featured: false,
         status: "ACTIVE",
-    })
+    });
 
     const categories = [
-        "Thương mại điện tử",
-        "Landing Page",
-        "Blog",
-        "Portfolio",
-        "Doanh nghiệp",
-        "Giáo dục",
-        "Sự kiện",
-        "Bất động sản",
-        "Khác",
-    ]
+        "Thương mại điện tử", "Landing Page", "Blog", "Portfolio", "Doanh nghiệp",
+        "Giáo dục", "Sự kiện", "Bất động sản", "Khác",
+    ];
 
     useEffect(() => {
-        const token = localStorage.getItem("token")
+        const token = localStorage.getItem("token");
         if (!token) {
-            toast.error("Vui lòng đăng nhập để tiếp tục")
-            navigate("/auth")
-            return
+            toast.error("Vui lòng đăng nhập để tiếp tục");
+            navigate("/auth");
+            return;
         }
 
-        let decoded
+        let decoded;
         try {
-            decoded = jwtDecode(token)
+            decoded = jwtDecode(token);
+            console.log("Decoded token:", decoded);
             if (decoded.role !== "admin") {
-                toast.error("Bạn không có quyền truy cập trang này")
-                navigate("/pages")
-                return
+                toast.error("Bạn không có quyền truy cập trang này");
+                navigate("/pages");
+                return;
             }
-            setUserRole(decoded.role)
-            const currentTime = Math.floor(Date.now() / 1000)
+            setUserRole(decoded.role);
+            const currentTime = Math.floor(Date.now() / 1000);
             if (decoded.exp && decoded.exp < currentTime) {
-                localStorage.removeItem("token")
-                toast.error("Phiên đăng nhập đã hết hạn")
-                navigate("/auth")
-                return
+                localStorage.removeItem("token");
+                toast.error("Phiên đăng nhập đã hết hạn");
+                navigate("/auth");
+                return;
             }
-
-            api.defaults.headers.common["Authorization"] = `Bearer ${token}`
+            api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
         } catch (err) {
-            console.error("Error decoding token:", err)
-            toast.error("Phiên đăng nhập không hợp lệ")
-            navigate("/auth")
+            console.error("Error decoding token:", err);
+            toast.error("Phiên đăng nhập không hợp lệ");
+            navigate("/auth");
         }
-    }, [navigate])
+    }, [navigate]);
 
     const fetchTemplates = useCallback(async () => {
-        setIsLoading(true)
+        setIsLoading(true);
         try {
-            const response = await api.get("/api/templates")
+            const endpoint = showAllStatus ? "/api/templates/admin/all" : "/api/templates";
+            const params = new URLSearchParams({
+                q: searchQuery,
+                category: filterCategory,
+                premium: filterPremium,
+                status: filterStatus,
+            });
+            console.log("Fetching templates from:", endpoint, "with params:", params.toString());
+            const response = await api.get(`${endpoint}?${params.toString()}`);
+            console.log("API response:", response.data);
             if (response.data.success) {
-                setTemplates(response.data.templates)
+                setTemplates(response.data.templates || []);
+            } else {
+                toast.error("Không thể tải templates: " + (response.data.error || "Lỗi không xác định"));
+                setTemplates([]);
             }
         } catch (error) {
-            console.error("Error fetching templates:", error)
-            toast.error("Lỗi khi tải danh sách template: " + (error.response?.data?.error || error.message))
+            console.error("Error fetching templates:", error.response || error);
+            const errorMessage = error.response?.status === 404
+                ? "API endpoint không tồn tại. Vui lòng kiểm tra backend."
+                : error.response?.data?.error || error.message;
+            toast.error("Lỗi khi tải danh sách template: " + errorMessage);
+            setTemplates([]);
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
-    }, [])
+    }, [searchQuery, filterCategory, filterPremium, filterStatus, showAllStatus]);
 
     const fetchStats = useCallback(async () => {
         try {
-            const response = await api.get("/api/templates/admin/stats")
+            const response = await api.get("/api/templates/admin/stats");
             if (response.data.success) {
-                setStats(response.data.stats)
+                setStats(response.data.stats);
             }
         } catch (error) {
-            console.error("Error fetching stats:", error)
+            console.error("Error fetching stats:", error);
+            toast.error("Lỗi khi tải thống kê: " + (error.response?.data?.error || error.message));
         }
-    }, [])
+    }, []);
 
     useEffect(() => {
-        fetchTemplates()
-        fetchStats()
-    }, [fetchTemplates, fetchStats])
+        fetchTemplates();
+        fetchStats();
+    }, [fetchTemplates, fetchStats]);
 
     const filteredTemplates = useMemo(() => {
         return templates.filter((template) => {
             const matchesSearch =
                 template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                template.description?.toLowerCase().includes(searchQuery.toLowerCase())
-            const matchesCategory = filterCategory === "all" || template.category === filterCategory
+                template.description?.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesCategory = filterCategory === "all" || template.category === filterCategory;
             const matchesPremium =
-                filterPremium === "all" || (filterPremium === "premium" ? template.is_premium : !template.is_premium)
-            return matchesSearch && matchesCategory && matchesPremium
-        })
-    }, [templates, searchQuery, filterCategory, filterPremium])
+                filterPremium === "all" || (filterPremium === "premium" ? template.is_premium : !template.is_premium);
+            const matchesStatus = filterStatus === "all" || template.status === filterStatus;
+            return matchesSearch && matchesCategory && matchesPremium && matchesStatus;
+        });
+    }, [templates, searchQuery, filterCategory, filterPremium, filterStatus]);
 
     const handleFileChange = (e) => {
-        const file = e.target.files[0]
+        const file = e.target.files[0];
         if (file && file.type === "text/html") {
-            setUploadForm({ ...uploadForm, file })
+            setUploadForm({ ...uploadForm, file });
         } else {
-            toast.error("Vui lòng chọn file HTML hợp lệ")
+            toast.error("Vui lòng chọn file HTML hợp lệ");
         }
-    }
+    };
 
     const handleUploadSubmit = async (e) => {
-        e.preventDefault()
-        if (!uploadForm.file || !uploadForm.name) {
-            toast.error("Vui lòng nhập đầy đủ thông tin")
-            return
+        e.preventDefault();
+        toast.info("Bắt đầu upload template");
+        console.time("handleUploadSubmit");
+
+        // Validation form cơ bản
+        if (!uploadForm.file || !uploadForm.name || !uploadForm.category) {
+            toast.error("Vui lòng nhập đầy đủ thông tin: file HTML, tên template, và danh mục");
+            return;
         }
 
-        setIsSaving(true)
+        setIsSaving(true);
         try {
-            const fileContent = await uploadForm.file.text()
-            if (!fileContent.includes("lpb-page-data")) {
-                toast.error("File HTML phải chứa thẻ lpb-page-data để sử dụng được.")
-                return
+            // Đọc file HTML
+            console.time("readFile");
+            const fileContent = await uploadForm.file.text();
+            console.timeEnd("readFile");
+
+            // Parse HTML thành page_data
+            console.time("parseHTML");
+            let pageData = parseHTMLToPageData(fileContent);
+            console.timeEnd("parseHTML");
+
+            console.log("Parsed pageData:", {
+                hasCanvas: !!pageData?.canvas,
+                elementsCount: pageData?.elements?.length || 0,
+                hasMeta: !!pageData?.meta
+            });
+
+            // Validation pageData
+            if (!pageData || !pageData.canvas || !Array.isArray(pageData.elements) || !pageData.meta) {
+                console.error("Invalid pageData structure:", pageData);
+                throw new Error("Không thể trích xuất page_data từ file HTML. File có thể không đúng định dạng.");
             }
 
-            const urlResponse = await api.get("/api/templates/admin/presigned-url")
-            if (!urlResponse.data.success) {
-                throw new Error("Không thể lấy URL upload")
+            // Đảm bảo meta có đầy đủ thông tin
+            pageData.meta = {
+                title: uploadForm.name,
+                description: uploadForm.description || '',
+                keywords: uploadForm.tags.split(",").map(tag => tag.trim()).filter(tag => tag),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            // Lấy presigned URL
+            console.time("presignedUrl");
+            const urlResponse = await api.get("/api/templates/admin/presigned-url");
+            console.timeEnd("presignedUrl");
+
+            if (!urlResponse.data.success || !urlResponse.data.templateId || !urlResponse.data.uploadUrl || !urlResponse.data.s3Path) {
+                throw new Error("Không thể lấy URL upload từ backend");
             }
 
-            const { templateId, uploadUrl, s3Path } = urlResponse.data
+            const { templateId, uploadUrl, s3Path } = urlResponse.data;
 
-            await fetch(uploadUrl, {
+            // Upload file HTML lên S3
+            console.time("s3Upload");
+            const s3Response = await fetch(uploadUrl, {
                 method: "PUT",
                 body: fileContent,
-                headers: {
-                    "Content-Type": "text/html",
-                },
-            })
+                headers: { "Content-Type": "text/html" }
+            });
+            console.timeEnd("s3Upload");
 
+            if (!s3Response.ok) {
+                throw new Error(`Lỗi khi upload file HTML lên S3: ${s3Response.statusText}`);
+            }
+
+            // Chuẩn bị metadata payload ⭐ GỬI pageData
             const tagsArray = uploadForm.tags
                 .split(",")
-                .map((tag) => tag.trim())
-                .filter((tag) => tag.length > 0)
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0);
 
-            const metadataResponse = await api.post("/api/templates/admin/metadata", {
+            const metadataPayload = {
                 templateId,
                 name: uploadForm.name,
                 description: uploadForm.description,
@@ -207,51 +246,78 @@ const Templates = () => {
                 tags: tagsArray,
                 is_premium: uploadForm.is_premium,
                 is_featured: uploadForm.is_featured,
-            })
+                pageData // ⭐ GỬI pageData ĐÃ PARSE
+            };
 
-            if (metadataResponse.data.success) {
-                toast.success("Upload template thành công! Đang tạo screenshot...")
-                setShowUploadModal(false)
-                setUploadForm({
-                    file: null,
-                    name: "",
-                    description: "",
-                    category: "Thương mại điện tử",
-                    price: 0,
-                    tags: "",
-                    is_premium: false,
-                    is_featured: false,
-                })
-                fetchTemplates()
-                fetchStats()
+            console.log("📤 Metadata payload:", {
+                templateId,
+                name: metadataPayload.name,
+                elementsCount: metadataPayload.pageData.elements.length,
+                tags: metadataPayload.tags
+            });
+
+            // Gửi metadata lên backend
+            console.time("metadataPost");
+            const metadataResponse = await api.post("/api/templates/admin/metadata", metadataPayload);
+            console.timeEnd("metadataPost");
+
+            if (!metadataResponse.data.success) {
+                throw new Error(`Lưu metadata thất bại: ${metadataResponse.data.error || "Lỗi không xác định"}`);
             }
+
+            const successMessage = metadataResponse.data.template.screenshot_url
+                ? "✅ Upload template thành công! Screenshot đã được tạo."
+                : "✅ Template đã được lưu, nhưng chưa tạo được screenshot!";
+
+            toast.success(successMessage);
+
+            // Reset form và refresh
+            setShowUploadModal(false);
+            setUploadForm({
+                file: null, name: "", description: "", category: "Thương mại điện tử",
+                price: 0, tags: "", is_premium: false, is_featured: false
+            });
+            fetchTemplates();
+            fetchStats();
+
         } catch (error) {
-            console.error("Error uploading template:", error)
-            toast.error("Lỗi khi upload template: " + (error.response?.data?.error || error.message))
+            console.error("❌ Error uploading template:", error);
+            let errorMessage = "Lỗi khi upload template: ";
+
+            if (error.response?.status === 400) {
+                errorMessage += "Dữ liệu không hợp lệ. Vui lòng kiểm tra file HTML.";
+            } else if (error.response?.status === 413) {
+                errorMessage += "File HTML quá lớn.";
+            } else {
+                errorMessage += error.response?.data?.error || error.message;
+            }
+
+            toast.error(errorMessage);
         } finally {
-            setIsSaving(false)
+            setIsSaving(false);
+            console.timeEnd("handleUploadSubmit");
         }
-    }
+    };
 
     const handlePreview = async (template) => {
-        setIsLoading(true)
+        setIsLoading(true);
         try {
-            const response = await api.get(`/api/templates/${template.id}/preview`)
+            const response = await api.get(`/api/templates/${template.id}/preview`);
             if (response.data.success) {
-                setPreviewHtml(response.data.html)
-                setSelectedTemplate(template)
-                setShowPreviewModal(true)
+                setPreviewHtml(response.data.html);
+                setSelectedTemplate(template);
+                setShowPreviewModal(true);
             }
         } catch (error) {
-            console.error("Error previewing template:", error)
-            toast.error("Lỗi khi xem trước template: " + (error.response?.data?.error || error.message))
+            console.error("Error previewing template:", error);
+            toast.error("Lỗi khi xem trước template: " + (error.response?.data?.error || error.message));
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
-    }
+    };
 
     const handleEdit = (template) => {
-        setSelectedTemplate(template)
+        setSelectedTemplate(template);
         setEditForm({
             name: template.name,
             description: template.description,
@@ -261,20 +327,20 @@ const Templates = () => {
             is_premium: template.is_premium,
             is_featured: template.is_featured,
             status: template.status || "ACTIVE",
-        })
-        setShowEditModal(true)
-    }
+        });
+        setShowEditModal(true);
+    };
 
     const handleEditSubmit = async (e) => {
-        e.preventDefault()
-        if (!selectedTemplate) return
+        e.preventDefault();
+        if (!selectedTemplate) return;
 
-        setIsSaving(true)
+        setIsSaving(true);
         try {
             const tagsArray = editForm.tags
                 .split(",")
                 .map((tag) => tag.trim())
-                .filter((tag) => tag.length > 0)
+                .filter((tag) => tag.length > 0);
 
             const response = await api.put(`/api/templates/${selectedTemplate.id}`, {
                 name: editForm.name,
@@ -285,99 +351,102 @@ const Templates = () => {
                 is_premium: editForm.is_premium,
                 is_featured: editForm.is_featured,
                 status: editForm.status,
-            })
+            });
 
             if (response.data.success) {
-                toast.success("Cập nhật template thành công!")
-                setShowEditModal(false)
-                fetchTemplates()
-                fetchStats()
+                toast.success("Cập nhật template thành công!");
+                setShowEditModal(false);
+                fetchTemplates();
+                fetchStats();
             }
         } catch (error) {
-            console.error("Error updating template:", error)
-            toast.error("Lỗi khi cập nhật template: " + (error.response?.data?.error || error.message))
+            console.error("Error updating template:", error);
+            toast.error("Lỗi khi cập nhật template: " + (error.response?.data?.error || error.message));
         } finally {
-            setIsSaving(false)
+            setIsSaving(false);
         }
-    }
+    };
 
     const handleRegenerateScreenshot = async (templateId) => {
-        setIsSaving(true)
+        setIsSaving(true);
         try {
-            const response = await api.post(`/api/templates/${templateId}/regenerate-screenshot`)
+            const response = await api.post(`/api/templates/${templateId}/regenerate-screenshot`);
             if (response.data.success) {
-                toast.success("Tạo lại screenshot thành công!")
-                fetchTemplates()
+                toast.success("Tạo lại screenshot thành công!");
+                fetchTemplates();
             }
         } catch (error) {
-            console.error("Error regenerating screenshot:", error)
-            toast.error("Lỗi khi tạo screenshot: " + (error.response?.data?.error || error.message))
+            console.error("Error regenerating screenshot:", error);
+            toast.error("Lỗi khi tạo screenshot: " + (error.response?.data?.error || error.message));
         } finally {
-            setIsSaving(false)
+            setIsSaving(false);
         }
-    }
+    };
 
     const handleBatchRegenerate = async () => {
-        if (
-            !window.confirm("Bạn có chắc muốn tạo lại screenshot cho tất cả templates? Quá trình này có thể mất vài phút.")
-        ) {
-            return
+        if (!window.confirm("Bạn có chắc muốn tạo lại screenshot cho tất cả templates? Quá trình này có thể mất vài phút.")) {
+            return;
         }
 
-        setIsSaving(true)
+        setIsSaving(true);
         try {
-            const response = await api.post("/api/templates/admin/batch-regenerate-screenshots")
+            const response = await api.post("/api/templates/admin/batch-regenerate-screenshots");
             if (response.data.success) {
-                toast.success(response.data.message)
-                fetchTemplates()
+                toast.success(response.data.message);
+                fetchTemplates();
             }
         } catch (error) {
-            console.error("Error batch regenerating:", error)
-            toast.error("Lỗi: " + (error.response?.data?.error || error.message))
+            console.error("Error batch regenerating:", error);
+            toast.error("Lỗi: " + (error.response?.data?.error || error.message));
         } finally {
-            setIsSaving(false)
+            setIsSaving(false);
         }
-    }
+    };
 
     const handleDelete = async (templateId) => {
         if (!window.confirm("Bạn có chắc muốn xóa template này? Hành động này không thể hoàn tác.")) {
-            return
+            return;
         }
 
-        setIsSaving(true)
+        setIsSaving(true);
         try {
-            const response = await api.delete(`/api/templates/${templateId}`)
+            const response = await api.delete(`/api/templates/${templateId}`);
             if (response.data.success) {
-                toast.success("Xóa template thành công!")
-                fetchTemplates()
-                fetchStats()
+                toast.success("Xóa template thành công!");
+                fetchTemplates();
+                fetchStats();
             }
         } catch (error) {
-            console.error("Error deleting template:", error)
-            toast.error("Lỗi khi xóa template: " + (error.response?.data?.error || error.message))
+            console.error("Error deleting template:", error);
+            toast.error("Lỗi khi xóa template: " + (error.response?.data?.error || error.message));
         } finally {
-            setIsSaving(false)
+            setIsSaving(false);
         }
-    }
+    };
+
+    const handleImageError = (e) => {
+        console.error("Failed to load image:", e.target.src);
+        e.target.src = "https://via.placeholder.com/300x200?text=Preview+Not+Available";
+    };
 
     const categoryStats = useMemo(() => {
-        if (!templates.length) return []
-        const grouped = {}
+        if (!templates.length) return [];
+        const grouped = {};
         templates.forEach((t) => {
-            grouped[t.category] = (grouped[t.category] || 0) + 1
-        })
-        return Object.entries(grouped).map(([name, value]) => ({ name, value }))
-    }, [templates])
+            grouped[t.category] = (grouped[t.category] || 0) + 1;
+        });
+        return Object.entries(grouped).map(([name, value]) => ({ name, value }));
+    }, [templates]);
 
     const usageData = useMemo(() => {
-        if (!templates.length) return []
+        if (!templates.length) return [];
         return templates
             .sort((a, b) => (b.usage_count || 0) - (a.usage_count || 0))
             .slice(0, 5)
-            .map((t) => ({ name: t.name.substring(0, 15), usage: t.usage_count || 0 }))
-    }, [templates])
+            .map((t) => ({ name: t.name.substring(0, 15), usage: t.usage_count || 0 }));
+    }, [templates]);
 
-    const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
+    const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
 
     if (isLoading && templates.length === 0) {
         return (
@@ -386,17 +455,15 @@ const Templates = () => {
                     <DogLoader />
                 </div>
             </div>
-        )
+        );
     }
 
     return (
         <div className="templates-page">
             <div className="templates-main">
-                {/* Header */}
                 <Sidebar role={userRole} />
                 <Header />
 
-                {/* Stats Cards with Charts */}
                 {stats && (
                     <div className="stats-section">
                         <div className="stats-grid">
@@ -432,34 +499,10 @@ const Templates = () => {
                             </div>
                         </div>
 
-                        {/* Charts */}
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                                gap: "1.5rem",
-                                marginTop: "2rem",
-                            }}
-                        >
-                            {/* Category Distribution */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.5rem", marginTop: "2rem" }}>
                             {categoryStats.length > 0 && (
-                                <div
-                                    style={{
-                                        background: "white",
-                                        borderRadius: "12px",
-                                        padding: "1.5rem",
-                                        boxShadow: "var(--card-shadow)",
-                                    }}
-                                >
-                                    <h3
-                                        style={{
-                                            fontSize: "0.875rem",
-                                            fontWeight: "600",
-                                            color: "#1e293b",
-                                            marginBottom: "1rem",
-                                            textTransform: "uppercase",
-                                        }}
-                                    >
+                                <div style={{ background: "white", borderRadius: "12px", padding: "1.5rem", boxShadow: "var(--card-shadow)" }}>
+                                    <h3 style={{ fontSize: "0.875rem", fontWeight: "600", color: "#1e293b", marginBottom: "1rem", textTransform: "uppercase" }}>
                                         <BarChart3 size={16} style={{ display: "inline", marginRight: "0.5rem" }} />
                                         Phân bố theo danh mục
                                     </h3>
@@ -485,25 +528,9 @@ const Templates = () => {
                                 </div>
                             )}
 
-                            {/* Top Usage */}
                             {usageData.length > 0 && (
-                                <div
-                                    style={{
-                                        background: "white",
-                                        borderRadius: "12px",
-                                        padding: "1.5rem",
-                                        boxShadow: "var(--card-shadow)",
-                                    }}
-                                >
-                                    <h3
-                                        style={{
-                                            fontSize: "0.875rem",
-                                            fontWeight: "600",
-                                            color: "#1e293b",
-                                            marginBottom: "1rem",
-                                            textTransform: "uppercase",
-                                        }}
-                                    >
+                                <div style={{ background: "white", borderRadius: "12px", padding: "1.5rem", boxShadow: "var(--card-shadow)" }}>
+                                    <h3 style={{ fontSize: "0.875rem", fontWeight: "600", color: "#1e293b", marginBottom: "1rem", textTransform: "uppercase" }}>
                                         <TrendingUp size={16} style={{ display: "inline", marginRight: "0.5rem" }} />
                                         Top 5 Templates được sử dụng
                                     </h3>
@@ -512,9 +539,7 @@ const Templates = () => {
                                             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                                             <XAxis dataKey="name" stroke="#94a3b8" />
                                             <YAxis stroke="#94a3b8" />
-                                            <Tooltip
-                                                contentStyle={{ background: "#1e293b", border: "none", borderRadius: "8px", color: "#fff" }}
-                                            />
+                                            <Tooltip contentStyle={{ background: "#1e293b", border: "none", borderRadius: "8px", color: "#fff" }} />
                                             <Bar dataKey="usage" fill="#3b82f6" radius={[8, 8, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -524,30 +549,14 @@ const Templates = () => {
                     </div>
                 )}
 
-                {/* Toolbar */}
                 <div className="controls-section">
                     <div className="controls-grid">
-                        <button onClick={() => setShowUploadModal(true)} className="btn btn--upload">
+                        <button onClick={() => setShowUploadModal(true)} className="button-upload">
                             <Upload size={18} />
                             Upload Template
                         </button>
-
-                        <button onClick={handleBatchRegenerate} className="btn btn--regenerate">
-                            <Camera size={18} />
-                            Tạo lại tất cả Screenshots
-                        </button>
-
                         <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
-                            <Search
-                                size={18}
-                                style={{
-                                    position: "absolute",
-                                    left: "0.75rem",
-                                    top: "50%",
-                                    transform: "translateY(-50%)",
-                                    color: "#94a3b8",
-                                }}
-                            />
+                            <Search size={18} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
                             <input
                                 type="text"
                                 placeholder="Tìm kiếm template..."
@@ -557,137 +566,103 @@ const Templates = () => {
                                 style={{ paddingLeft: "2.5rem" }}
                             />
                         </div>
-
-                        <select
-                            value={filterCategory}
-                            onChange={(e) => setFilterCategory(e.target.value)}
-                            className="filter-select"
-                        >
+                        <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="filter-select">
                             <option value="all">Tất cả danh mục</option>
                             {categories.map((cat) => (
-                                <option key={cat} value={cat}>
-                                    {cat}
-                                </option>
+                                <option key={cat} value={cat}>{cat}</option>
                             ))}
                         </select>
-
                         <select value={filterPremium} onChange={(e) => setFilterPremium(e.target.value)} className="filter-select">
                             <option value="all">Tất cả loại</option>
                             <option value="free">Miễn phí</option>
                             <option value="premium">Premium</option>
                         </select>
+                        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="filter-select">
+                            <option value="all">Tất cả trạng thái</option>
+                            <option value="ACTIVE">Hoạt động</option>
+                            <option value="INACTIVE">Tạm ẩn</option>
+                            <option value="DRAFT">Nháp</option>
+                        </select>
+                        <button onClick={() => setShowAllStatus(!showAllStatus)} className="button-toggle">
+                            {showAllStatus ? "Chỉ xem Active" : "Xem tất cả trạng thái"}
+                        </button>
                     </div>
                 </div>
 
-                {/* Templates Grid */}
                 <div className="templates-content">
                     {filteredTemplates.length === 0 ? (
                         <div className="end-message">
                             <ImageIcon size={48} />
-                            <p>Không tìm thấy template nào</p>
+                            <p>Không tìm thấy template nào. Vui lòng kiểm tra bộ lọc hoặc thêm template mới.</p>
                         </div>
                     ) : (
                         <div className="templates-grid">
                             {filteredTemplates.map((template) => (
                                 <div key={template.id} className="template-card">
-                                    {/* Thumbnail */}
                                     <div className="card-media">
-                                        {template.thumbnail_url ? (
+                                        {template.screenshot_url ? (
                                             <img
-                                                src={template.thumbnail_url || "/placeholder.svg"}
+                                                src={template.screenshot_url}
                                                 alt={template.name}
                                                 className="template-image"
+                                                onError={handleImageError}
                                             />
                                         ) : (
                                             <div className="image-placeholder">
                                                 <ImageIcon size={48} />
+                                                <span className="image-placeholder-text">Không có hình ảnh</span>
                                             </div>
                                         )}
-
-                                        {/* Badges */}
                                         <div className="badge-container">
                                             {template.is_featured && (
                                                 <span className="badge badge--featured">
-                          <Star size={14} />
-                          Nổi bật
-                        </span>
+                                                    <Star size={14} /> Nổi bật
+                                                </span>
                                             )}
                                             {template.is_premium && (
                                                 <span className="badge badge--premium">
-                          <Crown size={14} />
-                          Premium
-                        </span>
+                                                    <Crown size={14} /> Premium
+                                                </span>
+                                            )}
+                                            {template.status !== "ACTIVE" && (
+                                                <span className="badge badge--status">
+                                                    {template.status === "INACTIVE" ? "Tạm ẩn" : "Nháp"}
+                                                </span>
                                             )}
                                         </div>
-
-                                        {/* Quick Actions Overlay */}
                                         <div className="card-overlay">
-                                            <button
-                                                onClick={() => handlePreview(template)}
-                                                className="btn btn--secondary"
-                                                title="Xem trước"
-                                                aria-label="Xem trước template"
-                                            >
+                                            <button onClick={() => handlePreview(template)} className="btn btn--secondary" title="Xem trước">
                                                 <Eye size={16} />
                                             </button>
-                                            <button
-                                                onClick={() => handleEdit(template)}
-                                                className="btn btn--primary"
-                                                title="Chỉnh sửa"
-                                                aria-label="Chỉnh sửa template"
-                                            >
+                                            <button onClick={() => handleEdit(template)} className="btn btn--primary" title="Chỉnh sửa">
                                                 <Edit size={16} />
                                             </button>
-                                            <button
-                                                onClick={() => handleRegenerateScreenshot(template.id)}
-                                                className="btn btn--regenerate"
-                                                title="Tạo lại screenshot"
-                                                aria-label="Tạo lại screenshot"
-                                            >
-                                                <Camera size={16} />
+                                            <button onClick={() => handleDelete(template.id)} className="btn btn--delete" title="Xóa">
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </div>
-
-                                    {/* Content */}
                                     <div className="card-content">
                                         <h3 className="card-title">{template.name}</h3>
                                         <p className="card-description">{template.description}</p>
-
                                         <div className="card-meta">
                                             <span className="category">{template.category}</span>
                                             <span className="price">{template.formatted_price}</span>
                                         </div>
-
                                         <div className="card-meta">
-                      <span className="usage">
-                        <Eye size={14} style={{ display: "inline", marginRight: "0.25rem" }} />
-                          {template.usage_count} lượt dùng
-                      </span>
+                                            <span className="usage">
+                                                <Eye size={14} style={{ display: "inline", marginRight: "0.25rem" }} />
+                                                {template.usage_count} lượt dùng
+                                            </span>
                                             <span className="created">{template.created_at}</span>
                                         </div>
-
-                                        {/* Tags */}
                                         {template.tags && template.tags.length > 0 && (
                                             <div className="card-tags">
                                                 {template.tags.slice(0, 3).map((tag, index) => (
-                                                    <span key={index} className="card-tags__tag">
-                            {tag}
-                          </span>
+                                                    <span key={index} className="card-tags__tag">{tag}</span>
                                                 ))}
                                             </div>
                                         )}
-
-                                        {/* Actions */}
-                                        <div className="card-actions">
-                                            <button onClick={() => handleEdit(template)} className="btn btn--edit">
-                                                <Edit size={14} />
-                                                Sửa
-                                            </button>
-                                            <button onClick={() => handleDelete(template.id)} className="btn btn--delete">
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -695,32 +670,25 @@ const Templates = () => {
                     )}
                 </div>
 
-                {/* Upload Modal */}
                 {showUploadModal && (
                     <div className="modal-overlay">
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h2 className="modal-title">
-                                    <Upload size={20} />
-                                    Upload Template Mới
+                                    <Upload size={20} /> Upload Template Mới
                                 </h2>
                                 <button onClick={() => setShowUploadModal(false)} className="modal-close">
                                     <X size={20} />
                                 </button>
                             </div>
-
                             <form onSubmit={handleUploadSubmit} className="modal-form">
-                                {/* File Upload */}
                                 <div>
                                     <label className="modal-form__label">
-                                        <ImageIcon size={16} style={{ display: "inline", marginRight: "0.5rem" }} />
-                                        File HTML *
+                                        <ImageIcon size={16} style={{ display: "inline", marginRight: "0.5rem" }} /> File HTML *
                                     </label>
                                     <input type="file" accept=".html" onChange={handleFileChange} required className="modal-form__file" />
-                                    <p className="modal-form__hint">Upload file HTML có chứa lpb-page-data để tự động extract pageData</p>
+                                    <p className="modal-form__hint">Upload file HTML để trích xuất pageData (canvas, elements, meta)</p>
                                 </div>
-
-                                {/* Name */}
                                 <div>
                                     <label className="modal-form__label">Tên Template *</label>
                                     <input
@@ -732,8 +700,6 @@ const Templates = () => {
                                         placeholder="Ví dụ: Landing Page Bất Động Sản Modern"
                                     />
                                 </div>
-
-                                {/* Description */}
                                 <div>
                                     <label className="modal-form__label">Mô tả</label>
                                     <textarea
@@ -744,9 +710,7 @@ const Templates = () => {
                                         placeholder="Mô tả ngắn gọn về template"
                                     />
                                 </div>
-
                                 <div className="modal-form__grid">
-                                    {/* Category */}
                                     <div>
                                         <label className="modal-form__label">Danh mục</label>
                                         <select
@@ -755,14 +719,10 @@ const Templates = () => {
                                             className="modal-form__select"
                                         >
                                             {categories.map((cat) => (
-                                                <option key={cat} value={cat}>
-                                                    {cat}
-                                                </option>
+                                                <option key={cat} value={cat}>{cat}</option>
                                             ))}
                                         </select>
                                     </div>
-
-                                    {/* Price */}
                                     <div>
                                         <label className="modal-form__label">Giá (VNĐ)</label>
                                         <input
@@ -775,8 +735,6 @@ const Templates = () => {
                                         />
                                     </div>
                                 </div>
-
-                                {/* Tags */}
                                 <div>
                                     <label className="modal-form__label">Tags</label>
                                     <input
@@ -787,9 +745,18 @@ const Templates = () => {
                                         placeholder="modern, minimal, responsive (phân cách bằng dấu phẩy)"
                                     />
                                 </div>
-
-                                {/* Checkboxes */}
                                 <div className="modal-form__checkbox-group">
+                                    <label className="modal-form__checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={uploadForm.is_premium}
+                                            onChange={(e) => setUploadForm({ ...uploadForm, is_premium: e.target.checked })}
+                                            className="modal-form__checkbox"
+                                        />
+                                        <span className="modal-form__checkbox-text">
+                                            <Crown size={14} /> Premium
+                                        </span>
+                                    </label>
                                     <label className="modal-form__checkbox-label">
                                         <input
                                             type="checkbox"
@@ -798,27 +765,20 @@ const Templates = () => {
                                             className="modal-form__checkbox"
                                         />
                                         <span className="modal-form__checkbox-text">
-                      <Star size={14} />
-                      Nổi bật
-                    </span>
+                                            <Star size={14} /> Nổi bật
+                                        </span>
                                     </label>
                                 </div>
-
-                                {/* Submit */}
                                 <div className="modal-footer">
-                                    <button type="button" onClick={() => setShowUploadModal(false)} className="btn btn--cancel">
-                                        Hủy
-                                    </button>
-                                    <button type="submit" disabled={isSaving} className="btn btn--submit">
+                                    <button type="button" onClick={() => setShowUploadModal(false)} className="button-huy">Hủy</button>
+                                    <button type="submit" disabled={isSaving} className="button-submit">
                                         {isSaving ? (
                                             <>
-                                                <Loader size={16} className="animate-spin" />
-                                                Đang upload...
+                                                <Loader size={16} className="animate-spin" /> Đang upload...
                                             </>
                                         ) : (
                                             <>
-                                                <Upload size={16} />
-                                                Upload Template
+                                                <Upload size={16} /> Upload Template
                                             </>
                                         )}
                                     </button>
@@ -828,22 +788,18 @@ const Templates = () => {
                     </div>
                 )}
 
-                {/* Edit Modal */}
                 {showEditModal && selectedTemplate && (
                     <div className="modal-overlay">
                         <div className="modal-content">
                             <div className="modal-header">
                                 <h2 className="modal-title">
-                                    <Edit size={20} />
-                                    Chỉnh sửa Template
+                                    <Edit size={20} /> Chỉnh sửa Template
                                 </h2>
                                 <button onClick={() => setShowEditModal(false)} className="modal-close">
                                     <X size={20} />
                                 </button>
                             </div>
-
                             <form onSubmit={handleEditSubmit} className="modal-form">
-                                {/* Name */}
                                 <div>
                                     <label className="modal-form__label">Tên Template *</label>
                                     <input
@@ -854,8 +810,6 @@ const Templates = () => {
                                         className="modal-form__input"
                                     />
                                 </div>
-
-                                {/* Description */}
                                 <div>
                                     <label className="modal-form__label">Mô tả</label>
                                     <textarea
@@ -865,9 +819,7 @@ const Templates = () => {
                                         className="modal-form__textarea"
                                     />
                                 </div>
-
                                 <div className="modal-form__grid">
-                                    {/* Category */}
                                     <div>
                                         <label className="modal-form__label">Danh mục</label>
                                         <select
@@ -876,14 +828,10 @@ const Templates = () => {
                                             className="modal-form__select"
                                         >
                                             {categories.map((cat) => (
-                                                <option key={cat} value={cat}>
-                                                    {cat}
-                                                </option>
+                                                <option key={cat} value={cat}>{cat}</option>
                                             ))}
                                         </select>
                                     </div>
-
-                                    {/* Price */}
                                     <div>
                                         <label className="modal-form__label">Giá (VNĐ)</label>
                                         <input
@@ -895,8 +843,6 @@ const Templates = () => {
                                         />
                                     </div>
                                 </div>
-
-                                {/* Tags */}
                                 <div>
                                     <label className="modal-form__label">Tags</label>
                                     <input
@@ -907,8 +853,6 @@ const Templates = () => {
                                         placeholder="modern, minimal, responsive (phân cách bằng dấu phẩy)"
                                     />
                                 </div>
-
-                                {/* Status */}
                                 <div>
                                     <label className="modal-form__label">Trạng thái</label>
                                     <select
@@ -921,8 +865,6 @@ const Templates = () => {
                                         <option value="DRAFT">Nháp</option>
                                     </select>
                                 </div>
-
-                                {/* Checkboxes */}
                                 <div className="modal-form__checkbox-group">
                                     <label className="modal-form__checkbox-label">
                                         <input
@@ -932,11 +874,9 @@ const Templates = () => {
                                             className="modal-form__checkbox"
                                         />
                                         <span className="modal-form__checkbox-text">
-                      <Crown size={14} />
-                      Premium
-                    </span>
+                                            <Crown size={14} /> Premium
+                                        </span>
                                     </label>
-
                                     <label className="modal-form__checkbox-label">
                                         <input
                                             type="checkbox"
@@ -945,27 +885,20 @@ const Templates = () => {
                                             className="modal-form__checkbox"
                                         />
                                         <span className="modal-form__checkbox-text">
-                      <Star size={14} />
-                      Nổi bật
-                    </span>
+                                            <Star size={14} /> Nổi bật
+                                        </span>
                                     </label>
                                 </div>
-
-                                {/* Submit */}
                                 <div className="modal-footer">
-                                    <button type="button" onClick={() => setShowEditModal(false)} className="btn btn--cancel">
-                                        Hủy
-                                    </button>
-                                    <button type="submit" disabled={isSaving} className="btn btn--submit">
+                                    <button type="button" onClick={() => setShowEditModal(false)} className="button-cancel">Hủy</button>
+                                    <button type="submit" disabled={isSaving} className="button-submit">
                                         {isSaving ? (
                                             <>
-                                                <Loader size={16} className="animate-spin" />
-                                                Đang lưu...
+                                                <Loader size={16} className="animate-spin" /> Đang lưu...
                                             </>
                                         ) : (
                                             <>
-                                                <Save size={16} />
-                                                Lưu thay đổi
+                                                <Save size={16} /> Lưu thay đổi
                                             </>
                                         )}
                                     </button>
@@ -975,43 +908,15 @@ const Templates = () => {
                     </div>
                 )}
 
-                {/* Preview Modal */}
                 {showPreviewModal && (
-                    <div className="modal-overlay modal-overlay--preview">
-                        <div className="modal-content modal-content--preview">
-                            <div className="modal-header modal-header--preview">
-                                <div>
-                                    <h2 className="modal-title">
-                                        <Eye size={20} />
-                                        Xem trước: {selectedTemplate?.name}
-                                    </h2>
-                                    <p style={{ margin: "0.5rem 0 0 0", color: "#64748b", fontSize: "0.875rem" }}>
-                                        {selectedTemplate?.category}
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setShowPreviewModal(false)
-                                        setPreviewHtml("")
-                                    }}
-                                    className="btn btn--close"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-                            <div className="modal-body">
-                                <iframe
-                                    srcDoc={previewHtml}
-                                    className="modal-iframe"
-                                    title="Template Preview"
-                                    sandbox="allow-scripts allow-same-origin"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    <PreviewModal
+                        selectedTemplate={selectedTemplate}
+                        setShowPreviewModal={setShowPreviewModal}
+                        setPreviewHtml={setPreviewHtml}
+                        previewHtml={previewHtml}
+                    />
                 )}
 
-                {/* Loading Overlay */}
                 {(isSaving || isLoading) && (
                     <div className="loading-overlay">
                         <DogLoader />
@@ -1019,7 +924,7 @@ const Templates = () => {
                 )}
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default Templates
+export default Templates;

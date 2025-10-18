@@ -1,14 +1,17 @@
 .templates-main {
-    display: flex
-;
+    display: flex;
     padding-top: 70px;
 }
+
 .templates-content {
-    flex: 1; padding: 1rem;
+    flex: 1;
+    padding: 1rem;
     max-width: 1600px;
     margin: 0px 20px 20px 80px;
     height: calc(100vh - 70px);
+    overflow-y: auto;
 }
+
 /* ============================================
    BANNER SECTION
    ============================================ */
@@ -17,6 +20,8 @@
     height: 280px;
     overflow: hidden;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border-radius: 12px;
+    margin-bottom: 24px;
 }
 
 .banner-image {
@@ -80,6 +85,8 @@
     padding: 32px 40px;
     background: white;
     border-bottom: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 24px;
 }
 
 .search-form {
@@ -115,12 +122,10 @@
     font-size: 0.95rem;
     font-weight: 500;
     transition: all 0.2s ease;
-    /* Removed box-shadow for cleaner, minimal look */
 }
 
 .search-btn:hover {
     background: #1d4ed8;
-    /* Removed transform scale for simpler interaction */
 }
 
 .sub-filters {
@@ -159,6 +164,8 @@
     background: white;
     overflow-x: auto;
     border-bottom: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 24px;
 }
 
 .tab-btn {
@@ -172,14 +179,12 @@
     color: #6b7280;
     transition: all 0.2s ease;
     white-space: nowrap;
-    /* Reduced padding for slimmer appearance */
 }
 
 .tab-btn:hover {
     border-color: #2563eb;
     color: #2563eb;
     background: #f0f7ff;
-    /* Added subtle background on hover for modern feel */
 }
 
 .tab-btn.active {
@@ -189,15 +194,14 @@
 }
 
 /* ============================================
-   TEMPLATES GRID & CARDS - PROFESSIONAL LAYOUT
+   TEMPLATES GRID & CARDS
    ============================================ */
 
 .templates-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 24px;
-    padding: 40px;
-    background: #fafbfc;
+    padding: 20px;
 }
 
 .template-card {
@@ -211,11 +215,9 @@
     flex-direction: column;
     height: 100%;
     border: 1px solid #f0f0f0;
-    /* Added entrance animation and enhanced hover effects */
     animation: cardEnter 0.6s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
-/* Added staggered entrance animation for cards */
 @keyframes cardEnter {
     from {
         opacity: 0;
@@ -227,31 +229,20 @@
     }
 }
 
-.template-card:nth-child(1) {
-    animation-delay: 0.05s;
-}
-.template-card:nth-child(2) {
-    animation-delay: 0.1s;
-}
-.template-card:nth-child(3) {
-    animation-delay: 0.15s;
-}
-.template-card:nth-child(4) {
-    animation-delay: 0.2s;
-}
-.template-card:nth-child(n + 5) {
-    animation-delay: 0.25s;
-}
+.template-card:nth-child(1) { animation-delay: 0.05s; }
+.template-card:nth-child(2) { animation-delay: 0.1s; }
+.template-card:nth-child(3) { animation-delay: 0.15s; }
+.template-card:nth-child(4) { animation-delay: 0.2s; }
+.template-card:nth-child(n + 5) { animation-delay: 0.25s; }
 
 .template-card:hover {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
     transform: translateY(-8px);
     border-color: #e5e7eb;
-    /* Enhanced shadow and lift effect on hover */
 }
 
 /* ============================================
-   CARD MEDIA - IMAGE WITH AUTO-SCROLL EFFECT
+   CARD MEDIA - ANIMATED SCROLL PREVIEW
    ============================================ */
 
 .card-media {
@@ -259,32 +250,82 @@
     width: 100%;
     height: 240px;
     overflow: hidden;
-    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-    /* Added gradient background for visual depth */
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .template-image {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: 100%;
+    /* Chiều cao tự động để chứa toàn bộ landing page */
+    height: auto;
+    min-height: 100%;
     object-fit: cover;
-    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    object-position: top center;
+    transition: all 0.3s ease;
     display: block;
-    /* Added filter effect for smooth transitions */
+    z-index: 2;
+    filter: brightness(0.95);
+}
+
+/* HIỆU ỨNG SCROLL TỰ ĐỘNG KHI HOVER */
+.template-card:hover .template-image {
+    /* Scroll từ top xuống bottom trong 3s */
+    animation: smoothScroll 8s ease-in-out infinite;
     filter: brightness(1);
 }
 
-/* Enhanced hover effect - image scrolls down smoothly to show more content */
-.template-card:hover .template-image {
-    transform: translateY(-60px) scale(1.02);
-    filter: brightness(0.95);
-    /* Added subtle scale and brightness effect on hover */
+@keyframes smoothScroll {
+    0% {
+        object-position: top center;
+        transform: scale(1);
+    }
+    45% {
+        object-position: bottom center;
+        transform: scale(1.02);
+    }
+    55% {
+        object-position: bottom center;
+        transform: scale(1.02);
+    }
+    100% {
+        object-position: top center;
+        transform: scale(1);
+    }
 }
 
-/* Fixed image placeholder - hidden by default, only shown when image fails to load */
+/* HIỆU ỨNG THAY THẾ: Scroll một chiều */
+@keyframes scrollDown {
+    0% {
+        object-position: top center;
+    }
+    100% {
+        object-position: bottom center;
+    }
+}
+
+/* GRADIENT OVERLAY KHI HOVER - ĐÃ TẮT */
+.card-media::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: transparent; /* Tắt gradient */
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.template-card:hover .card-media::before {
+    opacity: 0; /* Không hiện overlay */
+}
+
+/* PLACEHOLDER */
 .image-placeholder {
     position: absolute;
     inset: 0;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     font-size: 3rem;
@@ -292,10 +333,16 @@
     color: white;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.template-image[style*="display: none"] + .image-placeholder {
+    opacity: 1;
 }
 
 /* ============================================
-   CARD OVERLAY - BUTTONS ON HOVER
+   CARD OVERLAY - BUTTONS
    ============================================ */
 
 .card-overlay {
@@ -305,11 +352,9 @@
     align-items: center;
     justify-content: center;
     gap: 16px;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(222, 222, 222, 0.25);
     opacity: 0;
     transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(8px);
-    /* Enhanced blur effect for modern look */
     z-index: 10;
 }
 
@@ -330,7 +375,6 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     transform: scale(0.7);
     opacity: 0;
-    /* Enhanced transition timing for smoother animations */
 }
 
 .template-card:hover .btn {
@@ -338,23 +382,28 @@
     transform: scale(1);
 }
 
+.btn:nth-child(1) {
+    transition-delay: 0.05s;
+}
+
+.btn:nth-child(2) {
+    transition-delay: 0.1s;
+}
+
 .btn-primary {
     background: #2563eb;
     color: white;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-    /* Added glow effect for primary buttons */
 }
 
 .btn-primary:hover {
     background: #1d4ed8;
-    transform: scale(1.15);
+    transform: scale(1.15) rotate(5deg);
     box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
-    /* Enhanced hover effect with larger scale and stronger glow */
 }
 
 .btn-primary:active {
     transform: scale(0.95);
-    /* Added active state for tactile feedback */
 }
 
 .btn-primary:disabled {
@@ -369,24 +418,21 @@
     color: white;
     border: 1.5px solid rgba(255, 255, 255, 0.4);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    /* Added subtle shadow for depth */
 }
 
 .btn-secondary:hover {
     background: rgba(255, 255, 255, 0.2);
     border-color: rgba(255, 255, 255, 0.8);
-    transform: scale(1.15);
+    transform: scale(1.15) rotate(-5deg);
     box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
-    /* Enhanced hover effect with glow and scale */
 }
 
 .btn-secondary:active {
     transform: scale(0.95);
-    /* Added active state for tactile feedback */
 }
 
 /* ============================================
-   BADGES - PROFESSIONAL STYLING
+   BADGES
    ============================================ */
 
 .badge {
@@ -397,12 +443,11 @@
     border-radius: 6px;
     font-size: 0.75rem;
     font-weight: 600;
-    z-index: 2;
+    z-index: 4;
     animation: slideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    /* Added shadow for badge depth */
 }
 
 @keyframes slideIn {
@@ -418,27 +463,24 @@
 
 .badge.featured {
     background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-    /* Added gradient for featured badge */
     color: #78350f;
     box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
 }
 
 .badge.premium {
     background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
-    /* Added gradient for premium badge */
     color: white;
     box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
 }
 
 .badge.free {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    /* Added gradient for free badge */
     color: white;
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
 /* ============================================
-   CARD CONTENT - PROFESSIONAL TYPOGRAPHY
+   CARD CONTENT
    ============================================ */
 
 .card-content {
@@ -448,12 +490,12 @@
     flex-direction: column;
     justify-content: space-between;
     transition: all 0.3s ease;
-    /* Added smooth transition for content */
+    position: relative;
+    z-index: 5;
 }
 
 .template-card:hover .card-content {
-    background: #f9fafb;
-    /* Subtle background change on hover */
+    background: linear-gradient(to bottom, #f9fafb 0%, white 100%);
 }
 
 .card-title {
@@ -467,12 +509,10 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     transition: color 0.3s ease;
-    /* Added smooth color transition */
 }
 
 .template-card:hover .card-title {
     color: #2563eb;
-    /* Title color changes on hover for visual feedback */
 }
 
 .card-meta {
@@ -489,6 +529,12 @@
     border-radius: 4px;
     font-weight: 500;
     color: #4b5563;
+    transition: all 0.3s ease;
+}
+
+.template-card:hover .category {
+    background: #2563eb;
+    color: white;
 }
 
 .usage {
@@ -496,6 +542,11 @@
     align-items: center;
     gap: 4px;
     color: #9ca3af;
+    transition: color 0.3s ease;
+}
+
+.template-card:hover .usage {
+    color: #2563eb;
 }
 
 /* ============================================
@@ -529,108 +580,18 @@
     color: #10b981;
 }
 
-/* ============================================
-   MODAL - PREVIEW
-   ============================================ */
-
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-    backdrop-filter: blur(8px);
-    /* Enhanced blur effect */
-    animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 @keyframes fadeIn {
     from {
         opacity: 0;
-        backdrop-filter: blur(0px);
     }
     to {
         opacity: 1;
-        backdrop-filter: blur(8px);
     }
-}
-
-.modal-content {
-    background: white;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 900px;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-    /* Enhanced shadow for modal depth */
-    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.modal-header {
-    padding: 24px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h2 {
-    font-size: 1.5rem;
-    color: #1f2937;
-    font-weight: 700;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: #6b7280;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 8px;
-    border-radius: 6px;
-    /* Added border-radius for better hover effect */
-}
-
-.modal-close:hover {
-    color: #1f2937;
-    background: #f3f4f6;
-    transform: rotate(90deg);
-    /* Added rotation effect on hover */
-}
-
-.modal-iframe {
-    flex: 1;
-    border: none;
-    min-height: 400px;
-}
-
-.modal-footer {
-    padding: 20px 24px;
-    border-top: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
 }
 
 /* ============================================
-   RESPONSIVE DESIGN - PROFESSIONAL BREAKPOINTS
+   RESPONSIVE
    ============================================ */
 
 @media (max-width: 1440px) {
@@ -685,17 +646,8 @@
         font-size: 0.9rem;
     }
 
-    .modal-content {
-        max-width: 95vw;
-        max-height: 95vh;
-    }
-
     .card-media {
         height: 200px;
-    }
-
-    .template-card:hover .template-image {
-        transform: translateY(-50px);
     }
 }
 
@@ -708,10 +660,6 @@
 
     .card-media {
         height: 180px;
-    }
-
-    .template-card:hover .template-image {
-        transform: translateY(-40px);
     }
 
     .controls-section {
