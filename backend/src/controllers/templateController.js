@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
 const mongoose = require('mongoose');
 const puppeteer = require('puppeteer');
-
+const cheerio = require('cheerio'); // Thêm cheerio để parse HTML
 // Cấu hình AWS
 AWS.config.update({ region: process.env.AWS_REGION || 'ap-southeast-1' });
 const s3 = new AWS.S3();
@@ -167,13 +167,9 @@ const generateTemplateScreenshot = async (htmlContent, templateId, isUrl = false
     }
 };
 
-/**
- * Extract pageData từ HTML
- * Parse embedded JSON hoặc parse DOM structure
- */
 const extractPageDataFromHTML = (html, templateName, templateDescription) => {
     try {
-        // TRY 1: Extract embedded pageData từ <script id="lpb-page-data">
+        // TRY 1: Tìm embedded pageData từ <script id="lpb-page-data">
         const pageDataMatch = html.match(
             /<script type="application\/json" id="lpb-page-data">\s*([\s\S]*?)\s*<\/script>/
         );
@@ -182,18 +178,32 @@ const extractPageDataFromHTML = (html, templateName, templateDescription) => {
             try {
                 const pageData = JSON.parse(pageDataMatch[1]);
                 console.log('✅ Extracted embedded pageData from template HTML');
-
                 // Validate structure
-                if (pageData.canvas && Array.isArray(pageData.elements)) {
+                if (pageData.canvas && Array.isArray(pageData.elements) && pageData.meta) {
                     return {
                         canvas: {
                             width: pageData.canvas.width || 1200,
                             height: pageData.canvas.height || 'auto',
                             background: pageData.canvas.background || '#ffffff'
                         },
-                        elements: pageData.elements || [],
+                        elements: pageData.elements.map((el, index) => ({
+                            ...el,
+                            id: el.id || `element-${Date.now()}-${index}`,
+                            type: el.type || 'section',
+                            componentData: el.componentData || {},
+                            position: el.position || {
+                                desktop: { x: 0, y: index * 600 },
+                                tablet: { x: 0, y: index * 600 },
+                                mobile: { x: 0, y: index * 600 }
+                            },
+                            size: el.size || { width: 1200, height: 600 },
+                            styles: el.styles || {},
+                            children: Array.isArray(el.children) ? el.children : [],
+                            visible: el.visible !== undefined ? el.visible : true,
+                            locked: el.locked !== undefined ? el.locked : false
+                        })),
                         meta: {
-                            title: templateName,
+                            title: templateName || pageData.meta?.title || 'Untitled',
                             description: templateDescription || pageData.meta?.description || '',
                             keywords: pageData.meta?.keywords || []
                         }
@@ -204,38 +214,117 @@ const extractPageDataFromHTML = (html, templateName, templateDescription) => {
             }
         }
 
-        // TRY 2: Fallback - Parse cơ bản từ HTML structure
-        console.log('⚠️ No embedded pageData found, creating basic structure');
-        return {
-            canvas: {
-                width: 1200,
-                height: 'auto',
-                background: '#ffffff'
-            },
-            elements: [{
+        // TRY 2: Parse HTML bằng cheerio
+        console.log('⚠️ No embedded pageData found, parsing HTML structure');
+        const $ = cheerio.load(html);
+        const elements = [];
+        let canvasHeight = 0;
+
+        // Tìm tất cả section có class lpb-section
+        $('section.lpb-section').each((index, section) => {
+            const $section = $(section);
+            const sectionId = $section.attr('id') || `section-${Date.now()}-${index}`;
+            const sectionStyles = {};
+            const styleAttr = $section.attr('style') || '';
+            styleAttr.split(';').forEach((style) => {
+                const [key, value] = style.split(':').map(s => s.trim());
+                if (key && value) {
+                    sectionStyles[key.replace(/-([a-z])/g, (g) => g[1].toUpperCase())] = value;
+                }
+            });
+
+            // Parse children (heading, button, image, v.v.)
+            const children = [];
+            $section.find('h1, h2, h3, button, img, p').each((childIndex, child) => {
+                const $child = $(child);
+                const childType = $child.prop('tagName').toLowerCase() === 'p' ? 'paragraph' :
+                    $child.prop('tagName').toLowerCase() === 'button' ? 'button' :
+                        $child.prop('tagName').toLowerCase() === 'img' ? 'image' :
+                            'heading';
+                const childStyles = {};
+                const childStyleAttr = $child.attr('style') || '';
+                childStyleAttr.split(';').forEach((style) => {
+                    const [key, value] = style.split(':').map(s => s.trim());
+                    if (key && value) {
+                        childStyles[key.replace(/-([a-z])/g, (g) => g[1].toUpperCase())] = value;
+                    }
+                });
+
+                children.push({
+                    id: $child.attr('id') || `${childType}-${Date.now()}-${childIndex}`,
+                    type: childType,
+                    content: childType === 'image' ? $child.attr('src') : $child.text().trim(),
+                    position: {
+                        desktop: { x: 0, y: childIndex * 50 },
+                        tablet: { x: 0, y: childIndex * 50 },
+                        mobile: { x: 0, y: childIndex * 50 }
+                    },
+                    size: {
+                        width: childStyles.width || 'auto',
+                        height: childStyles.height || 'auto'
+                    },
+                    styles: childStyles,
+                    visible: true,
+                    locked: false
+                });
+            });
+
+            const sectionHeight = parseInt(sectionStyles.height, 10) || 600;
+            elements.push({
+                id: sectionId,
+                type: 'section',
+                componentData: {},
+                position: {
+                    desktop: { x: 0, y: canvasHeight },
+                    tablet: { x: 0, y: canvasHeight },
+                    mobile: { x: 0, y: canvasHeight }
+                },
+                size: {
+                    width: parseInt(sectionStyles.width, 10) || 1200,
+                    height: sectionHeight
+                },
+                styles: sectionStyles,
+                children,
+                visible: true,
+                locked: false
+            });
+
+            canvasHeight += sectionHeight;
+        });
+
+        // Nếu không tìm thấy section, tạo section mặc định
+        if (elements.length === 0) {
+            elements.push({
                 id: `section-${Date.now()}`,
                 type: 'section',
+                componentData: {},
                 position: {
                     desktop: { x: 0, y: 0 },
                     tablet: { x: 0, y: 0 },
                     mobile: { x: 0, y: 0 }
                 },
                 size: { width: 1200, height: 600 },
-                styles: {
-                    background: '#ffffff',
-                    padding: '40px'
-                },
+                styles: { background: '#ffffff', padding: '40px' },
                 children: [],
                 visible: true,
                 locked: false
-            }],
+            });
+            canvasHeight = 600;
+        }
+
+        return {
+            canvas: {
+                width: 1200,
+                height: canvasHeight || 1648,
+                background: '#ffffff'
+            },
+            elements,
             meta: {
-                title: templateName,
+                title: templateName || 'Untitled',
                 description: templateDescription || '',
                 keywords: []
             }
         };
-
     } catch (error) {
         console.error('Error extracting pageData from HTML:', error);
         return null;
@@ -356,7 +445,6 @@ exports.previewTemplate = async (req, res) => {
     }
 };
 
-// ========== SỬ DỤNG TEMPLATE ĐỂ TẠO PAGE ==========
 exports.useTemplate = async (req, res) => {
     if (!req.user || !req.user.userId) {
         return res.status(401).json({
@@ -379,90 +467,42 @@ exports.useTemplate = async (req, res) => {
 
         if (template.price > 0) {
             console.log(`Template ${id} có giá ${template.price}. Giả định đã mua.`);
+            // TODO: Thêm logic kiểm tra thanh toán nếu cần
         }
 
-        // ========== LẤY pageData VÀ HTML TỪ TEMPLATE ==========
-        let pageData = template.page_data; // ⭐ Ưu tiên từ DB
-        let htmlContent = null;
-
-        const templateS3Key = getS3KeyFromFilePath(template.file_path);
-        htmlContent = await getFromS3(templateS3Key);
-
-        if (!htmlContent) {
+        // Lấy page_data từ template
+        let pageData = template.page_data;
+        if (!pageData || !pageData.canvas || !Array.isArray(pageData.elements) || !pageData.meta) {
+            console.error('❌ Template page_data không hợp lệ:', JSON.stringify(pageData, null, 2));
             return res.status(500).json({
-                error: 'Không thể lấy nội dung template từ S3'
+                error: 'Cấu trúc page_data của template không hợp lệ'
             });
         }
 
-        console.log('📄 Template HTML loaded, length:', htmlContent.length);
-
-        // Nếu không có pageData trong DB, extract từ HTML
-        if (!pageData) {
-            pageData = extractPageDataFromHTML(htmlContent, template.name, template.description);
-        }
-
-        if (!pageData) {
-            console.error('❌ Failed to extract pageData from template');
-            return res.status(500).json({
-                error: 'Không thể parse cấu trúc template'
-            });
-        }
-
-        // ========== UPDATE METADATA TRONG pageData ==========
-        const pageName = customName || template.name;
-        const pageDesc = customDescription || template.description;
-
+        // Cập nhật metadata trong pageData
+        const pageName = customName || `${template.name} - Copy`;
+        const pageDesc = customDescription || template.description || '';
         pageData = {
             ...pageData,
             meta: {
                 ...pageData.meta,
                 title: pageName,
-                description: pageDesc
+                description: pageDesc,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
             }
         };
 
-        console.log('✅ PageData ready:', {
+        console.log('✅ PageData prepared:', {
+            templateId: id,
+            pageName,
             elementsCount: pageData.elements?.length || 0,
-            canvasWidth: pageData.canvas?.width,
+            canvas: pageData.canvas,
             metaTitle: pageData.meta?.title
         });
 
-        // ========== TẠO PAGE MỚI ==========
+        // Tạo page mới
         const pageId = uuidv4();
-        const timestamp = Date.now();
-        const s3Path = `landinghub/${req.user.userId}/${timestamp}`;
-
-        // Thay thế template ID bằng page ID mới trong HTML
-        htmlContent = htmlContent.replace(new RegExp(template._id, 'g'), pageId);
-
-        // Cập nhật metadata trong HTML
-        htmlContent = htmlContent.replace(
-            /<title>.*?<\/title>/,
-            `<title>${pageName}</title>`
-        );
-        htmlContent = htmlContent.replace(
-            /<meta name="description" content=".*?">/,
-            `<meta name="description" content="${pageDesc}">`
-        );
-
-        // Update embedded pageData trong HTML (nếu có)
-        if (htmlContent.includes('id="lpb-page-data"')) {
-            const updatedPageDataStr = JSON.stringify(pageData, null, 4);
-            htmlContent = htmlContent.replace(
-                /<script type="application\/json" id="lpb-page-data">\s*[\s\S]*?\s*<\/script>/,
-                `<script type="application/json" id="lpb-page-data">\n${updatedPageDataStr}\n    </script>`
-            );
-        }
-
-        // ========== UPLOAD HTML LÊN S3 ==========
-        await uploadToS3(`${s3Path}/index.html`, htmlContent, 'text/html');
-        console.log('✅ Uploaded page HTML to S3:', `${s3Path}/index.html`);
-
-        // ========== COPY SCREENSHOT TỪ TEMPLATE ==========
-        let screenshot_url = template.screenshot_url ;
-
-        // ========== LƯU VÀO DATABASE ==========
-        const currentDate = new Date();
         const page = new Page({
             _id: pageId,
             user_id: req.user.userId,
@@ -470,25 +510,25 @@ exports.useTemplate = async (req, res) => {
             url: null,
             description: pageDesc,
             status: 'CHƯA XUẤT BẢN',
-            file_path: `s3://${process.env.AWS_S3_BUCKET}/${s3Path}`,
-            screenshot_url: screenshot_url,
-            page_data: pageData, // ⭐ QUAN TRỌNG: LƯU pageData VÀO DB
+            file_path: template.file_path, // Copy file_path từ template
+            screenshot_url: template.screenshot_url,
+            page_data: pageData,
             meta_title: pageName,
             meta_description: pageDesc,
-            created_at: currentDate,
-            updated_at: currentDate,
+            created_at: new Date(),
+            updated_at: new Date(),
         });
 
         await page.save();
 
-        // ========== INCREMENT USAGE COUNT ==========
-        await template.incrementUsage();
+        // Tăng usage_count của template
+        await Template.updateOne({ _id: id }, { $inc: { usage_count: 1 } });
 
-        console.log('✅ Page created from template:', {
+        console.log('✅ Page created:', {
             pageId: page._id,
             templateId: template._id,
             elementsCount: pageData.elements?.length || 0,
-            hasPageData: !!page.page_data
+            screenshot_url: page.screenshot_url
         });
 
         res.status(201).json({
@@ -505,11 +545,11 @@ exports.useTemplate = async (req, res) => {
                 conversions: 0,
                 revenue: '0đ',
                 file_path: page.file_path,
-                screenshot_url: screenshot_url,
+                screenshot_url: page.screenshot_url,
                 created_at: page.created_at.toISOString(),
                 updated_at: page.updated_at.toISOString(),
-                editUrl: `/create-landing?id=${pageId}`, // ⭐ ĐÚNG ROUTE
-                previewUrl: `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Path}/index.html`
+                editUrl: `/create-landing?id=${pageId}`,
+                previewUrl: template.file_path
             }
         });
     } catch (err) {
@@ -519,7 +559,6 @@ exports.useTemplate = async (req, res) => {
         });
     }
 };
-
 // ========== ADMIN: TẠO PRE-SIGNED URL ==========
 exports.getPresignedUrl = async (req, res) => {
     if (!req.user || !req.user.userId || req.user.role !== 'admin') {
@@ -554,6 +593,7 @@ exports.getPresignedUrl = async (req, res) => {
 };
 
 // ========== ADMIN: LƯU METADATA TEMPLATE ==========
+// ========== ADMIN: LƯU METADATA TEMPLATE ==========
 exports.saveTemplateMetadata = async (req, res) => {
     if (!req.user || !req.user.userId || req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Chỉ admin mới được lưu template' });
@@ -566,58 +606,107 @@ exports.saveTemplateMetadata = async (req, res) => {
         category,
         price = 0,
         s3Path,
-        screenshot_url,
         tags = [],
         is_premium = false,
-        is_featured = false
+        is_featured = false,
+        pageData // ⭐ NHẬN pageData TỪ FRONTEND
     } = req.body;
 
+    console.log('📥 Received saveTemplateMetadata:', {
+        templateId,
+        name,
+        hasPageData: !!pageData,
+        elementsCount: pageData?.elements?.length || 0,
+        s3Path
+    });
+
     if (!templateId || !name || !s3Path) {
-        return res.status(400).json({
-            error: 'Yêu cầu templateId, name và s3Path'
-        });
+        return res.status(400).json({ error: 'Yêu cầu templateId, name và s3Path' });
     }
 
     try {
         const s3Key = getS3KeyFromFilePath(s3Path);
         const htmlContent = await getFromS3(s3Key);
-
         if (!htmlContent) {
-            return res.status(400).json({
-                error: 'Không thể lấy nội dung HTML từ S3'
-            });
+            return res.status(400).json({ error: 'Không thể lấy nội dung HTML từ S3' });
         }
 
-        // ========== EXTRACT pageData TỪ HTML ==========
-        const pageData = extractPageDataFromHTML(htmlContent, name, description);
+        // ========== VALIDATE & PROCESS pageData ==========
+        let finalPageData = null;
 
-        if (!pageData) {
-            return res.status(500).json({
-                error: 'Không thể extract pageData từ template HTML'
-            });
+        // ⭐ PRIORITY 1: SỬ DỤNG pageData TỪ FRONTEND (đã parse)
+        if (pageData && pageData.canvas && Array.isArray(pageData.elements) && pageData.meta) {
+            console.log('✅ Using pageData from frontend');
+            finalPageData = {
+                canvas: {
+                    width: pageData.canvas.width || 1200,
+                    height: pageData.canvas.height || 'auto',
+                    background: pageData.canvas.background || '#ffffff'
+                },
+                elements: pageData.elements.map((el, index) => ({
+                    ...el,
+                    id: el.id || `element-${Date.now()}-${index}`,
+                    type: el.type || 'section',
+                    componentData: el.componentData || {},
+                    position: el.position || {
+                        desktop: { x: 0, y: index * 600 },
+                        tablet: { x: 0, y: index * 600 },
+                        mobile: { x: 0, y: index * 600 }
+                    },
+                    size: el.size || { width: 1200, height: 600 },
+                    styles: el.styles || {},
+                    children: Array.isArray(el.children) ? el.children : [],
+                    visible: el.visible !== undefined ? el.visible : true,
+                    locked: el.locked !== undefined ? el.locked : false
+                })),
+                meta: {
+                    title: name,
+                    description: description || '',
+                    keywords: Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(t => t),
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }
+            };
         }
+        // ⭐ PRIORITY 2: FALLBACK - EXTRACT từ HTML (nếu frontend không gửi)
+        else {
+            console.log('⚠️ No valid pageData from frontend, extracting from HTML');
+            finalPageData = extractPageDataFromHTML(htmlContent, name, description);
+            if (!finalPageData) {
+                return res.status(500).json({ error: 'Không thể extract pageData từ template HTML' });
+            }
+        }
+
+        console.log('✅ Final pageData prepared:', {
+            canvas: finalPageData.canvas,
+            elementsCount: finalPageData.elements.length,
+            metaTitle: finalPageData.meta.title
+        });
 
         // ========== TẠO SCREENSHOT FULL PAGE ==========
         console.log('🖼️ Generating full page screenshot for template...');
         let generatedScreenshot = null;
         try {
             generatedScreenshot = await generateTemplateScreenshot(htmlContent, templateId, false);
+            console.log('✅ Screenshot generated:', generatedScreenshot);
         } catch (err) {
             console.warn('⚠️ Screenshot generation failed:', err.message);
+            // Không throw error, vẫn lưu template
         }
 
-
         // ========== LƯU TEMPLATE ==========
+        const tagsArray = Array.isArray(tags) ? tags : tags.split(',').map(t => t.trim()).filter(t => t);
+
         const template = new Template({
             _id: templateId,
             name,
-            description,
+            description: description || '',
             category: category || 'Thương mại điện tử',
             file_path: s3Path,
-            screenshot_url: generatedScreenshot,
-            page_data: pageData,
-            price,
-            tags: Array.isArray(tags) ? tags : [],
+            screenshot_url: generatedScreenshot || null,
+            page_data: finalPageData, // ⭐ SỬ DỤNG pageData đã chuẩn bị
+            price: Number(price) || 0,
+            tags: tagsArray,
             is_premium,
             is_featured,
             status: 'ACTIVE',
@@ -631,29 +720,28 @@ exports.saveTemplateMetadata = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'Lưu template thành công',
+            message: 'Lưu template thành công' + (generatedScreenshot ? ' (với screenshot)' : ' (không có screenshot)'),
             template: {
                 id: template._id.toString(),
-                name,
-                description,
-                category,
+                name: template.name,
+                description: template.description,
+                category: template.category,
                 file_path: template.file_path,
                 screenshot_url: template.screenshot_url,
-                price,
+                price: template.price,
                 tags: template.tags,
-                is_premium,
-                is_featured,
+                is_premium: template.is_premium,
+                is_featured: template.is_featured,
                 hasPageData: !!template.page_data,
                 elementsCount: template.page_data?.elements?.length || 0,
                 created_at: template.created_at.toISOString(),
                 updated_at: template.updated_at.toISOString(),
             },
         });
+
     } catch (err) {
-        console.error('Lỗi lưu metadata template:', err);
-        res.status(500).json({
-            error: 'Lỗi khi lưu template: ' + err.message
-        });
+        console.error('❌ Lỗi lưu metadata template:', err);
+        res.status(500).json({ error: 'Lỗi khi lưu template: ' + err.message });
     }
 };
 
@@ -1077,6 +1165,73 @@ exports.searchTemplates = async (req, res) => {
 };
 
 // ========== GET TEMPLATE STATS (ADMIN) ==========
+// ========== GET ALL TEMPLATES FOR ADMIN ==========
+exports.getAllTemplatesAdmin = async (req, res) => {
+    if (!req.user || !req.user.userId || req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Chỉ admin mới được xem tất cả template' });
+    }
+
+    try {
+        const { q, category, premium, status } = req.query;
+
+        const query = {};
+
+        // Search query
+        if (q) {
+            query.$or = [
+                { name: { $regex: q, $options: 'i' } },
+                { description: { $regex: q, $options: 'i' } },
+                { tags: { $in: [new RegExp(q, 'i')] } }
+            ];
+        }
+
+        // Category filter
+        if (category && category !== 'all') {
+            query.category = category;
+        }
+
+        // Premium filter
+        if (premium && premium !== 'all') {
+            query.is_premium = premium === 'premium';
+        }
+
+        // Status filter
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+
+        const templates = await Template.find(query)
+            .sort({ usage_count: -1, created_at: -1 })
+            .limit(100); // Giới hạn để tránh tải quá nhiều
+
+        const result = templates.map(template => ({
+            id: template._id.toString(),
+            name: template.name,
+            description: template.description,
+            category: template.category,
+            screenshot_url: template.screenshot_url,
+            price: template.price,
+            formatted_price: template.formatted_price,
+            usage_count: template.usage_count,
+            is_premium: template.is_premium,
+            is_featured: template.is_featured,
+            tags: template.tags || [],
+            status: template.status,
+            created_at: template.created_at ? template.created_at.toLocaleString('vi-VN') : null,
+        }));
+
+        res.json({
+            success: true,
+            count: result.length,
+            templates: result
+        });
+    } catch (err) {
+        console.error('Lỗi lấy tất cả templates:', err);
+        res.status(500).json({
+            error: 'Lỗi khi lấy templates: ' + err.message
+        });
+    }
+};
 exports.getTemplateStats = async (req, res) => {
     if (!req.user || !req.user.userId || req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Chỉ admin mới được xem thống kê' });

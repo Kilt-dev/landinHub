@@ -4,17 +4,13 @@ const templateController = require('../controllers/templateController');
 const authMiddleware = require('../middleware/authMiddleware');
 const { isAdmin } = require('../middleware/authMiddleware');
 
-// ========================================
-// ⭐ QUAN TRỌNG: THỨ TỰ ROUTES MATTERS!
-// Các route cụ thể phải đặt TRƯỚC các route có params (:id)
-// ========================================
 
 // ========== ADMIN ROUTES (ĐẶT TRƯỚC) ==========
 router.get('/admin/presigned-url', authMiddleware, isAdmin, templateController.getPresignedUrl);
 router.post('/admin/metadata', authMiddleware, isAdmin, templateController.saveTemplateMetadata);
 router.get('/admin/stats', authMiddleware, isAdmin, templateController.getTemplateStats);
 router.post('/admin/batch-regenerate-screenshots', authMiddleware, isAdmin, templateController.batchRegenerateScreenshots);
-
+router.get('/admin/all', authMiddleware, isAdmin, templateController.getAllTemplatesAdmin);
 // ========== PUBLIC ROUTES (ĐẶT TRƯỚC :id) ==========
 router.get('/featured', templateController.getFeaturedTemplates);
 router.get('/search', templateController.searchTemplates);

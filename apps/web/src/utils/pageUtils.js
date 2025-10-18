@@ -877,14 +877,23 @@ export const renderStaticHTML = (pageData) => {
 </body>
 </html>`;
 };
+const findElementById = (elements, id) => {
+    for (const element of elements) {
+        if (element.id === id) return element;
 
+        if (element.children && element.children.length > 0) {
+            const found = findElementById(element.children, id);
+            if (found) return found;
+        }
+    }
+    return null;
+};
 /**
- * Parse HTML string thành pageData structure
+ * Parse HTML string thành pageData structure đầy đủ
+ * @param {string} htmlString - HTML content từ S3
+ * @returns {Object} pageData với cấu trúc { canvas, elements, meta }
  */
 export const parseHTMLToPageData = (htmlString) => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlString, 'text/html');
-
     const pageData = {
         canvas: {
             width: 1200,
@@ -892,97 +901,211 @@ export const parseHTMLToPageData = (htmlString) => {
             background: '#ffffff'
         },
         elements: [],
-        meta: {}
+        meta: {
+            title: 'Untitled',
+            description: '',
+            keywords: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        },
+        analytics: {}
     };
 
     try {
-        // Parse canvas
-        const canvasEl = doc.getElementById('lpb-canvas');
-        if (canvasEl) {
-            pageData.canvas.background = canvasEl.style.background || '#ffffff';
-        }
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, 'text/html');
 
-        // Parse meta
+        // ========== PARSE META ==========
         const titleEl = doc.querySelector('title');
         if (titleEl) {
-            pageData.meta.title = titleEl.textContent;
+            pageData.meta.title = titleEl.textContent.trim() || 'Untitled';
         }
 
         const descEl = doc.querySelector('meta[name="description"]');
         if (descEl) {
-            pageData.meta.description = descEl.getAttribute('content');
+            pageData.meta.description = descEl.getAttribute('content') || '';
+        }
+
+        const keywordsEl = doc.querySelector('meta[name="keywords"]');
+        if (keywordsEl) {
+            pageData.meta.keywords = keywordsEl.getAttribute('content')?.split(',').map(k => k.trim()) || [];
+        }
+
+        const analyticsScript = doc.querySelector('script[src*="googletagmanager"]');
+        if (analyticsScript) {
+            const gaId = analyticsScript.src.match(/id=([A-Za-z0-9-_]+)/);
+            if (gaId) {
+                pageData.analytics.googleAnalyticsId = gaId[1];
+            }
+        }
+
+        // ========== TRY 1: PARSE EMBEDDED pageData (ƯU TIÊN) ==========
+        const pageDataScript = doc.querySelector('script[type="application/json"][id="lpb-page-data"]');
+        if (pageDataScript) {
+            try {
+                const embeddedData = JSON.parse(pageDataScript.textContent || pageDataScript.innerHTML);
+                console.log('✅ Found embedded pageData in <script id="lpb-page-data">');
+
+                // Validate và normalize embedded pageData
+                if (embeddedData.canvas && Array.isArray(embeddedData.elements) && embeddedData.meta) {
+                    pageData.canvas = {
+                        width: embeddedData.canvas.width || 1200,
+                        height: embeddedData.canvas.height || 'auto',
+                        background: embeddedData.canvas.background || '#ffffff'
+                    };
+                    pageData.elements = normalizeElements(embeddedData.elements);
+                    pageData.meta = {
+                        title: embeddedData.meta.title || pageData.meta.title,
+                        description: embeddedData.meta.description || pageData.meta.description,
+                        keywords: embeddedData.meta.keywords || pageData.meta.keywords,
+                        created_at: embeddedData.meta.created_at || pageData.meta.created_at,
+                        updated_at: embeddedData.meta.updated_at || pageData.meta.updated_at
+                    };
+                    pageData.analytics = embeddedData.analytics || pageData.analytics;
+                    return pageData; // Trả về ngay nếu embedded pageData hợp lệ
+                } else {
+                    console.warn('⚠️ Embedded pageData không hợp lệ, fallback parse HTML');
+                }
+            } catch (parseError) {
+                console.warn('⚠️ Failed to parse embedded pageData JSON:', parseError.message);
+            }
+        }
+
+        // ========== TRY 2: PARSE HTML STRUCTURE ==========
+        console.log('🔍 Parsing HTML structure...');
+
+        // Parse canvas từ #lpb-canvas
+        const canvasEl = doc.getElementById('lpb-canvas');
+        if (canvasEl) {
+            const canvasStyle = canvasEl.style;
+            pageData.canvas = {
+                width: parseInt(canvasStyle.width) || 1200,
+                height: canvasStyle.height || 'auto',
+                background: canvasStyle.background || canvasStyle.backgroundColor || '#ffffff',
+                minHeight: canvasStyle.minHeight || '100vh'
+            };
         }
 
         // Parse sections
-        const sections = doc.querySelectorAll('.lpb-section');
-        sections.forEach(sectionEl => {
-            const section = parseSectionElement(sectionEl);
+        const sections = doc.querySelectorAll('section.lpb-section, section.ladi-section, section[data-element-id]');
+        sections.forEach((sectionEl, index) => {
+            const section = parseSectionElement(sectionEl, index);
             if (section) {
                 pageData.elements.push(section);
             }
         });
 
         // Parse popups
-        const popups = doc.querySelectorAll('.lpb-popup');
-        popups.forEach(popupEl => {
-            const popup = parsePopupElement(popupEl);
+        const popups = doc.querySelectorAll('div.lpb-popup, div[data-type="popup"]');
+        popups.forEach((popupEl, index) => {
+            const popup = parsePopupElement(popupEl, index);
             if (popup) {
                 pageData.elements.push(popup);
             }
         });
 
-        // Parse events từ script
-        const scripts = doc.querySelectorAll('script');
-        scripts.forEach(script => {
-            const content = script.textContent || script.innerHTML;
-            const eventsMatch = content.match(/const eventsConfig = (\[[\s\S]*?\]);/);
-            if (eventsMatch) {
-                try {
-                    const events = JSON.parse(eventsMatch[1]);
-                    events.forEach(eventConfig => {
-                        const element = findElementById(pageData.elements, eventConfig.elementId);
-                        if (element) {
-                            if (!element.componentData) {
-                                element.componentData = {};
-                            }
-                            element.componentData.events = eventConfig.events;
-                        }
-                    });
-                } catch (e) {
-                    console.warn('Cannot parse events config:', e);
+        // Parse standalone elements
+        const standaloneElements = doc.querySelectorAll('div.lpb-element:not(section):not(.lpb-popup):not(.lpb-child-element), [data-element-id]:not(.lpb-section):not(.lpb-popup)');
+        standaloneElements.forEach((el, index) => {
+            if (!el.closest('section.lpb-section, div.lpb-popup')) {
+                const element = parseStandaloneElement(el, index);
+                if (element) {
+                    pageData.elements.push(element);
                 }
             }
         });
 
-        console.log('[parseHTMLToPageData] Parsed successfully:', pageData.elements.length, 'elements');
+        // Parse events từ runtime script
+        const runtimeScripts = doc.querySelectorAll('script');
+        runtimeScripts.forEach(script => {
+            const content = script.textContent || script.innerHTML;
+            const eventsConfig = extractEventsFromScript(content);
+            if (eventsConfig.length > 0) {
+                mapEventsToElements(pageData.elements, eventsConfig);
+            }
+        });
+
+        // Parse animations và keyframes từ <style>
+        const styleElements = doc.querySelectorAll('style');
+        styleElements.forEach(styleEl => {
+            const cssContent = styleEl.textContent || styleEl.innerHTML;
+            const animations = extractAnimationsFromCSS(cssContent);
+            mapAnimationsToElements(pageData.elements, animations);
+        });
+
+        // Tính canvas height dựa trên elements
+        const maxHeight = Math.max(
+            ...pageData.elements.map(el => {
+                const elTop = el.position?.desktop?.y || 0;
+                const elHeight = el.size?.height || 400;
+                return elTop + elHeight;
+            }),
+            1648
+        );
+        pageData.canvas.height = maxHeight;
+
+        console.log('✅ HTML parsed successfully:', {
+            elementsCount: pageData.elements.length,
+            sections: pageData.elements.filter(el => el.type === 'section').length,
+            popups: pageData.elements.filter(el => el.type === 'popup').length,
+            standalone: pageData.elements.filter(el => el.type !== 'section' && el.type !== 'popup').length
+        });
+
         return pageData;
 
     } catch (error) {
-        console.error('[parseHTMLToPageData] Parse error:', error);
-        return {
-            canvas: { width: 1200, height: 'auto', background: '#ffffff' },
-            elements: [],
-            meta: {}
-        };
+        console.error('❌ parseHTMLToPageData error:', error);
+        return pageData; // Fallback trả về pageData mặc định
     }
 };
 
 // ==================== HELPER FUNCTIONS ====================
 
-const parseSectionElement = (sectionEl) => {
-    const id = sectionEl.id || `section-${Date.now()}`;
-    const topMatch = sectionEl.style.top?.match(/(\d+)px/);
-    const top = topMatch ? parseInt(topMatch[1]) : 0;
-    const widthMatch = sectionEl.style.width?.match(/(\d+)px/);
-    const heightMatch = sectionEl.style.height?.match(/(\d+)px/);
-    const width = widthMatch ? parseInt(widthMatch[1]) : 1200;
-    const height = heightMatch ? parseInt(heightMatch[1]) : 400;
+/**
+ * Normalize elements để đảm bảo cấu trúc hợp lệ
+ * @param {Array} elements - Array of elements
+ * @returns {Array} Normalized elements
+ */
+const normalizeElements = (elements) => {
+    return elements.map(el => ({
+        id: el.id || `element-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        type: el.type || 'section',
+        componentData: el.componentData || {},
+        position: {
+            desktop: el.position?.desktop || { x: 0, y: 0, z: 1 },
+            tablet: el.position?.tablet || el.position?.desktop || { x: 0, y: 0, z: 1 },
+            mobile: el.position?.mobile || el.position?.desktop || { x: 0, y: 0, z: 1 }
+        },
+        size: el.size || { width: el.type === 'popup' ? 600 : 1200, height: 400 },
+        styles: el.styles || {},
+        children: Array.isArray(el.children) ? normalizeElements(el.children) : [],
+        visible: el.visible !== false,
+        locked: !!el.locked
+    }));
+};
+
+/**
+ * Parse section element từ HTML
+ * @param {HTMLElement} sectionEl - Section element
+ * @param {number} index - Index của section
+ * @returns {Object|null} Section object
+ */
+const parseSectionElement = (sectionEl, index) => {
+    const id = sectionEl.id || sectionEl.getAttribute('data-element-id') || `section-${Date.now()}-${index}`;
+    const style = sectionEl.style;
+
+    const topMatch = style.top?.match(/(\d+)px/) || ['0'];
+    const top = parseInt(topMatch[1]) || 0;
+    const widthMatch = style.width?.match(/(\d+)px/) || ['1200'];
+    const heightMatch = style.height?.match(/(\d+)px/) || ['400'];
+    const width = parseInt(widthMatch[1]) || 1200;
+    const height = parseInt(heightMatch[1]) || 400;
 
     const bgEl = sectionEl.querySelector('.ladi-section-background');
     const overlayEl = sectionEl.querySelector('.ladi-overlay');
     const containerEl = sectionEl.querySelector('.ladi-container');
 
-    const componentData = { structure: 'ladi-standard' };
+    const componentData = { structure: sectionEl.classList.contains('ladi-section') ? 'ladi-standard' : 'standard' };
 
     if (bgEl) {
         const bgStyle = bgEl.style;
@@ -995,6 +1118,7 @@ const parseSectionElement = (sectionEl) => {
             componentData.backgroundType = 'color';
         }
         componentData.backgroundPosition = bgStyle.backgroundPosition || 'center';
+        componentData.backgroundSize = bgStyle.backgroundSize || 'cover';
     }
 
     if (overlayEl) {
@@ -1002,18 +1126,17 @@ const parseSectionElement = (sectionEl) => {
         componentData.overlayOpacity = parseFloat(overlayEl.style.opacity) || 0;
     }
 
-    const styles = parseInlineStyles(sectionEl.style);
-
+    const styles = parseInlineStyles(style, sectionEl);
     if (containerEl) {
         componentData.padding = containerEl.style.padding || '20px';
     }
 
     const children = [];
     if (containerEl) {
-        const childElements = containerEl.querySelectorAll('.lpb-element[data-element-id]');
+        const childElements = containerEl.querySelectorAll('.lpb-element[data-element-id], .lpb-child-element');
         childElements.forEach(childEl => {
-            if (childEl.parentElement === containerEl || childEl.parentElement?.parentElement === containerEl) {
-                const child = parseChildElement(childEl);
+            if (childEl.closest('.ladi-container') === containerEl) {
+                const child = parseChildElement(childEl, id);
                 if (child) {
                     children.push(child);
                 }
@@ -1026,47 +1149,55 @@ const parseSectionElement = (sectionEl) => {
         type: 'section',
         componentData,
         position: {
-            desktop: { x: 0, y: top },
-            tablet: { x: 0, y: top },
-            mobile: { x: 0, y: top }
+            desktop: { x: 0, y: top, z: parseInt(style.zIndex) || index + 1 },
+            tablet: { x: 0, y: top, z: parseInt(style.zIndex) || index + 1 },
+            mobile: { x: 0, y: top, z: parseInt(style.zIndex) || index + 1 }
         },
         size: { width, height },
         styles,
         children,
-        visible: true,
-        locked: false
+        visible: style.display !== 'none',
+        locked: sectionEl.classList.contains('lpb-element-locked')
     };
 };
 
-const parsePopupElement = (popupEl) => {
-    const id = popupEl.id || `popup-${Date.now()}`;
+/**
+ * Parse popup element từ HTML
+ * @param {HTMLElement} popupEl - Popup element
+ * @param {number} index - Index của popup
+ * @returns {Object|null} Popup object
+ */
+const parsePopupElement = (popupEl, index) => {
+    const id = popupEl.id || popupEl.getAttribute('data-element-id') || `popup-${Date.now()}-${index}`;
     const containerEl = popupEl.querySelector('.lpb-popup-container');
     if (!containerEl) return null;
 
-    const widthMatch = containerEl.style.width?.match(/(\d+)px/);
-    const minHeightMatch = containerEl.style.minHeight?.match(/(\d+)px/);
-    const width = widthMatch ? parseInt(widthMatch[1]) : 600;
-    const height = minHeightMatch ? parseInt(minHeightMatch[1]) : 400;
+    const widthMatch = containerEl.style.width?.match(/(\d+)px/) || ['600'];
+    const minHeightMatch = containerEl.style.minHeight?.match(/(\d+)px/) || ['400'];
+    const width = parseInt(widthMatch[1]) || 600;
+    const height = parseInt(minHeightMatch[1]) || 400;
 
     const headerEl = popupEl.querySelector('.lpb-popup-header h3');
     const bodyEl = popupEl.querySelector('.lpb-popup-body');
 
     const componentData = {
-        title: headerEl?.textContent || 'Popup',
+        title: headerEl?.textContent.trim() || 'Popup',
         background: containerEl.style.background || 'rgba(255, 255, 255, 0.95)',
         borderRadius: containerEl.style.borderRadius || '12px',
         padding: bodyEl?.style.padding || '20px'
     };
 
-    const styles = parseInlineStyles(containerEl.style);
+    const styles = parseInlineStyles(containerEl.style, popupEl);
 
     const children = [];
     if (bodyEl) {
-        const childElements = bodyEl.querySelectorAll('.lpb-element[data-element-id]');
+        const childElements = bodyEl.querySelectorAll('.lpb-element[data-element-id], .lpb-child-element');
         childElements.forEach(childEl => {
-            const child = parseChildElement(childEl);
-            if (child) {
-                children.push(child);
+            if (childEl.closest('.lpb-popup-body') === bodyEl) {
+                const child = parseChildElement(childEl, id);
+                if (child) {
+                    children.push(child);
+                }
             }
         });
     }
@@ -1076,33 +1207,39 @@ const parsePopupElement = (popupEl) => {
         type: 'popup',
         componentData,
         position: {
-            desktop: { x: 0, y: 0 },
-            tablet: { x: 0, y: 0 },
-            mobile: { x: 0, y: 0 }
+            desktop: { x: 0, y: 0, z: parseInt(containerEl.style.zIndex) || 1001 },
+            tablet: { x: 0, y: 0, z: parseInt(containerEl.style.zIndex) || 1001 },
+            mobile: { x: 0, y: 0, z: parseInt(containerEl.style.zIndex) || 1001 }
         },
         size: { width, height },
         styles,
         children,
-        visible: true,
-        locked: false
+        visible: popupEl.classList.contains('lpb-popup-active') || popupEl.style.display !== 'none',
+        locked: popupEl.classList.contains('lpb-element-locked')
     };
 };
 
-const parseChildElement = (element) => {
-    const id = element.id || element.getAttribute('data-element-id') || `element-${Date.now()}`;
+/**
+ * Parse standalone element từ HTML
+ * @param {HTMLElement} element - Standalone element
+ * @param {number} index - Index của element
+ * @returns {Object|null} Element object
+ */
+const parseStandaloneElement = (element, index) => {
+    const id = element.id || element.getAttribute('data-element-id') || `element-${Date.now()}-${index}`;
     const type = element.getAttribute('data-type') || inferTypeFromElement(element);
+    const style = element.style;
 
-    const leftMatch = element.style.left?.match(/(\d+)px/);
-    const topMatch = element.style.top?.match(/(\d+)px/);
-    const left = leftMatch ? parseInt(leftMatch[1]) : 0;
-    const top = topMatch ? parseInt(topMatch[1]) : 0;
+    const leftMatch = style.left?.match(/(\d+)px/) || ['0'];
+    const topMatch = style.top?.match(/(\d+)px/) || ['0'];
+    const widthMatch = style.width?.match(/(\d+)px/) || [type === 'gallery' ? '380' : '200'];
+    const heightMatch = style.height?.match(/(\d+)px/) || [type === 'gallery' ? '300' : '50'];
+    const left = parseInt(leftMatch[1]) || 0;
+    const top = parseInt(topMatch[1]) || 0;
+    const width = parseInt(widthMatch[1]) || (type === 'gallery' ? 380 : type === 'icon' ? 50 : 200);
+    const height = parseInt(heightMatch[1]) || (type === 'gallery' ? 300 : type === 'icon' ? 50 : 50);
 
-    const widthMatch = element.style.width?.match(/(\d+)px/);
-    const heightMatch = element.style.height?.match(/(\d+)px/);
-    const width = widthMatch ? parseInt(widthMatch[1]) : (type === 'icon' ? 50 : 200);
-    const height = heightMatch ? parseInt(heightMatch[1]) : (type === 'icon' ? 50 : 50);
-
-    const styles = parseInlineStyles(element.style);
+    const styles = parseInlineStyles(style, element);
     const componentData = parseComponentData(element, type);
 
     return {
@@ -1110,25 +1247,72 @@ const parseChildElement = (element) => {
         type,
         componentData,
         position: {
-            desktop: { x: left, y: top },
-            tablet: { x: left, y: top },
-            mobile: { x: left, y: top }
+            desktop: { x: left, y: top, z: parseInt(style.zIndex) || index + 1 },
+            tablet: { x: left, y: top, z: parseInt(style.zIndex) || index + 1 },
+            mobile: { x: left, y: top, z: parseInt(style.zIndex) || index + 1 }
         },
         size: { width, height },
         styles,
         children: [],
-        visible: true,
-        locked: false
+        visible: style.display !== 'none',
+        locked: element.classList.contains('lpb-element-locked')
     };
 };
 
+/**
+ * Parse child element từ HTML
+ * @param {HTMLElement} element - Child element
+ * @param {string} parentId - ID của parent (section/popup)
+ * @returns {Object|null} Child element object
+ */
+const parseChildElement = (element, parentId) => {
+    const id = element.id || element.getAttribute('data-element-id') || `child-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const type = element.getAttribute('data-type') || inferTypeFromElement(element);
+    const style = element.style;
+
+    const leftMatch = style.left?.match(/(\d+)px/) || ['0'];
+    const topMatch = style.top?.match(/(\d+)px/) || ['0'];
+    const widthMatch = style.width?.match(/(\d+)px/) || [type === 'gallery' ? '380' : '200'];
+    const heightMatch = style.height?.match(/(\d+)px/) || [type === 'gallery' ? '300' : '50'];
+    const left = parseInt(leftMatch[1]) || 0;
+    const top = parseInt(topMatch[1]) || 0;
+    const width = parseInt(widthMatch[1]) || (type === 'gallery' ? 380 : type === 'icon' ? 50 : 200);
+    const height = parseInt(heightMatch[1]) || (type === 'gallery' ? 300 : type === 'icon' ? 50 : 50);
+
+    const styles = parseInlineStyles(style, element);
+    const componentData = parseComponentData(element, type);
+
+    return {
+        id,
+        type,
+        componentData,
+        position: {
+            desktop: { x: left, y: top, z: parseInt(style.zIndex) || 10 },
+            tablet: { x: left, y: top, z: parseInt(style.zIndex) || 10 },
+            mobile: { x: left, y: top, z: parseInt(style.zIndex) || 10 }
+        },
+        size: { width, height },
+        styles,
+        children: [],
+        visible: style.display !== 'none',
+        locked: element.classList.contains('lpb-element-locked'),
+        parentId
+    };
+};
+
+/**
+ * Parse componentData dựa trên type
+ * @param {HTMLElement} element - Element
+ * @param {string} type - Type của element
+ * @returns {Object} componentData
+ */
 const parseComponentData = (element, type) => {
     const componentData = {};
 
     switch (type) {
         case 'button':
-            componentData.content = element.textContent || 'Button';
-            componentData.background = element.style.background;
+            componentData.content = element.textContent.trim() || 'Button';
+            componentData.background = element.style.background || element.style.backgroundColor;
             componentData.color = element.style.color;
             componentData.borderRadius = element.style.borderRadius;
             componentData.border = element.style.border;
@@ -1137,7 +1321,7 @@ const parseComponentData = (element, type) => {
             break;
 
         case 'heading':
-            componentData.content = element.textContent || 'Heading';
+            componentData.content = element.textContent.trim() || 'Heading';
             componentData.level = element.tagName.toLowerCase();
             componentData.fontSize = element.style.fontSize;
             componentData.color = element.style.color;
@@ -1146,7 +1330,7 @@ const parseComponentData = (element, type) => {
             break;
 
         case 'paragraph':
-            componentData.content = element.textContent || 'Paragraph';
+            componentData.content = element.textContent.trim() || 'Paragraph';
             componentData.fontSize = element.style.fontSize;
             componentData.color = element.style.color;
             componentData.fontWeight = element.style.fontWeight;
@@ -1155,18 +1339,18 @@ const parseComponentData = (element, type) => {
             break;
 
         case 'image':
-            componentData.src = element.getAttribute('src');
-            componentData.alt = element.getAttribute('alt');
-            componentData.imageUrl = element.getAttribute('src');
+            componentData.src = element.getAttribute('src') || 'https://via.placeholder.com/150';
+            componentData.alt = element.getAttribute('alt') || 'Image';
+            componentData.imageUrl = componentData.src;
             break;
 
         case 'icon':
             const img = element.querySelector('img');
             const iconEl = element.querySelector('i');
             const svgEl = element.querySelector('svg');
-
             if (img) {
                 componentData.imageUrl = img.getAttribute('src');
+                componentData.alt = img.getAttribute('alt') || 'Icon';
             } else if (svgEl) {
                 componentData.icon = svgEl.outerHTML;
             } else if (iconEl) {
@@ -1176,29 +1360,55 @@ const parseComponentData = (element, type) => {
             break;
 
         case 'gallery':
-            const images = Array.from(element.querySelectorAll('img')).map(img => img.src);
+            const images = Array.from(element.querySelectorAll('img')).map(img => img.getAttribute('src') || 'https://via.placeholder.com/150');
             componentData.images = images;
+            componentData.display = element.style.display || 'grid';
+            componentData.gridTemplateColumns = element.style.gridTemplateColumns || 'repeat(auto-fill, minmax(150px, 1fr))';
+            componentData.gap = element.style.gap || '10px';
             break;
 
         default:
-            componentData.content = element.textContent || '';
+            componentData.content = element.textContent.trim() || '';
             break;
+    }
+
+    // Parse animation nếu có
+    if (element.style.animation) {
+        const animationMatch = element.style.animation.match(/(\S+)\s*(\d+\.?\d*ms)\s*(\w+)\s*(\d+\.?\d*ms)?\s*(infinite)?/);
+        if (animationMatch) {
+            componentData.animation = {
+                type: animationMatch[1],
+                duration: parseFloat(animationMatch[2]) || 1000,
+                timing: animationMatch[3] || 'ease',
+                delay: parseFloat(animationMatch[4]) || 0,
+                repeat: !!animationMatch[5]
+            };
+        }
     }
 
     return componentData;
 };
 
-const parseInlineStyles = (styleObj) => {
+/**
+ * Parse inline styles và pseudo-classes từ element
+ * @param {CSSStyleDeclaration} styleObj - Style object
+ * @param {HTMLElement} element - HTML element
+ * @returns {Object} styles
+ */
+const parseInlineStyles = (styleObj, element) => {
     const styles = {};
     const importantProps = [
         'background', 'backgroundColor', 'backgroundImage', 'backgroundSize', 'backgroundPosition',
         'color', 'fontSize', 'fontWeight', 'fontFamily',
         'border', 'borderRadius', 'boxShadow', 'textShadow',
-        'padding', 'margin',
+        'padding', 'margin', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+        'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
         'display', 'alignItems', 'justifyContent', 'flexDirection', 'gap',
+        'gridTemplateColumns', 'gridTemplateRows', 'gridGap',
         'textAlign', 'lineHeight', 'textTransform',
-        'cursor', 'transition', 'animation',
-        'zIndex', 'opacity'
+        'cursor', 'transition', 'animation', 'filter',
+        'zIndex', 'opacity', 'transform', 'transformOrigin',
+        'width', 'height', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight'
     ];
 
     importantProps.forEach(prop => {
@@ -1207,9 +1417,133 @@ const parseInlineStyles = (styleObj) => {
         }
     });
 
+    // Parse pseudo-classes từ <style> liên quan đến element
+    const styleElements = element.ownerDocument.querySelectorAll('style');
+    styleElements.forEach(styleEl => {
+        const cssContent = styleEl.textContent || styleEl.innerHTML;
+        const hoverRegex = new RegExp(`#${element.id}:hover\\s*{([\\s\\S]*?)}`);
+        const hoverMatch = cssContent.match(hoverRegex);
+        if (hoverMatch) {
+            const hoverStyles = {};
+            hoverMatch[1].split(';').forEach(rule => {
+                const [key, value] = rule.split(':').map(s => s.trim());
+                if (key && value) {
+                    const camelKey = key.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+                    hoverStyles[camelKey] = value;
+                }
+            });
+            if (Object.keys(hoverStyles).length > 0) {
+                styles[':hover'] = hoverStyles;
+            }
+        }
+    });
+
     return styles;
 };
 
+/**
+ * Extract events từ runtime script
+ * @param {string} scriptContent - Script content
+ * @returns {Array} Array of event configs
+ */
+const extractEventsFromScript = (scriptContent) => {
+    const eventsMatch = scriptContent.match(/const eventsConfig = (\[[\s\S]*?\]);/);
+    if (eventsMatch) {
+        try {
+            return JSON.parse(eventsMatch[1]);
+        } catch (e) {
+            console.warn('⚠️ Cannot parse events config:', e.message);
+            return [];
+        }
+    }
+    return [];
+};
+
+/**
+ * Ánh xạ events vào elements
+ * @param {Array} elements - Array of elements
+ * @param {Array} eventsConfig - Array of event configs
+ */
+const mapEventsToElements = (elements, eventsConfig) => {
+    eventsConfig.forEach(eventConfig => {
+        const element = findElementById(elements, eventConfig.elementId);
+        if (element) {
+            if (!element.componentData) {
+                element.componentData = {};
+            }
+            element.componentData.events = eventConfig.events || {};
+        }
+    });
+};
+
+/**
+ * Extract animations từ CSS
+ * @param {string} cssContent - CSS content
+ * @returns {Object} Animations object
+ */
+const extractAnimationsFromCSS = (cssContent) => {
+    const animations = {};
+    const keyframesRegex = /@keyframes\s+(\S+)\s*{([\s\S]*?)}/g;
+    let match;
+    while ((match = keyframesRegex.exec(cssContent))) {
+        const keyframeName = match[1];
+        const framesContent = match[2];
+        const frames = {};
+        const frameRegex = /(\d+%|from|to)\s*{([\s\S]*?)}/g;
+        let frameMatch;
+        while ((frameMatch = frameRegex.exec(framesContent))) {
+            const frameKey = frameMatch[1];
+            const props = {};
+            frameMatch[2].split(';').forEach(rule => {
+                const [key, value] = rule.split(':').map(s => s.trim());
+                if (key && value) {
+                    const camelKey = key.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+                    props[camelKey] = value;
+                }
+            });
+            frames[frameKey] = props;
+        }
+        animations[`@keyframes ${keyframeName}`] = frames;
+    }
+    return animations;
+};
+
+/**
+ * Ánh xạ animations vào elements
+ * @param {Array} elements - Array of elements
+ * @param {Object} animations - Animations object
+ */
+const mapAnimationsToElements = (elements, animations) => {
+    elements.forEach(element => {
+        if (element.styles?.animation) {
+            const animationMatch = element.styles.animation.match(/(\S+)\s*(\d+\.?\d*ms)\s*(\w+)\s*(\d+\.?\d*ms)?\s*(infinite)?/);
+            if (animationMatch) {
+                element.componentData.animation = {
+                    type: animationMatch[1],
+                    duration: parseFloat(animationMatch[2]) || 1000,
+                    timing: animationMatch[3] || 'ease',
+                    delay: parseFloat(animationMatch[4]) || 0,
+                    repeat: !!animationMatch[5]
+                };
+            }
+        }
+        if (element.styles && animations[`@keyframes ${element.styles.animationName}`]) {
+            element.styles[`@keyframes ${element.styles.animationName}`] = animations[`@keyframes ${element.styles.animationName}`];
+        }
+        if (element.children?.length > 0) {
+            mapAnimationsToElements(element.children, animations);
+        }
+    });
+};
+
+
+
+
+/**
+ * Suy ra type từ element HTML
+ * @param {HTMLElement} element - HTML element
+ * @returns {string} Element type
+ */
 const inferTypeFromElement = (element) => {
     const tagName = element.tagName.toLowerCase();
     const classList = element.classList;
@@ -1217,27 +1551,13 @@ const inferTypeFromElement = (element) => {
     if (classList.contains('lpb-button') || tagName === 'button') return 'button';
     if (classList.contains('lpb-icon')) return 'icon';
     if (classList.contains('lpb-gallery')) return 'gallery';
-    if (classList.contains('lpb-section')) return 'section';
+    if (classList.contains('lpb-section') || classList.contains('ladi-section')) return 'section';
     if (classList.contains('lpb-popup')) return 'popup';
-
     if (tagName.match(/^h[1-6]$/)) return 'heading';
     if (tagName === 'p') return 'paragraph';
     if (tagName === 'img') return 'image';
     if (tagName === 'hr') return 'divider';
     if (tagName === 'form') return 'form';
     if (tagName === 'ul' || tagName === 'ol') return 'list';
-
     return 'container';
-};
-
-const findElementById = (elements, id) => {
-    for (const element of elements) {
-        if (element.id === id) return element;
-
-        if (element.children && element.children.length > 0) {
-            const found = findElementById(element.children, id);
-            if (found) return found;
-        }
-    }
-    return null;
 };

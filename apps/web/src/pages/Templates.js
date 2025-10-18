@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { UserContext } from '../context/UserContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import PreviewModal from '../components/PreviewModal';
 import { jwtDecode } from 'jwt-decode';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -23,14 +24,17 @@ const Templates = () => {
     const [sortBy, setSortBy] = useState('usage_count');
     const [usingTemplateId, setUsingTemplateId] = useState(null);
     const [previewTemplate, setPreviewTemplate] = useState(null);
-    const [showPreview, setShowPreview] = useState(false);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [previewHtml, setPreviewHtml] = useState('');
     const [hasMore, setHasMore] = useState(true);
     const [page, setPage] = useState(1);
 
     const location = useLocation();
     const navigate = useNavigate();
     const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-    const categories = [ "Thương mại điện tử",
+    const categories = [
+        "Tất cả",
+        "Thương mại điện tử",
         "Landing Page",
         "Blog",
         "Portfolio",
@@ -38,7 +42,8 @@ const Templates = () => {
         "Giáo dục",
         "Sự kiện",
         "Bất động sản",
-        "Khác"];
+        "Khác"
+    ];
     const sortOptions = [
         { value: 'usage_count', label: 'Phổ biến nhất' },
         { value: 'created_at', label: 'Mới nhất' },
@@ -63,6 +68,7 @@ const Templates = () => {
                 }
                 setUserRole(decodedToken.role);
             } catch (err) {
+                console.error('Lỗi giải mã token:', err);
                 navigate('/auth');
             } finally {
                 setLoading(false);
@@ -108,11 +114,13 @@ const Templates = () => {
             });
 
             const newTemplates = response.data.templates || [];
+            console.log('Templates được tải:', newTemplates.map(t => ({ id: t.id, screenshot_url: t.screenshot_url }))); // Debug
             setTemplates(prev => pageNum === 1 ? newTemplates : [...prev, ...newTemplates]);
             setHasMore(newTemplates.length === 12);
             setError('');
         } catch (err) {
-            setError('Không thể tải templates');
+            console.error('Lỗi tải templates:', err);
+            setError('Không thể tải templates: ' + (err.response?.data?.error || err.message));
         } finally {
             setLoading(false);
         }
@@ -134,16 +142,18 @@ const Templates = () => {
         loadTemplates(1);
     };
 
-    const handlePreview = async (templateId) => {
+    const handlePreview = async (template) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`${API_BASE_URL}/api/templates/${templateId}/preview`, {
+            const response = await axios.get(`${API_BASE_URL}/api/templates/${template.id}/preview`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setPreviewTemplate(response.data);
-            setShowPreview(true);
+            setPreviewTemplate(template);
+            setPreviewHtml(response.data.html);
+            setShowPreviewModal(true);
         } catch (err) {
-            alert('Không thể xem trước template');
+            console.error('Lỗi xem trước template:', err);
+            alert('Không thể xem trước template: ' + (err.response?.data?.error || err.message));
         }
     };
 
@@ -155,9 +165,13 @@ const Templates = () => {
         try {
             setUsingTemplateId(templateId);
             const token = localStorage.getItem('token');
+            const decodedToken = jwtDecode(token);
+            const userId = decodedToken.userId;
+
             const response = await axios.post(
                 `${API_BASE_URL}/api/templates/${templateId}/use`,
                 {
+                    user_id: userId,
                     name: `${templateName} - Copy`,
                     description: `Từ template ${templateName}`
                 },
@@ -165,10 +179,11 @@ const Templates = () => {
             );
 
             if (response.data.success) {
-                alert('✅ Tạo thành công!');
+                alert('✅ Tạo trang thành công!');
                 navigate(`/pages?id=${response.data.page.id}`);
             }
         } catch (err) {
+            console.error('Lỗi sử dụng template:', err);
             alert(`❌ ${err.response?.data?.error || 'Lỗi sử dụng template'}`);
         } finally {
             setUsingTemplateId(null);
@@ -176,8 +191,8 @@ const Templates = () => {
     };
 
     const getSafeImageUrl = (url) => {
-        if (!url || url.startsWith('s3://')) {
-            return 'https://via.placeholder.com/400x240/667eea/ffffff?text=T';
+        if (!url || !url.startsWith('http') || url.startsWith('s3://')) {
+            return 'https://via.placeholder.com/400x240/667eea/ffffff?text=Preview+Not+Available';
         }
         return url;
     };
@@ -195,8 +210,14 @@ const Templates = () => {
         };
         return {
             background: colors[category] || colors['Khác'],
-            text: templateName.charAt(0).toUpperCase()
+            text: templateName ? templateName.charAt(0).toUpperCase() : 'T'
         };
+    };
+
+    const handleImageError = (e) => {
+        console.error('Lỗi tải ảnh:', e.target.src);
+        e.target.style.display = 'none';
+        e.target.nextSibling.style.display = 'flex';
     };
 
     if (loading) return <DogLoader />;
@@ -288,7 +309,7 @@ const Templates = () => {
                     >
                         {templates.map((template, index) => {
                             const placeholder = getPlaceholderImage(template.name, template.category);
-                            const safeImage = getSafeImageUrl(template.thumbnail_url);
+                            const safeImage = getSafeImageUrl(template.screenshot_url);
                             return (
                                 <div key={getUniqueKey(template, index)} className="template-card" data-aos="fade-up">
                                     <div className="card-media">
@@ -296,14 +317,12 @@ const Templates = () => {
                                             src={safeImage}
                                             alt={template.name}
                                             className="template-image"
-                                            onError={(e) => {
-                                                e.target.style.display = 'none';
-                                                e.target.nextSibling.style.display = 'flex';
-                                            }}
+                                            onError={handleImageError}
+                                            loading="lazy"
                                         />
                                         <div
                                             className="image-placeholder"
-                                            style={{ background: placeholder.background }}
+                                            style={{ background: placeholder.background, display: safeImage ? 'none' : 'flex' }}
                                         >
                                             <span>{placeholder.text}</span>
                                         </div>
@@ -311,7 +330,7 @@ const Templates = () => {
                                         <div className="card-overlay">
                                             <button
                                                 className="btn btn-secondary"
-                                                onClick={() => handlePreview(template.id)}
+                                                onClick={() => handlePreview(template)}
                                             >
                                                 <i className="fas fa-eye"></i>
                                             </button>
@@ -340,8 +359,8 @@ const Templates = () => {
                                         <div className="card-meta">
                                             <span className="category">{template.category}</span>
                                             <span className="usage">
-                        <i className="fas fa-users"></i> {template.usage_count}
-                      </span>
+                                                <i className="fas fa-users"></i> {template.usage_count}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -349,33 +368,13 @@ const Templates = () => {
                         })}
                     </InfiniteScroll>
 
-                    {showPreview && previewTemplate && (
-                        <div className="modal-overlay" onClick={() => setShowPreview(false)}>
-                            <div className="modal-content" onClick={e => e.stopPropagation()}>
-                                <div className="modal-header">
-                                    <h2>{previewTemplate.template?.name}</h2>
-                                    <button className="modal-close" onClick={() => setShowPreview(false)}>
-                                        <i className="fas fa-times"></i>
-                                    </button>
-                                </div>
-                                <iframe
-                                    srcDoc={previewTemplate.html}
-                                    title="Preview"
-                                    className="modal-iframe"
-                                />
-                                <div className="modal-footer">
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={() => {
-                                            setShowPreview(false);
-                                            handleUseTemplate(previewTemplate.template.id, previewTemplate.template.name);
-                                        }}
-                                    >
-                                        <i className="fas fa-rocket"></i> Sử dụng
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    {showPreviewModal && previewTemplate && (
+                        <PreviewModal
+                            selectedTemplate={previewTemplate}
+                            setShowPreviewModal={setShowPreviewModal}
+                            previewHtml={previewHtml}
+                            setPreviewHtml={setPreviewHtml}
+                        />
                     )}
                 </div>
             </div>
