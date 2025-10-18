@@ -154,9 +154,9 @@ const generateTemplateScreenshot = async (htmlContent, templateId, isUrl = false
         const screenshotKey = `templates/screenshots/${templateId}.png`;
         await uploadToS3(screenshotKey, screenshot, 'image/png');
 
-        const screenshotUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${screenshotKey}`;
-        console.log('✅ Full page screenshot generated:', screenshotUrl);
-        return screenshotUrl;
+        const screenshot_url = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${screenshotKey}`;
+        console.log('✅ Full page screenshot generated:', screenshot_url);
+        return screenshot_url;
 
     } catch (err) {
         console.error('❌ Screenshot generation failed:', err.message);
@@ -260,7 +260,7 @@ exports.getTemplates = async (req, res) => {
             name: template.name,
             description: template.description,
             category: template.category,
-            thumbnail_url: template.thumbnail_url || template.screenshot_url,
+            screenshot_url: template.screenshot_url,
             price: template.price,
             formatted_price: template.formatted_price,
             usage_count: template.usage_count,
@@ -338,7 +338,7 @@ exports.previewTemplate = async (req, res) => {
                 description: template.description,
                 category: template.category,
                 price: template.price,
-                thumbnail_url: template.thumbnail_url || template.screenshot_url,
+                screenshot_url: template.screenshot_url,
                 usage_count: template.usage_count,
                 is_premium: template.is_premium,
                 tags: template.tags
@@ -459,7 +459,7 @@ exports.useTemplate = async (req, res) => {
         console.log('✅ Uploaded page HTML to S3:', `${s3Path}/index.html`);
 
         // ========== COPY SCREENSHOT TỪ TEMPLATE ==========
-        let screenshotUrl = template.thumbnail_url || template.screenshot_url;
+        let screenshot_url = template.screenshot_url ;
 
         // ========== LƯU VÀO DATABASE ==========
         const currentDate = new Date();
@@ -471,7 +471,7 @@ exports.useTemplate = async (req, res) => {
             description: pageDesc,
             status: 'CHƯA XUẤT BẢN',
             file_path: `s3://${process.env.AWS_S3_BUCKET}/${s3Path}`,
-            screenshot_url: screenshotUrl,
+            screenshot_url: screenshot_url,
             page_data: pageData, // ⭐ QUAN TRỌNG: LƯU pageData VÀO DB
             meta_title: pageName,
             meta_description: pageDesc,
@@ -505,7 +505,7 @@ exports.useTemplate = async (req, res) => {
                 conversions: 0,
                 revenue: '0đ',
                 file_path: page.file_path,
-                screenshot_url: screenshotUrl,
+                screenshot_url: screenshot_url,
                 created_at: page.created_at.toISOString(),
                 updated_at: page.updated_at.toISOString(),
                 editUrl: `/create-landing?id=${pageId}`, // ⭐ ĐÚNG ROUTE
@@ -566,7 +566,7 @@ exports.saveTemplateMetadata = async (req, res) => {
         category,
         price = 0,
         s3Path,
-        thumbnail_url,
+        screenshot_url,
         tags = [],
         is_premium = false,
         is_featured = false
@@ -606,7 +606,6 @@ exports.saveTemplateMetadata = async (req, res) => {
             console.warn('⚠️ Screenshot generation failed:', err.message);
         }
 
-        const finalThumbnail = generatedScreenshot || thumbnail_url || null;
 
         // ========== LƯU TEMPLATE ==========
         const template = new Template({
@@ -615,9 +614,8 @@ exports.saveTemplateMetadata = async (req, res) => {
             description,
             category: category || 'Thương mại điện tử',
             file_path: s3Path,
-            thumbnail_url: finalThumbnail,
             screenshot_url: generatedScreenshot,
-            page_data: pageData, // ⭐ LƯU pageData
+            page_data: pageData,
             price,
             tags: Array.isArray(tags) ? tags : [],
             is_premium,
@@ -640,7 +638,6 @@ exports.saveTemplateMetadata = async (req, res) => {
                 description,
                 category,
                 file_path: template.file_path,
-                thumbnail_url: template.thumbnail_url,
                 screenshot_url: template.screenshot_url,
                 price,
                 tags: template.tags,
@@ -672,7 +669,7 @@ exports.updateTemplate = async (req, res) => {
         description,
         category,
         price,
-        thumbnail_url,
+        screenshot_url,
         tags,
         is_premium,
         is_featured,
@@ -694,7 +691,7 @@ exports.updateTemplate = async (req, res) => {
         if (description !== undefined) template.description = description;
         if (category) template.category = category;
         if (price !== undefined) template.price = price;
-        if (thumbnail_url !== undefined) template.thumbnail_url = thumbnail_url;
+        if (screenshot_url !== undefined) template.screenshot_url = screenshot_url;
         if (tags !== undefined) template.tags = tags;
         if (is_premium !== undefined) template.is_premium = is_premium;
         if (is_featured !== undefined) template.is_featured = is_featured;
@@ -712,7 +709,7 @@ exports.updateTemplate = async (req, res) => {
                 description: template.description,
                 category: template.category,
                 price: template.price,
-                thumbnail_url: template.thumbnail_url,
+                screenshot_url: template.screenshot_url,
                 tags: template.tags,
                 is_premium: template.is_premium,
                 is_featured: template.is_featured,
@@ -758,17 +755,16 @@ exports.regenerateTemplateScreenshot = async (req, res) => {
         }
 
         console.log('🖼️ Regenerating full page screenshot for template:', id);
-        const screenshotUrl = await generateTemplateScreenshot(htmlContent, id, false);
+        const screenshot_url = await generateTemplateScreenshot(htmlContent, id, false);
 
-        if (screenshotUrl) {
-            template.screenshot_url = screenshotUrl;
-            template.thumbnail_url = screenshotUrl; // Update thumbnail cũng
+        if (screenshot_url) {
+            template.screenshot_url = screenshot_url;
             template.updated_at = new Date();
             await template.save();
 
             res.json({
                 success: true,
-                screenshot_url: screenshotUrl,
+                screenshot_url: screenshot_url,
                 message: 'Screenshot đã được tạo lại thành công (full page)'
             });
         } else {
@@ -824,11 +820,10 @@ exports.batchRegenerateScreenshots = async (req, res) => {
                 }
 
                 console.log(`📸 Processing template: ${template.name}`);
-                const screenshotUrl = await generateTemplateScreenshot(htmlContent, template._id, false);
+                const screenshot_url = await generateTemplateScreenshot(htmlContent, template._id, false);
 
-                if (screenshotUrl) {
-                    template.screenshot_url = screenshotUrl;
-                    template.thumbnail_url = screenshotUrl;
+                if (screenshot_url) {
+                    template.screenshot_url = screenshot_url;
                     template.updated_at = new Date();
                     await template.save();
 
@@ -836,7 +831,7 @@ exports.batchRegenerateScreenshots = async (req, res) => {
                         templateId: template._id,
                         name: template.name,
                         status: 'success',
-                        screenshot_url: screenshotUrl
+                        screenshot_url: screenshot_url
                     });
                     successCount++;
                 } else {
@@ -914,20 +909,6 @@ exports.deleteTemplate = async (req, res) => {
         }
 
         // Xóa thumbnail từ S3
-        if (template.thumbnail_url && template.thumbnail_url.includes('amazonaws.com')) {
-            const thumbnailKey = template.thumbnail_url.split('.com/')[1];
-            try {
-                await s3.deleteObject({
-                    Bucket: process.env.AWS_S3_BUCKET,
-                    Key: thumbnailKey,
-                }).promise();
-                console.log('✅ Thumbnail deleted:', thumbnailKey);
-            } catch (err) {
-                console.warn('⚠️ Failed to delete thumbnail:', err.message);
-            }
-        }
-
-        // Xóa screenshot từ S3
         if (template.screenshot_url && template.screenshot_url.includes('amazonaws.com')) {
             const screenshotKey = template.screenshot_url.split('.com/')[1];
             try {
@@ -940,6 +921,8 @@ exports.deleteTemplate = async (req, res) => {
                 console.warn('⚠️ Failed to delete screenshot:', err.message);
             }
         }
+
+
 
         await template.deleteOne();
         console.log('✅ Template deleted successfully:', id);
@@ -968,7 +951,7 @@ exports.getTemplatesByCategory = async (req, res) => {
             name: template.name,
             description: template.description,
             category: template.category,
-            thumbnail_url: template.thumbnail_url || template.screenshot_url,
+            screenshot_url: template.screenshot_url,
             price: template.price,
             formatted_price: template.formatted_price,
             usage_count: template.usage_count,
@@ -1003,7 +986,7 @@ exports.getFeaturedTemplates = async (req, res) => {
             name: template.name,
             description: template.description,
             category: template.category,
-            thumbnail_url: template.thumbnail_url || template.screenshot_url,
+            screenshot_url: template.screenshot_url,
             price: template.price,
             formatted_price: template.formatted_price,
             usage_count: template.usage_count,
@@ -1069,7 +1052,7 @@ exports.searchTemplates = async (req, res) => {
             name: template.name,
             description: template.description,
             category: template.category,
-            thumbnail_url: template.thumbnail_url || template.screenshot_url,
+            screenshot_url: template.screenshot_url,
             price: template.price,
             formatted_price: template.formatted_price,
             usage_count: template.usage_count,
