@@ -83,6 +83,12 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                                                 className="modal1-iframe"
                                                 title="Mobile Preview"
                                                 sandbox="allow-scripts allow-same-origin allow-popups"
+                                                style={{
+                                                    width: "475px", // Chuẩn kích thước mobile
+                                                    height: "667px", // Chuẩn chiều cao iPhone
+                                                    border: "none",
+                                                    transformOrigin: "top center",
+                                                }}
                                             />
                                         </div>
                                         <div className="mobile-home-button"></div>

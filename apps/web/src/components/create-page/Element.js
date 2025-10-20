@@ -4,20 +4,45 @@ import { useDrop, useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import { toast } from 'react-toastify';
 import SectionToolkit from './toolkitqick/SectionToolkit';
-import { ItemTypes, getCanvasPosition, snapToGrid, getElementBounds, renderComponentContent } from './helpers';
+import { ItemTypes, getCanvasPosition, snapToGrid } from './helpers';
 import eventController from '../../utils/EventUtils';
+import { getResponsiveValues } from '../../utils/responsiveSync';
+
+/**
+ * Utility to check if URL is valid
+ */
+const isValidUrl = (url) => {
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        return false;
+    }
+};
 
 /**
  * Reusable utility to generate locked styles for elements
- * @param {boolean} isLocked - Whether the element or componentData is locked
- * @returns {Object} CSS styles for locked state
  */
 const getLockedStyles = (isLocked) =>
     useMemo(() => (isLocked ? { opacity: 0.7, cursor: 'not-allowed', pointerEvents: 'none' } : {}), [isLocked]);
 
 /**
+ * Get canvas width based on view mode
+ */
+const getCanvasWidth = (viewMode) => {
+    switch (viewMode) {
+        case 'mobile':
+            return 375;
+        case 'tablet':
+            return 768;
+        case 'desktop':
+        default:
+            return 1200;
+    }
+};
+
+/**
  * ChildElement component for rendering draggable child elements within sections or popups
- * @param {Object} props - Component props
  */
 const ChildElement = React.memo(
     ({
@@ -34,8 +59,22 @@ const ChildElement = React.memo(
          visible = true,
          locked = false,
          onDeleteChild,
+         element,
      }) => {
         const dragRef = useRef(null);
+
+        // Get responsive values for current view mode
+        const { size: responsiveSize, position: responsivePosition, styles: responsiveStyles } = useMemo(() => {
+            if (element) {
+                return getResponsiveValues(element, viewMode);
+            }
+            return {
+                size: size || { width: type === 'icon' ? 50 : 200, height: type === 'icon' ? 50 : 50 },
+                position: position || { x: 0, y: 0 },
+                styles: styles || {},
+            };
+        }, [element, viewMode, size, position, styles, type]);
+
         const [{ isDragging }, drag] = useDrag({
             type: ItemTypes.CHILD_ELEMENT,
             canDrag: () => !locked && !componentData.locked,
@@ -44,22 +83,23 @@ const ChildElement = React.memo(
                     toast.warning('Child element đã bị khóa!');
                     return null;
                 }
-                return { childId: id, parentId, isExisting: true, position, size };
+                return { childId: id, parentId, isExisting: true, position: responsivePosition, size: responsiveSize };
             },
             collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-        }, [id, parentId, position, size, locked, componentData.locked]);
+        }, [id, parentId, responsivePosition, responsiveSize, locked, componentData.locked]);
 
         const handleClick = useCallback(
             (e) => {
-                e.stopPropagation();
+                console.log(`ChildElement ${id} (type: ${type}) clicked, parentId: ${parentId}`);
                 if (typeof onSelectChild === 'function') {
                     onSelectChild(parentId, id);
+                    console.log(`onSelectChild called with parentId: ${parentId}, id: ${id}`);
                 }
                 if (componentData.events?.onClick) {
                     eventController.handleEvent(componentData.events.onClick, id, true);
                 }
             },
-            [parentId, id, onSelectChild, componentData.events]
+            [parentId, id, type, onSelectChild, componentData.events]
         );
 
         const handleDelete = useCallback(
@@ -87,45 +127,40 @@ const ChildElement = React.memo(
         }
 
         const lockedStyles = getLockedStyles(locked || componentData.locked);
-        const elementStyles = useMemo(
+
+        const getElementWidth = () => {
+            return responsiveSize.width || (type === 'icon' ? 50 : type === 'gallery' ? 600 : 200);
+        };
+
+        const getElementHeight = () => {
+            return responsiveSize.height || (type === 'icon' ? 50 : type === 'gallery' ? 600 : 50);
+        };
+
+        const wrapperStyles = useMemo(
             () => ({
                 position: 'absolute',
-                left: position[viewMode]?.x || 0,
-                top: position[viewMode]?.y || 0,
-                width: size?.width || (type === 'gallery' ? 380 : type === 'icon' ? 50 : 200),
-                height: size?.height || (type === 'gallery' ? 300 : type === 'icon' ? 50 : 50),
-                zIndex: isDragging ? 1000 : position[viewMode]?.z || 10,
-                cursor: locked || componentData.locked ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
+                left: responsivePosition.x || 0,
+                top: responsivePosition.y || 0,
+                width: getElementWidth(),
+                height: getElementHeight(),
+                zIndex: isDragging ? 1000 : responsivePosition.z || 20,
+                cursor: locked || componentData.locked ? 'not-allowed' : isDragging ? 'grabbing' : 'pointer',
                 opacity: isDragging ? 0.5 : 1,
-                ...styles,
+                pointerEvents: 'auto',
                 ...lockedStyles,
             }),
-            [position, viewMode, size, type, isDragging, locked, componentData.locked, styles, lockedStyles]
+            [responsivePosition, type, isDragging, locked, componentData.locked, lockedStyles, responsiveSize]
         );
 
-        const galleryStyles = useMemo(
-            () => ({
-                display: styles.display || 'grid',
-                gridTemplateColumns: styles.gridTemplateColumns || 'repeat(auto-fill, minmax(150px, 1fr))',
-                gap: styles.gap || '10px',
-                borderRadius: styles.borderRadius || '8px',
-                ...styles,
-            }),
-            [styles]
-        );
-
-        const imageStyles = useMemo(
+        const contentStyles = useMemo(
             () => ({
                 width: '100%',
                 height: '100%',
-                objectFit: styles.objectFit || 'cover',
-                objectPosition: styles.objectPosition || 'center',
-                borderRadius: styles.borderRadius || '8px',
-                border: styles.border || 'none',
-                boxShadow: styles.boxShadow || 'none',
-                filter: styles.filter || 'none',
+                pointerEvents: 'auto',
+                userSelect: type === 'heading' || type === 'paragraph' ? 'text' : 'none',
+                ...responsiveStyles,
             }),
-            [styles]
+            [type, responsiveStyles]
         );
 
         return (
@@ -133,40 +168,29 @@ const ChildElement = React.memo(
                 className={`lpb-child-element ${isSelected ? 'lpb-child-element-selected' : ''} ${
                     isDragging ? 'lpb-child-element-dragging' : ''
                 } ${locked || componentData.locked ? 'lpb-element-locked' : ''}`}
-                style={elementStyles}
+                style={wrapperStyles}
                 onClick={handleClick}
             >
-                <div ref={dragRef}>
-                    {type === 'gallery' ? (
-                        <div className="lpb-gallery" style={galleryStyles}>
-                            {(componentData.images || []).map((imageUrl, index) => (
-                                <img
-                                    key={index}
-                                    src={imageUrl || 'https://via.placeholder.com/150?text=Image+Error'}
-                                    alt={`Gallery image ${index + 1}`}
-                                    style={imageStyles}
-                                    loading="lazy"
-                                />
-                            ))}
-                            {(!componentData.images || componentData.images.length === 0) && (
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        height: '100%',
-                                        color: '#9ca3af',
-                                        textAlign: 'center',
-                                    }}
-                                >
-                                    <i className="fas fa-image" style={{ fontSize: '48px', marginBottom: '8px' }} />
-                                    <p>Chưa có ảnh trong thư viện</p>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        renderComponentContent(type, componentData, styles, [], true, onSelectChild, parentId, id)
+                <div
+                    ref={dragRef}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        position: 'relative',
+                        pointerEvents: 'auto',
+                    }}
+                >
+                    {renderComponentContent(
+                        element.type,
+                        element.componentData || {},
+                        contentStyles,
+                        element.children || [],
+                        true,
+                        onSelectChild,
+                        element.id,
+                        null,
+                        false,
+                        viewMode
                     )}
                 </div>
                 {(locked || componentData.locked) && (
@@ -219,7 +243,6 @@ const ChildElement = React.memo(
 
 /**
  * Element component for rendering sections, popups, or other canvas elements
- * @param {Object} props - Component props
  */
 const Element = React.memo(
     ({
@@ -250,22 +273,26 @@ const Element = React.memo(
          onDeleteElement,
          onDeleteChild,
      }) => {
-        // Destructure element props with defaults
         const {
             id,
             type,
             componentData = {},
-            position = {},
-            size = { width: viewMode === 'mobile' ? 375 : 1200, height: 400 },
-            styles = {},
             children = [],
             visible = true,
             locked = false,
         } = element;
 
-        // Hooks - All hooks are called at the top level to avoid Hook order issues
+        // Get responsive values for current view mode
+        const { size: responsiveSize, position: responsivePosition, styles: responsiveStyles } = useMemo(
+            () => getResponsiveValues(element, viewMode),
+            [element, viewMode]
+        );
+
+        const canvasWidth = getCanvasWidth(viewMode);
+
         const elementRef = useRef(null);
         const containerRef = useRef(null);
+
         const [{ isDragging }, drag, preview] = useDrag({
             type: ItemTypes.EXISTING_ELEMENT,
             canDrag: () => !locked && type !== 'section' && type !== 'popup',
@@ -274,30 +301,40 @@ const Element = React.memo(
                     toast.warning('Element đã bị khóa!');
                     return null;
                 }
-                return { id, elementSize: size, elementPosition: position[viewMode] || { x: 0, y: 0 }, isExisting: true };
+                return {
+                    id,
+                    elementSize: responsiveSize,
+                    elementPosition: responsivePosition,
+                    isExisting: true,
+                };
             },
             collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-        }, [id, size, position, viewMode, locked, type]);
+        }, [id, responsiveSize, responsivePosition, locked, type]);
 
-        const snapPoints = useMemo(
-            () => {
-                const points = [
-                    { x: 0, y: 0 },
-                    { x: size.width, y: size.height },
-                    { x: size.width / 2, y: size.height / 2 },
-                ];
-                children.forEach((child) => {
-                    const bounds = getElementBounds(child);
-                    points.push(
-                        { x: bounds.left, y: bounds.top },
-                        { x: bounds.right, y: bounds.bottom },
-                        { x: bounds.centerX, y: bounds.centerY },
-                    );
-                });
-                return points;
-            },
-            [size, children]
-        );
+        const snapPoints = useMemo(() => {
+            const points = [
+                { x: 0, y: 0 },
+                { x: responsiveSize.width, y: responsiveSize.height },
+                { x: responsiveSize.width / 2, y: responsiveSize.height / 2 },
+            ];
+            children.forEach((child) => {
+                const childResponsive = getResponsiveValues(child, viewMode);
+                const bounds = {
+                    left: childResponsive.position.x,
+                    top: childResponsive.position.y,
+                    right: childResponsive.position.x + childResponsive.size.width,
+                    bottom: childResponsive.position.y + childResponsive.size.height,
+                    centerX: childResponsive.position.x + childResponsive.size.width / 2,
+                    centerY: childResponsive.position.y + childResponsive.size.height / 2,
+                };
+                points.push(
+                    { x: bounds.left, y: bounds.top },
+                    { x: bounds.right, y: bounds.bottom },
+                    { x: bounds.centerX, y: bounds.centerY }
+                );
+            });
+            return points;
+        }, [responsiveSize, children, viewMode]);
 
         const [{ isOverContainer, canDropContainer }, dropSection] = useDrop({
             accept: [ItemTypes.ELEMENT, ItemTypes.CHILD_ELEMENT],
@@ -312,14 +349,20 @@ const Element = React.memo(
                 if (!clientOffset) return { moved: false };
                 const pos = getCanvasPosition(clientOffset.x, clientOffset.y, containerRef.current, zoomLevel);
                 const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+
                 if (monitor.getItemType() === ItemTypes.ELEMENT) {
                     const newId = `${item.id}-${Date.now()}`;
                     const newChild = {
                         id: newId,
                         type: item.json.type,
                         componentData: item.json.componentData || {},
-                        position: { [viewMode]: snapped, desktop: snapped, tablet: snapped, mobile: snapped },
-                        size: item.json.size || (item.json.type === 'gallery' ? { width: 380, height: 300 } : { width: 200, height: 50 }),
+                        position: {
+                            [viewMode]: snapped,
+                            desktop: snapped,
+                            tablet: snapped,
+                            mobile: snapped,
+                        },
+                        size: item.json.size || { width: 200, height: 50 },
                         styles: item.json.styles || {},
                         children: [],
                         visible: true,
@@ -343,7 +386,10 @@ const Element = React.memo(
                 setDragPreview(null);
                 return { moved: false };
             },
-            collect: (monitor) => ({ isOverContainer: monitor.isOver(), canDropContainer: monitor.canDrop() }),
+            collect: (monitor) => ({
+                isOverContainer: monitor.isOver(),
+                canDropContainer: monitor.canDrop(),
+            }),
         }, [id, type, componentData, viewMode, zoomLevel, gridSize, showGrid, onAddChild, onUpdateChildPosition, onMoveChild]);
 
         const [{ isOverPopup, canDropPopup }, dropPopup] = useDrop({
@@ -355,14 +401,20 @@ const Element = React.memo(
                 if (!clientOffset) return { moved: false };
                 const pos = getCanvasPosition(clientOffset.x, clientOffset.y, containerRef.current, zoomLevel);
                 const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+
                 if (monitor.getItemType() === ItemTypes.ELEMENT) {
                     const newId = `${item.id}-${Date.now()}`;
                     const newChild = {
                         id: newId,
                         type: item.json.type,
                         componentData: item.json.componentData || {},
-                        position: { [viewMode]: snapped, desktop: snapped, tablet: snapped, mobile: snapped },
-                        size: item.json.size || (item.json.type === 'gallery' ? { width: 380, height: 300 } : { width: 200, height: 50 }),
+                        position: {
+                            [viewMode]: snapped,
+                            desktop: snapped,
+                            tablet: snapped,
+                            mobile: snapped,
+                        },
+                        size: item.json.size || { width: 200, height: 50 },
                         styles: item.json.styles || {},
                         children: [],
                         visible: true,
@@ -386,60 +438,64 @@ const Element = React.memo(
                 setDragPreview(null);
                 return { moved: false };
             },
-            collect: (monitor) => ({ isOverPopup: monitor.isOver(), canDropPopup: monitor.canDrop() }),
+            collect: (monitor) => ({
+                isOverPopup: monitor.isOver(),
+                canDropPopup: monitor.canDrop(),
+            }),
         }, [id, type, viewMode, zoomLevel, gridSize, showGrid, onAddChild, onUpdateChildPosition, onMoveChild]);
 
         const lockedStyles = getLockedStyles(locked);
+
         const animationStyles = useMemo(
             () => ({
-                animation:
-                    componentData.animation?.onLoad
-                        ? `${componentData.animation.onLoad} ${componentData.animation?.duration || 1000}ms ease`
-                        : componentData.animation?.type && type !== 'gallery'
-                            ? `${componentData.animation.type} ${componentData.animation?.duration || 1000}ms ease ${componentData.animation?.delay || 0}ms ${componentData.animation?.repeat ? 'infinite' : ''}`
-                            : 'none',
+                animation: componentData.animation?.onLoad
+                    ? `${componentData.animation.onLoad} ${componentData.animation?.duration || 1000}ms ease`
+                    : componentData.animation?.type
+                        ? `${componentData.animation.type} ${componentData.animation?.duration || 1000}ms ease ${componentData.animation?.delay || 0}ms ${componentData.animation?.repeat ? 'infinite' : ''}`
+                        : 'none',
             }),
-            [componentData.animation, type]
+            [componentData.animation]
         );
+        const sectionStyles = useMemo(() => {
+            const bgImage = componentData.backgroundImage ||
+                responsiveStyles.backgroundImage ||
+                '';
 
-        const commonElementStyles = useMemo(
-            () => ({
-                position: 'absolute',
-                top: position[viewMode]?.y || 0,
-                width: type === 'gallery' ? size?.width || 380 : viewMode === 'mobile' ? 375 : size?.width || 1200,
-                height: type === 'gallery' ? size?.height || 300 : size?.height || 400,
-                left: type === 'gallery' ? position[viewMode]?.x || 0 : '50%',
-                transform: type !== 'gallery' ? 'translateX(-50%)' : 'none',
-                zIndex: position[viewMode]?.z || 1,
-                opacity: isDragging ? 0.5 : 1,
-                cursor: locked ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
-                userSelect: 'none',
-                ...styles,
-                ...lockedStyles,
-                ...animationStyles,
-            }),
-            [position, viewMode, size, type, isDragging, locked, styles, lockedStyles, animationStyles]
-        );
+            const bgType = componentData.backgroundType ||
+                (bgImage ? 'image' : 'color');
 
-        const sectionStyles = useMemo(
-            () => ({
+            console.log(`Section ${id} - BG Type: ${bgType}, Image: ${bgImage}`);
+
+            return {
                 position: 'absolute',
-                top: position[viewMode]?.y || 0,
-                width: viewMode === 'mobile' ? '375px' : '1200px',
-                height: size.height,
+                top: responsivePosition.y || 0,
+                width: `${canvasWidth}px`,
+                height: responsiveSize.height,
                 left: '50%',
                 transform: 'translateX(-50%)',
-                zIndex: position[viewMode]?.z || 1,
+                zIndex: responsivePosition.z || 1,
                 userSelect: 'none',
-                background: componentData.backgroundType === 'gradient' ? styles.background : 'none',
-                border: styles.border || 'none',
-                borderRadius: styles.borderRadius || '0px',
-                boxShadow: styles.boxShadow || 'none',
+                overflow: 'visible',
+                ...responsiveStyles,
+                // ✅ SIMPLIFIED BACKGROUND LOGIC
+                backgroundColor: bgType === 'color' ?
+                    (componentData.backgroundColor || '#ffffff') :
+                    'transparent',
+                backgroundImage: bgType === 'image' && bgImage ?
+                    `url("${bgImage}")` :
+                    'none',
+                backgroundSize: componentData.backgroundSize || 'cover',
+                backgroundPosition: componentData.backgroundPosition || 'center',
+                backgroundRepeat: componentData.backgroundRepeat || 'no-repeat',
+                backgroundAttachment: 'scroll',
+                // Gradient fallback
+                background: bgType === 'gradient' ?
+                    (componentData.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)') :
+                    undefined,
                 ...animationStyles,
                 ...lockedStyles,
-            }),
-            [position, viewMode, size, componentData, styles, animationStyles, lockedStyles]
-        );
+            };
+        }, [responsivePosition, responsiveSize, canvasWidth, componentData, responsiveStyles, animationStyles, lockedStyles]);
 
         const popupStyles = useMemo(
             () => ({
@@ -447,9 +503,9 @@ const Element = React.memo(
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: viewMode === 'mobile' ? '90%' : size?.width || 600,
+                width: viewMode === 'mobile' ? '90%' : responsiveSize.width || 600,
                 maxWidth: viewMode === 'mobile' ? '90%' : '600px',
-                minHeight: size?.height || 400,
+                minHeight: responsiveSize.height || 400,
                 maxHeight: '90vh',
                 zIndex: 1001,
                 background: componentData.background || 'rgba(255, 255, 255, 0.95)',
@@ -462,39 +518,13 @@ const Element = React.memo(
                 opacity: 1,
                 transformOrigin: 'center',
                 cursor: locked ? 'not-allowed' : 'default',
-                ...styles,
+                ...responsiveStyles,
                 ...lockedStyles,
                 ...animationStyles,
             }),
-            [viewMode, size, componentData, isSelected, styles, lockedStyles, animationStyles]
+            [viewMode, responsiveSize, componentData, isSelected, responsiveStyles, lockedStyles, animationStyles]
         );
 
-        const galleryStyles = useMemo(
-            () => ({
-                display: styles.display || 'grid',
-                gridTemplateColumns: styles.gridTemplateColumns || 'repeat(auto-fill, minmax(150px, 1fr))',
-                gap: styles.gap || '10px',
-                borderRadius: styles.borderRadius || '8px',
-                ...styles,
-            }),
-            [styles]
-        );
-
-        const imageStyles = useMemo(
-            () => ({
-                width: '100%',
-                height: '100%',
-                objectFit: styles.objectFit || 'cover',
-                objectPosition: styles.objectPosition || 'center',
-                borderRadius: styles.borderRadius || '8px',
-                border: styles.border || 'none',
-                boxShadow: styles.boxShadow || 'none',
-                filter: styles.filter || 'none',
-            }),
-            [styles]
-        );
-
-        // Effects
         useEffect(() => {
             preview(getEmptyImage(), { captureDraggingState: true });
         }, [preview]);
@@ -507,7 +537,6 @@ const Element = React.memo(
             }
         }, [dropSection, dropPopup, type, componentData]);
 
-        // Event Handlers
         const handleMouseDown = useCallback(
             (e) => {
                 if (locked) {
@@ -520,6 +549,7 @@ const Element = React.memo(
                         onSelectElement([id], e.ctrlKey);
                     }
                     onSelectChild(id, null);
+                    console.log(`Element ${id} selected`);
                 }
             },
             [id, locked, onSelectElement, onSelectChild]
@@ -544,7 +574,6 @@ const Element = React.memo(
             [id, onContextMenu]
         );
 
-        // Render Logic
         if (!visible) {
             return null;
         }
@@ -556,6 +585,12 @@ const Element = React.memo(
         }
 
         if (type === 'section' && componentData?.structure === 'ladi-standard') {
+            const bgType = componentData.backgroundType || 'color';
+            const bgImage = componentData.backgroundImage || '';
+            const bgColor = componentData.backgroundColor || '#ffffff';
+
+            console.log(`🎨 Section ${id} Render:`, { bgType, bgImage, bgColor });
+
             return (
                 <div
                     ref={elementRef}
@@ -566,50 +601,45 @@ const Element = React.memo(
                     onContextMenu={handleContextMenu}
                 >
                     {locked && (
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: '-18px',
-                                right: '-18px',
-                                zIndex: 10001,
-                                background: 'rgba(0,0,0,0.7)',
-                                color: '#fff',
-                                padding: '6px 12px',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                pointerEvents: 'none',
-                            }}
-                        >
+                        <div style={{ /* lock badge styles */ }}>
                             <i className="fas fa-lock" /> Section Locked
                         </div>
                     )}
-                    <div className="ladi-section" style={{ width: '100%', height: '100%' }}>
+
+                    <div className="ladi-section" style={{
+                        width: '100%',
+                        height: '100%',
+                        position: 'relative',
+                        isolation: 'isolate'
+                    }}>
+
+                        {/* ✅ SIMPLIFIED BACKGROUND */}
                         <div
                             className="ladi-section-background"
                             style={{
-                                backgroundColor: componentData.backgroundType === 'color' ? styles.backgroundColor || 'transparent' : 'none',
-                                backgroundImage: componentData.backgroundType === 'image' && componentData.backgroundImage ? `url(${componentData.backgroundImage})` : 'none',
-                                backgroundSize: 'cover',
-                                backgroundPosition: styles.backgroundPosition || 'center',
                                 position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
+                                top: 0, left: 0, right: 0, bottom: 0,
                                 zIndex: 0,
+                                pointerEvents: 'none',
+                                backgroundColor: bgType === 'color' ? bgColor : 'transparent',
+                                backgroundImage: bgType === 'image' && bgImage ? `url("${bgImage}")` : 'none',
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                backgroundRepeat: 'no-repeat',
                             }}
                         />
                         <div
                             className="ladi-overlay"
                             style={{
-                                backgroundColor: componentData.overlayColor || 'transparent',
-                                opacity: componentData.overlayOpacity || 0,
                                 position: 'absolute',
                                 top: 0,
                                 left: 0,
                                 right: 0,
                                 bottom: 0,
-                                zIndex: 0,
+                                zIndex: 1,
+                                pointerEvents: 'none',
+                                backgroundColor: componentData.overlayColor || responsiveStyles.overlayColor || 'transparent',
+                                opacity: componentData.overlayOpacity !== undefined ? componentData.overlayOpacity : (responsiveStyles.overlayOpacity || 0),
                             }}
                         />
                         <div
@@ -617,11 +647,12 @@ const Element = React.memo(
                             className={`ladi-container ${isOverContainer && canDropContainer ? 'lpb-child-element-hover' : ''}`}
                             style={{
                                 position: 'relative',
-                                zIndex: 1,
-                                padding: styles.padding || '20px',
+                                zIndex: 10,
+                                padding: componentData.padding || responsiveStyles.padding || '20px',
                                 width: '100%',
                                 height: '100%',
                                 border: isOverContainer && canDropContainer ? '2px dashed #2563eb' : 'none',
+                                pointerEvents: 'auto',
                             }}
                         >
                             {children.map((child) => (
@@ -630,10 +661,11 @@ const Element = React.memo(
                                     parentId={id}
                                     id={child.id}
                                     type={child.type}
+                                    element={child}
                                     componentData={child.componentData || {}}
                                     styles={child.styles || {}}
                                     position={child.position || {}}
-                                    size={child.size || (child.type === 'gallery' ? { width: 380, height: 300 } : { width: 200, height: 50 })}
+                                    size={child.size || { width: 200, height: 50 }}
                                     visible={child.visible !== false}
                                     locked={child.locked || false}
                                     isSelected={selectedChildId === child.id}
@@ -649,6 +681,7 @@ const Element = React.memo(
                             ))}
                         </div>
                     </div>
+
                     {isSelected && (
                         <SectionToolkit
                             element={element}
@@ -666,6 +699,11 @@ const Element = React.memo(
         }
 
         if (type === 'popup') {
+            const shouldShowElement = type === 'section' || isSelected || visibleElements.includes(id);
+            if (!shouldShowElement) {
+                return null;
+            }
+
             return (
                 <>
                     <div
@@ -678,8 +716,8 @@ const Element = React.memo(
                             bottom: 0,
                             background: 'rgba(0, 0, 0, 0.5)',
                             zIndex: 1000,
-                            pointerEvents: shouldShowElement ? 'auto' : 'none',
-                            opacity: shouldShowElement ? 1 : 0,
+                            pointerEvents: 'auto',
+                            opacity: 1,
                             transition: 'opacity 0.3s ease',
                         }}
                         onClick={(e) => {
@@ -786,10 +824,11 @@ const Element = React.memo(
                                     parentId={id}
                                     id={child.id}
                                     type={child.type}
+                                    element={child}
                                     componentData={child.componentData || {}}
                                     styles={child.styles || {}}
                                     position={child.position || {}}
-                                    size={child.size || (child.type === 'gallery' ? { width: 380, height: 300 } : { width: 200, height: 50 })}
+                                    size={child.size || { width: 200, height: 50 }}
                                     visible={child.visible !== false}
                                     locked={child.locked || false}
                                     isSelected={selectedChildId === child.id}
@@ -827,6 +866,24 @@ const Element = React.memo(
             );
         }
 
+        const commonElementStyles = useMemo(
+            () => ({
+                position: 'absolute',
+                top: responsivePosition.y || 0,
+                left: responsivePosition.x || 0,
+                width: responsiveSize.width,
+                height: responsiveSize.height,
+                zIndex: responsivePosition.z || 1,
+                opacity: isDragging ? 0.5 : 1,
+                cursor: locked ? 'not-allowed' : isDragging ? 'grabbing' : 'pointer',
+                userSelect: type === 'heading' || type === 'paragraph' ? 'text' : 'none',
+                ...responsiveStyles,
+                ...lockedStyles,
+                ...animationStyles,
+            }),
+            [responsivePosition, responsiveSize, type, isDragging, locked, responsiveStyles, lockedStyles, animationStyles]
+        );
+
         return (
             <div
                 ref={(node) => {
@@ -860,36 +917,17 @@ const Element = React.memo(
                         <i className="fas fa-lock" /> Locked
                     </div>
                 )}
-                {type === 'gallery' ? (
-                    <div className="lpb-gallery" style={galleryStyles}>
-                        {(componentData.images || []).map((imageUrl, index) => (
-                            <img
-                                key={index}
-                                src={imageUrl || 'https://via.placeholder.com/150?text=Image+Error'}
-                                alt={`Gallery image ${index + 1}`}
-                                style={imageStyles}
-                                loading="lazy"
-                            />
-                        ))}
-                        {(!componentData.images || componentData.images.length === 0) && (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    height: '100%',
-                                    color: '#9ca3af',
-                                    textAlign: 'center',
-                                }}
-                            >
-                                <i className="fas fa-image" style={{ fontSize: '48px', marginBottom: '8px' }} />
-                                <p>Chưa có ảnh trong thư viện</p>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    renderComponentContent(type, componentData, styles, children, true, onSelectChild, id)
+                {renderComponentContent(
+                    type,
+                    componentData,
+                    responsiveStyles,
+                    children,
+                    true,
+                    onSelectChild,
+                    id,
+                    null,
+                    false,
+                    viewMode
                 )}
             </div>
         );
@@ -901,13 +939,22 @@ ChildElement.propTypes = {
     parentId: PropTypes.string.isRequired,
     id: PropTypes.string.isRequired,
     type: PropTypes.string.isRequired,
+    element: PropTypes.object,
     componentData: PropTypes.shape({
         locked: PropTypes.bool,
         visible: PropTypes.bool,
         events: PropTypes.shape({
             onClick: PropTypes.object,
         }),
-        images: PropTypes.arrayOf(PropTypes.string),
+        src: PropTypes.string,
+        alt: PropTypes.string,
+        icon: PropTypes.string,
+        images: PropTypes.arrayOf(
+            PropTypes.shape({
+                src: PropTypes.string,
+                alt: PropTypes.string,
+            })
+        ),
     }),
     styles: PropTypes.object,
     isSelected: PropTypes.bool.isRequired,
@@ -928,33 +975,9 @@ Element.propTypes = {
     element: PropTypes.shape({
         id: PropTypes.string.isRequired,
         type: PropTypes.string.isRequired,
-        componentData: PropTypes.shape({
-            structure: PropTypes.string,
-            backgroundType: PropTypes.string,
-            backgroundImage: PropTypes.string,
-            backgroundColor: PropTypes.string,
-            overlayColor: PropTypes.string,
-            overlayOpacity: PropTypes.number,
-            background: PropTypes.string,
-            borderRadius: PropTypes.string,
-            padding: PropTypes.string,
-            animation: PropTypes.shape({
-                onLoad: PropTypes.string,
-                type: PropTypes.string,
-                duration: PropTypes.number,
-                delay: PropTypes.number,
-                repeat: PropTypes.bool,
-            }),
-            events: PropTypes.shape({
-                onClick: PropTypes.object,
-            }),
-            title: PropTypes.string,
-        }),
+        componentData: PropTypes.object,
         position: PropTypes.object,
-        size: PropTypes.shape({
-            width: PropTypes.number,
-            height: PropTypes.number,
-        }),
+        size: PropTypes.object,
         styles: PropTypes.object,
         children: PropTypes.array,
         visible: PropTypes.bool,
@@ -988,6 +1011,323 @@ Element.propTypes = {
     onMoveElementDown: PropTypes.func.isRequired,
     onDeleteElement: PropTypes.func.isRequired,
     onDeleteChild: PropTypes.func.isRequired,
+};
+
+/**
+ * Fixed renderComponentContent function with proper gallery, icon, and button rendering
+ */
+export const renderComponentContent = (
+    elementType,
+    componentData = {},
+    styles = {},
+    children = [],
+    isCanvas,
+    onSelectChild,
+    parentId,
+    childId,
+    isTemplateMode,
+    viewMode
+) => {
+    console.log(`Rendering elementType: ${elementType}, parentId: ${parentId}, childId: ${childId}`);
+
+    const textStyles = {
+        pointerEvents: 'auto',
+        userSelect: 'text',
+        cursor: 'pointer',
+        ...styles,
+    };
+
+    const mediaStyles = {
+        pointerEvents: 'auto',
+        cursor: 'pointer',
+        width: '100%',
+        height: '100%',
+        objectFit: styles.objectFit || 'cover',
+        ...styles,
+    };
+
+    switch (elementType) {
+        case 'heading':
+            return (
+                <h1 style={textStyles} data-element-id={childId}>
+                    {componentData.content || 'Default Heading'}
+                </h1>
+            );
+
+        case 'paragraph':
+            return (
+                <p style={textStyles} data-element-id={childId}>
+                    {componentData.content || 'Default Paragraph'}
+                </p>
+            );
+
+        case 'gallery':
+            const images = componentData.images || [];
+            const galleryImages = Array.isArray(images) ? images : [];
+
+            return (
+                <div
+                    style={{
+                        display: styles.display || 'grid',
+                        gridTemplateColumns: styles.gridTemplateColumns || 'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: styles.gap || '16px',
+                        padding: styles.padding || '16px',
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
+                        width: '100%',
+                        height: '100%',
+                        ...styles,
+                    }}
+                    data-element-id={childId}
+                >
+                    {galleryImages.length > 0 ? (
+                        galleryImages.map((image, index) => {
+                            const imageSrc = typeof image === 'string'
+                                ? image
+                                : (image.src || image.url || 'https://via.placeholder.com/150?text=Image');
+                            const imageAlt = typeof image === 'string'
+                                ? `Image ${index + 1}`
+                                : (image.alt || `Image ${index + 1}`);
+
+                            return (
+                                <img
+                                    key={index}
+                                    src={imageSrc}
+                                    alt={imageAlt}
+                                    style={{
+                                        width: '100%',
+                                        height: 'auto',
+                                        objectFit: styles.objectFit || 'cover',
+                                        borderRadius: styles.borderRadius || '8px',
+                                        transition: styles[':hover'] ? 'all 0.3s ease' : 'none',
+                                        cursor: 'pointer',
+                                    }}
+                                    onError={(e) => {
+                                        e.target.src = 'https://via.placeholder.com/150?text=Error';
+                                    }}
+                                />
+                            );
+                        })
+                    ) : (
+                        <div
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                minHeight: '200px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: '#f3f4f6',
+                                borderRadius: '8px',
+                                color: '#9ca3af',
+                            }}
+                        >
+                            <div style={{ textAlign: 'center' }}>
+                                <i className="fas fa-images" style={{ fontSize: '48px', marginBottom: '8px' }} />
+                                <p>Gallery Placeholder</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+
+        case 'icon':
+            return (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '100%',
+                        height: '100%',
+                        ...styles,
+                    }}
+                    data-element-id={childId}
+                >
+                    {componentData.imageUrl ? (
+                        <img
+                            src={componentData.imageUrl}
+                            alt={componentData.alt || componentData.title || 'Icon'}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                maxWidth: '50px',
+                                maxHeight: '50px',
+                                objectFit: 'contain',
+                            }}
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size: 24px; color: #ef4444;"></i>';
+                            }}
+                        />
+                    ) : componentData.icon && componentData.icon.includes('<svg') ? (
+                        <div
+                            dangerouslySetInnerHTML={{ __html: componentData.icon }}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        />
+                    ) : componentData.src ? (
+                        <img
+                            src={componentData.src}
+                            alt={componentData.alt || 'Icon'}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'contain',
+                            }}
+                            onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = '<i class="fas fa-star" style="font-size: 24px; color: #f59e0b;"></i>';
+                            }}
+                        />
+                    ) : (
+                        <i
+                            className={componentData.icon || 'fas fa-star'}
+                            style={{
+                                fontSize: styles.fontSize || '24px',
+                                color: styles.color || '#000',
+                            }}
+                        />
+                    )}
+                </div>
+            );
+
+        case 'image':
+            return (
+                <img
+                    src={componentData.src || 'https://via.placeholder.com/200?text=Image'}
+                    alt={componentData.alt || 'Image'}
+                    style={mediaStyles}
+                    data-element-id={childId}
+                    onError={(e) => {
+                        e.target.src = 'https://via.placeholder.com/200?text=Error';
+                    }}
+                />
+            );
+
+        case 'button':
+            const buttonStyles = {
+                padding: componentData.padding || styles.padding || '10px 20px',
+                borderRadius: componentData.borderRadius || styles.borderRadius || '4px',
+                background: componentData.background || styles.background || '#007bff',
+                color: componentData.color || styles.color || '#fff',
+                border: styles.border || 'none',
+                cursor: 'pointer',
+                fontFamily: styles.fontFamily || 'inherit',
+                fontSize: styles.fontSize || '16px',
+                fontWeight: styles.fontWeight || '500',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                transition: styles.transition || 'all 0.3s ease',
+                boxShadow: styles.boxShadow || 'none',
+                ...styles,
+                pointerEvents: 'auto',
+            };
+
+            const { ':hover': hover, ':active': active, '@keyframes': keyframes, ...cleanStyles } = buttonStyles;
+
+            return (
+                <button
+                    style={cleanStyles}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (componentData.events?.onClick) {
+                            eventController.handleEvent(componentData.events.onClick, childId || parentId, isCanvas);
+                        }
+                    }}
+                    onMouseEnter={(e) => {
+                        if (styles[':hover']) {
+                            Object.assign(e.target.style, styles[':hover']);
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        Object.assign(e.target.style, cleanStyles);
+                    }}
+                    onMouseDown={(e) => {
+                        if (styles[':active']) {
+                            Object.assign(e.target.style, styles[':active']);
+                        }
+                    }}
+                    onMouseUp={(e) => {
+                        Object.assign(e.target.style, cleanStyles);
+                    }}
+                    data-element-id={childId}
+                >
+                    {componentData.content || 'Button'}
+                </button>
+            );
+
+        case 'video':
+            return (
+                <video
+                    controls
+                    src={componentData.src || 'https://www.w3schools.com/html/mov_bbb.mp4'}
+                    style={mediaStyles}
+                    data-element-id={childId}
+                >
+                    Your browser does not support the video tag.
+                </video>
+            );
+
+        case 'section':
+            return (
+                <div className="ladi-section" style={{ position: 'relative', width: '100%', height: '100%', overflow: 'visible' }}>
+                    <div className="ladi-container" style={{ position: 'relative', zIndex: 2, width: '100%', height: '100%' }}>
+                        {children.map((child) => {
+                            if (!child.type || !child.id) {
+                                console.warn('Invalid child:', child);
+                                return null;
+                            }
+                            return (
+                                <ChildElement
+                                    key={child.id}
+                                    parentId={parentId}
+                                    id={child.id}
+                                    type={child.type}
+                                    element={child}
+                                    componentData={child.componentData || {}}
+                                    styles={child.styles || {}}
+                                    position={child.position || {}}
+                                    size={child.size || { width: 200, height: 50 }}
+                                    visible={child.visible !== false}
+                                    locked={child.locked || false}
+                                    isSelected={childId === child.id}
+                                    onSelectChild={onSelectChild}
+                                    viewMode={viewMode}
+                                    onDeleteChild={onDeleteChild}
+                                />
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+
+        default:
+            return (
+                <div
+                    style={{
+                        ...styles,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#f3f4f6',
+                        color: '#6b7280',
+                        padding: '20px',
+                        borderRadius: '8px',
+                    }}
+                >
+                    Unsupported element type: {elementType}
+                </div>
+            );
+    }
 };
 
 export { ChildElement, Element };
