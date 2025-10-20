@@ -46,6 +46,7 @@ export const getCanvasPosition = (mouseX, mouseY, containerElement, zoomLevel) =
     return { x: Math.max(0, rawX), y: Math.max(0, rawY) };
 };
 
+
 /**
  * Snaps coordinates to grid or nearby snap points
  * @param {number} x - X coordinate
@@ -341,6 +342,7 @@ const getGalleryAnimationCSS = (animation, galleryClass) => {
  * @param {string} parentId - Parent element ID
  * @param {string} childId - Child element ID
  * @param {boolean} isTemplateMode - Whether in template mode
+ * @param {string} viewMode - Current view mode (desktop/tablet/mobile)
  * @returns {JSX.Element} Rendered component
  */
 export const renderComponentContent = (
@@ -352,7 +354,8 @@ export const renderComponentContent = (
     onSelectChild = null,
     parentId = null,
     childId = null,
-    isTemplateMode = false
+    isTemplateMode = false,
+    viewMode = 'desktop'
 ) => {
     // Validation
     if (!type || typeof type !== 'string') {
@@ -371,62 +374,61 @@ export const renderComponentContent = (
         );
     }
 
-    // Section rendering
+    // Determine if component should use absolute positioning
+    // Only use absolute for positioned elements that need it
+    const absolutePositionTypes = ['icon', 'square', 'star'];
+    const shouldUseAbsolutePosition = absolutePositionTypes.includes(type.toLowerCase());
+
+    // Base styles with proper position handling
+    // Preserve existing position if set, otherwise use appropriate default
+    const baseStyles = {
+        ...styles,
+        position: styles.position || (shouldUseAbsolutePosition ? 'absolute' : undefined),
+    };
+
+    // Section rendering - This is used by Element.js wrapper, so keep it simple
     if (type === 'section' && componentData.structure === 'ladi-standard') {
         return (
-            <div className="ladi-section" style={{ ...styles, width: '100%', height: '100%' }}>
-                <div
-                    className="ladi-section-background"
-                    style={{
-                        backgroundColor: componentData.backgroundColor || 'transparent',
-                        backgroundImage: componentData.backgroundImage ? `url(${componentData.backgroundImage})` : 'none',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 0,
-                    }}
-                />
-                <div
-                    className="ladi-overlay"
-                    style={{
-                        backgroundColor: componentData.overlayColor || 'transparent',
-                        opacity: componentData.overlayOpacity || 0,
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        zIndex: 0,
-                    }}
-                />
+            <div className="ladi-section" style={{
+                position: 'relative',
+                width: '100%',
+                height: '100%',
+                overflow: 'visible',
+            }}>
+                {/* Background and overlay are handled by Element.js wrapper */}
                 <div
                     className="ladi-container"
                     style={{
                         position: 'relative',
-                        zIndex: 1,
-                        padding: componentData.padding || '20px',
+                        zIndex: 2,
                         width: '100%',
                         height: '100%',
                     }}
                 >
-                    {children.map((child, index) => (
-                        <div key={child.id || index} style={{ marginBottom: child.marginBottom || '10px' }}>
-                            {renderComponentContent(
+                    {children.map((child, index) => {
+                        // Determine if child should use absolute positioning
+                        const childNeedsAbsolute = child.styles?.position === 'absolute' ||
+                            ['icon', 'square', 'star'].includes(child.type?.toLowerCase());
+
+                        return React.cloneElement(
+                            renderComponentContent(
                                 child.type,
                                 child.componentData || {},
-                                child.styles || {},
+                                {
+                                    ...child.styles,
+                                    position: childNeedsAbsolute ? 'absolute' : (child.styles?.position || 'relative'),
+                                },
                                 child.children || [],
                                 isCanvas,
                                 onSelectChild,
                                 parentId,
-                                child.id
-                            )}
-                        </div>
-                    ))}
+                                child.id,
+                                isTemplateMode,
+                                viewMode
+                            ),
+                            { key: child.id || index }
+                        );
+                    })}
                 </div>
             </div>
         );
@@ -448,21 +450,21 @@ export const renderComponentContent = (
 
             return (
                 <svg
-                    width={styles.width || componentData.size?.width || 50}
-                    height={styles.height || componentData.size?.height || 50}
-                    style={{ position: 'absolute', ...styles }}
+                    width={baseStyles.width || componentData.size?.width || 50}
+                    height={baseStyles.height || componentData.size?.height || 50}
+                    style={baseStyles}
                     onClick={handleClick}
                 >
                     <rect
                         x="0"
                         y="0"
-                        width={styles.width || componentData.size?.width || 50}
-                        height={styles.height || componentData.size?.height || 50}
-                        fill={styles.fill || componentData.fill || '#000'}
-                        stroke={styles.stroke || componentData.stroke || 'currentColor'}
-                        strokeWidth={styles.strokeWidth || componentData.strokeWidth || 2}
-                        strokeLinecap={styles.strokeLinecap || componentData.strokeLinecap || 'round'}
-                        strokeLinejoin={styles.strokeLinejoin || componentData.strokeLinejoin || 'round'}
+                        width={baseStyles.width || componentData.size?.width || 50}
+                        height={baseStyles.height || componentData.size?.height || 50}
+                        fill={baseStyles.fill || componentData.fill || '#000'}
+                        stroke={baseStyles.stroke || componentData.stroke || 'currentColor'}
+                        strokeWidth={baseStyles.strokeWidth || componentData.strokeWidth || 2}
+                        strokeLinecap={baseStyles.strokeLinecap || componentData.strokeLinecap || 'round'}
+                        strokeLinejoin={baseStyles.strokeLinejoin || componentData.strokeLinejoin || 'round'}
                     />
                 </svg>
             );
@@ -482,18 +484,18 @@ export const renderComponentContent = (
 
             return (
                 <svg
-                    width={styles.width || componentData.size?.width || 50}
-                    height={styles.height || componentData.size?.height || 50}
-                    style={{ position: 'absolute', ...styles }}
+                    width={baseStyles.width || componentData.size?.width || 50}
+                    height={baseStyles.height || componentData.size?.height || 50}
+                    style={baseStyles}
                     onClick={handleClick}
                 >
                     <path
                         d="M25 5 L32 18 H48 L36 29 L41 44 L25 36 L9 44 L14 29 L2 18 H18 Z"
-                        fill={styles.fill || componentData.fill || '#000'}
-                        stroke={styles.stroke || componentData.stroke || 'currentColor'}
-                        strokeWidth={styles.strokeWidth || componentData.strokeWidth || 2}
-                        strokeLinecap={styles.strokeLinecap || componentData.strokeLinecap || 'round'}
-                        strokeLinejoin={styles.strokeLinejoin || componentData.strokeLinejoin || 'round'}
+                        fill={baseStyles.fill || componentData.fill || '#000'}
+                        stroke={baseStyles.stroke || componentData.stroke || 'currentColor'}
+                        strokeWidth={baseStyles.strokeWidth || componentData.strokeWidth || 2}
+                        strokeLinecap={baseStyles.strokeLinecap || componentData.strokeLinecap || 'round'}
+                        strokeLinejoin={baseStyles.strokeLinejoin || componentData.strokeLinejoin || 'round'}
                     />
                 </svg>
             );
@@ -506,16 +508,16 @@ export const renderComponentContent = (
                         display: 'grid',
                         gridTemplateColumns: componentData.columns
                             ? `repeat(${componentData.columns}, 1fr)`
-                            : styles.gridTemplateColumns || 'repeat(2, 1fr)',
-                        gap: componentData.gap || styles.gap || '20px',
-                        padding: componentData.padding || styles.padding || '10px',
-                        background: componentData.background || styles.background || 'transparent',
-                        ...styles,
+                            : baseStyles.gridTemplateColumns || 'repeat(2, 1fr)',
+                        gap: componentData.gap || baseStyles.gap || '20px',
+                        padding: componentData.padding || baseStyles.padding || '10px',
+                        background: componentData.background || baseStyles.background || 'transparent',
+                        ...baseStyles,
                     }}
                 >
-                    {children.map((child, index) => (
-                        <div key={child.id || index} style={{ marginBottom: child.marginBottom || '10px' }}>
-                            {renderComponentContent(
+                    {children.map((child, index) =>
+                        React.cloneElement(
+                            renderComponentContent(
                                 child.type,
                                 child.componentData || {},
                                 child.styles || {},
@@ -523,10 +525,13 @@ export const renderComponentContent = (
                                 isCanvas,
                                 onSelectChild,
                                 parentId,
-                                child.id
-                            )}
-                        </div>
-                    ))}
+                                child.id,
+                                isTemplateMode,
+                                viewMode
+                            ),
+                            { key: child.id || index }
+                        )
+                    )}
                 </div>
             );
         }
@@ -547,14 +552,13 @@ export const renderComponentContent = (
             };
 
             const iconStyles = {
-                ...styles,
-                width: componentData.size?.width || styles.width || '50px',
-                height: componentData.size?.height || styles.height || '50px',
-                display: styles.display || 'flex',
-                alignItems: styles.alignItems || 'center',
-                justifyContent: styles.justifyContent || 'center',
+                ...baseStyles,
+                width: componentData.size?.width || baseStyles.width || '50px',
+                height: componentData.size?.height || baseStyles.height || '50px',
+                display: baseStyles.display || 'flex',
+                alignItems: baseStyles.alignItems || 'center',
+                justifyContent: baseStyles.justifyContent || 'center',
                 cursor: events.onClick ? 'pointer' : 'default',
-                position: styles.position || 'absolute',
             };
 
             const cssString = getIconCSS(styles, uniqueClass, !!imageUrl);
@@ -569,8 +573,8 @@ export const renderComponentContent = (
                             <div
                                 dangerouslySetInnerHTML={{ __html: icon }}
                                 style={{
-                                    width: componentData.size?.width || styles.width || '50px',
-                                    height: componentData.size?.height || styles.height || '50px',
+                                    width: componentData.size?.width || baseStyles.width || '50px',
+                                    height: componentData.size?.height || baseStyles.height || '50px',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -592,22 +596,31 @@ export const renderComponentContent = (
             return (
                 <HeadingTag
                     style={{
-                        ...getCleanTextStyles(styles),
-                        fontSize: styles.fontSize || componentData.fontSize || '1.5rem',
-                        color: styles.color || componentData.color || '#1f2937',
-                        margin: styles.margin || componentData.margin || '0',
-                        fontWeight: styles.fontWeight || componentData.fontWeight || '700',
-                        textAlign: styles.textAlign || componentData.textAlign || 'left',
-                        lineHeight: styles.lineHeight || componentData.lineHeight || '1.4',
-                        fontFamily: styles.fontFamily || componentData.fontFamily || 'Arial, sans-serif',
-                        fontStyle: styles.fontStyle || componentData.fontStyle || 'normal',
-                        textDecoration: styles.textDecoration || componentData.textDecoration || 'none',
-                        textTransform: styles.textTransform || componentData.textTransform || 'none',
-                        letterSpacing: styles.letterSpacing || componentData.letterSpacing || '0',
-                        textShadow: styles.textShadow || componentData.textShadow || 'none',
-                        WebkitTextStroke: styles.WebkitTextStroke || componentData.WebkitTextStroke || 'none',
-                        WebkitBackgroundClip: styles.WebkitBackgroundClip || componentData.WebkitBackgroundClip || 'initial',
-                        WebkitTextFillColor: styles.WebkitTextFillColor || componentData.WebkitTextFillColor || 'initial',
+                        ...getCleanTextStyles(baseStyles),
+                        position: baseStyles.position || 'relative',  // ✅ Preserve position
+                        fontSize: baseStyles.fontSize || componentData.fontSize || '1.5rem',
+                        color: baseStyles.color || componentData.color || '#1f2937',
+                        margin: baseStyles.margin || componentData.margin || '0',
+                        fontWeight: baseStyles.fontWeight || componentData.fontWeight || '700',
+                        textAlign: baseStyles.textAlign || componentData.textAlign || 'left',
+                        lineHeight: baseStyles.lineHeight || componentData.lineHeight || '1.4',
+                        fontFamily: baseStyles.fontFamily || componentData.fontFamily || 'Arial, sans-serif',
+                        fontStyle: baseStyles.fontStyle || componentData.fontStyle || 'normal',
+                        textDecoration: baseStyles.textDecoration || componentData.textDecoration || 'none',
+                        textTransform: baseStyles.textTransform || componentData.textTransform || 'none',
+                        letterSpacing: baseStyles.letterSpacing || componentData.letterSpacing || '0',
+                        textShadow: baseStyles.textShadow || componentData.textShadow || 'none',
+                        WebkitTextStroke: baseStyles.WebkitTextStroke || componentData.WebkitTextStroke || 'none',
+                        WebkitBackgroundClip: baseStyles.WebkitBackgroundClip || componentData.WebkitBackgroundClip || 'initial',
+                        WebkitTextFillColor: baseStyles.WebkitTextFillColor || componentData.WebkitTextFillColor || 'initial',
+                        zIndex: baseStyles.zIndex || 100,  // ✅ Cao hơn background
+                        pointerEvents: 'auto',  // ✅ CHO PHÉP CLICK
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
+                            onSelectChild(parentId, childId);
+                        }
                     }}
                 >
                     {componentData.content || 'Tiêu đề'}
@@ -619,13 +632,22 @@ export const renderComponentContent = (
             return (
                 <p
                     style={{
-                        ...getCleanTextStyles(styles),
+                        ...getCleanTextStyles(baseStyles),
+                        position: baseStyles.position || 'relative',  // ✅ Preserve position
                         fontSize: componentData.fontSize || '1rem',
                         color: componentData.color || '#1f2937',
                         margin: componentData.margin || '0',
                         fontWeight: componentData.fontWeight || '400',
                         lineHeight: componentData.lineHeight || '1.6',
                         textAlign: componentData.textAlign || 'left',
+                        zIndex: baseStyles.zIndex || 100,  // ✅ Cao hơn background
+                        pointerEvents: 'auto',  // ✅ CHO PHÉP CLICK
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
+                            onSelectChild(parentId, childId);
+                        }
                     }}
                 >
                     {componentData.content || 'Đoạn văn'}
@@ -680,24 +702,27 @@ export const renderComponentContent = (
                     <button
                         className={buttonClass}
                         style={{
-                            ...styles,
-                            padding: styles.padding || componentData.padding || '10px 20px',
-                            borderRadius: styles.borderRadius || componentData.borderRadius || '8px',
-                            background: styles.background || componentData.background || '#2563eb',
-                            color: styles.color || componentData.color || '#fff',
-                            border: styles.border || componentData.border || 'none',
-                            cursor: styles.cursor || 'pointer',
-                            fontSize: styles.fontSize || componentData.fontSize || '1rem',
-                            fontWeight: styles.fontWeight || componentData.fontWeight || '600',
-                            textAlign: styles.textAlign || componentData.textAlign || 'center',
-                            display: styles.display || 'inline-flex',
-                            alignItems: styles.alignItems || 'center',
-                            justifyContent: styles.justifyContent || 'center',
-                            transition: styles.transition || 'all 0.3s ease',
+                            ...baseStyles,
+                            position: baseStyles.position || 'relative',  // ✅ Preserve position
+                            padding: baseStyles.padding || componentData.padding || '10px 20px',
+                            borderRadius: baseStyles.borderRadius || componentData.borderRadius || '8px',
+                            background: baseStyles.background || componentData.background || '#2563eb',
+                            color: baseStyles.color || componentData.color || '#fff',
+                            border: baseStyles.border || componentData.border || 'none',
+                            cursor: baseStyles.cursor || 'pointer',
+                            fontSize: baseStyles.fontSize || componentData.fontSize || '1rem',
+                            fontWeight: baseStyles.fontWeight || componentData.fontWeight || '600',
+                            textAlign: baseStyles.textAlign || componentData.textAlign || 'center',
+                            display: baseStyles.display || 'inline-flex',
+                            alignItems: baseStyles.alignItems || 'center',
+                            justifyContent: baseStyles.justifyContent || 'center',
+                            transition: baseStyles.transition || 'all 0.3s ease',
                             boxSizing: 'border-box',
-                            width: styles.width || 'auto',
-                            minWidth: styles.minWidth || 'fit-content',
+                            width: baseStyles.width || 'auto',
+                            minWidth: baseStyles.minWidth || 'fit-content',
                             whiteSpace: 'nowrap',
+                            zIndex: baseStyles.zIndex || 100,  // ✅ Cao hơn background
+                            pointerEvents: 'auto',  // ✅ CHO PHÉP CLICK
                         }}
                         onClick={handleClick}
                     >
@@ -716,7 +741,7 @@ export const renderComponentContent = (
                         maxWidth: componentData.maxWidth || '100%',
                         height: componentData.height || 'auto',
                         borderRadius: componentData.borderRadius || '0',
-                        ...styles,
+                        ...baseStyles,
                     }}
                     draggable={componentData.draggable ?? false}
                 />
@@ -730,13 +755,13 @@ export const renderComponentContent = (
                         display: 'flex',
                         flexDirection: componentData.direction || 'column',
                         gap: componentData.gap || '10px',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 >
                     {componentData.title && !children.some((child) => child?.type === 'heading') && (
                         <h3
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 margin: componentData.titleMargin || '0',
                                 fontSize: componentData.titleFontSize || '1.2rem',
                                 color: componentData.titleColor || '#1f2937',
@@ -791,9 +816,9 @@ export const renderComponentContent = (
                             {componentData.buttonText || 'Gửi'}
                         </button>
                     )}
-                    {children.map((child, index) => (
-                        <div key={child.id || index} style={{ marginBottom: child.marginBottom || '10px' }}>
-                            {renderComponentContent(
+                    {children.map((child, index) =>
+                        React.cloneElement(
+                            renderComponentContent(
                                 child.type,
                                 child.componentData || {},
                                 child.styles || {},
@@ -801,10 +826,13 @@ export const renderComponentContent = (
                                 isCanvas,
                                 onSelectChild,
                                 parentId,
-                                child.id
-                            )}
-                        </div>
-                    ))}
+                                child.id,
+                                isTemplateMode,
+                                viewMode
+                            ),
+                            { key: child.id || index }
+                        )
+                    )}
                 </div>
             );
         }
@@ -819,13 +847,13 @@ export const renderComponentContent = (
                         gap: componentData.gap || '10px',
                         padding: componentData.padding || '0',
                         background: componentData.background || 'transparent',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 >
                     {componentData.title && !children.some((child) => child?.type === 'heading') && (
                         <h2
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.titleFontSize || '1.8rem',
                                 margin: componentData.titleMargin || '0',
                                 color: componentData.titleColor || '#1f2937',
@@ -838,7 +866,7 @@ export const renderComponentContent = (
                     {componentData.subtitle && !children.some((child) => child?.type === 'paragraph') && (
                         <p
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.subtitleFontSize || '1.2rem',
                                 margin: componentData.subtitleMargin || '0',
                                 color: componentData.subtitleColor || '#4b5563',
@@ -850,7 +878,7 @@ export const renderComponentContent = (
                     {componentData.content && !children.some((child) => child?.type === 'paragraph') && (
                         <p
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.contentFontSize || '1rem',
                                 margin: componentData.contentMargin || '0',
                                 color: componentData.contentColor || '#4b5563',
@@ -902,7 +930,7 @@ export const renderComponentContent = (
                     {componentData.contact && !children.some((child) => child?.type === 'paragraph') && (
                         <p
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.contactFontSize || '0.9rem',
                                 margin: componentData.contactMargin || '0',
                                 color: componentData.contactColor || '#4b5563',
@@ -911,9 +939,9 @@ export const renderComponentContent = (
                             {componentData.contact}
                         </p>
                     )}
-                    {children.map((child, index) => (
-                        <div key={child.id || index} style={{ marginBottom: child.marginBottom || '10px' }}>
-                            {renderComponentContent(
+                    {children.map((child, index) =>
+                        React.cloneElement(
+                            renderComponentContent(
                                 child.type,
                                 child.componentData || {},
                                 child.styles || {},
@@ -921,10 +949,13 @@ export const renderComponentContent = (
                                 isCanvas,
                                 onSelectChild,
                                 parentId,
-                                child.id
-                            )}
-                        </div>
-                    ))}
+                                child.id,
+                                isTemplateMode,
+                                viewMode
+                            ),
+                            { key: child.id || index }
+                        )
+                    )}
                 </div>
             );
         }
@@ -938,7 +969,7 @@ export const renderComponentContent = (
                         height: componentData.thickness || '2px',
                         width: componentData.width || '100%',
                         margin: componentData.margin || '0',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 />
             );
@@ -951,7 +982,7 @@ export const renderComponentContent = (
                         background: componentData.background || 'transparent',
                         height: componentData.height || '40px',
                         width: componentData.width || '100%',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 />
             );
@@ -968,13 +999,13 @@ export const renderComponentContent = (
                         padding: componentData.padding || '20px',
                         background: componentData.background || 'rgba(255, 255, 255, 0.9)',
                         borderRadius: componentData.borderRadius || '12px',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 >
                     {componentData.title && !children.some((child) => child?.type === 'heading') && (
                         <h3
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.titleFontSize || '1.5rem',
                                 margin: componentData.titleMargin || '0',
                                 color: componentData.titleColor || '#1f2937',
@@ -987,7 +1018,7 @@ export const renderComponentContent = (
                     {componentData.content && !children.some((child) => child?.type === 'paragraph') && (
                         <p
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.contentFontSize || '1rem',
                                 margin: componentData.contentMargin || '0',
                                 color: componentData.contentColor || '#4b5563',
@@ -1012,19 +1043,23 @@ export const renderComponentContent = (
                             {componentData.buttonText}
                         </button>
                     )}
-                    {children.map((child, index) => (
-                        <div key={child.id || index} style={{ marginBottom: child.marginBottom || '10px' }}>
-                            {renderComponentContent(
+                    {children.map((child, index) =>
+                        React.cloneElement(
+                            renderComponentContent(
                                 child.type,
                                 child.componentData || {},
+                                child.styles || {},
                                 child.children || [],
                                 isCanvas,
                                 onSelectChild,
                                 parentId,
-                                child.id
-                            )}
-                        </div>
-                    ))}
+                                child.id,
+                                isTemplateMode,
+                                viewMode
+                            ),
+                            { key: child.id || index }
+                        )
+                    )}
                 </div>
             );
         }
@@ -1039,13 +1074,13 @@ export const renderComponentContent = (
                         padding: componentData.padding || '20px',
                         background: componentData.background || 'rgba(255, 255, 255, 0.9)',
                         borderRadius: componentData.borderRadius || '12px',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 >
                     {componentData.title && !children.some((child) => child?.type === 'heading') && (
                         <h3
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.titleFontSize || '1.5rem',
                                 margin: componentData.titleMargin || '0',
                                 color: componentData.titleColor || '#1f2937',
@@ -1058,7 +1093,7 @@ export const renderComponentContent = (
                     {componentData.content && !children.some((child) => child?.type === 'paragraph') && (
                         <p
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.contentFontSize || '1rem',
                                 margin: componentData.contentMargin || '0',
                                 color: componentData.contentColor || '#4b5563',
@@ -1084,19 +1119,23 @@ export const renderComponentContent = (
                             {componentData.buttonText || 'Đóng'}
                         </button>
                     )}
-                    {children.map((child, index) => (
-                        <div key={child.id || index} style={{ marginBottom: child.marginBottom || '10px' }}>
-                            {renderComponentContent(
+                    {children.map((child, index) =>
+                        React.cloneElement(
+                            renderComponentContent(
                                 child.type,
                                 child.componentData || {},
+                                child.styles || {},
                                 child.children || [],
                                 isCanvas,
                                 onSelectChild,
                                 parentId,
-                                child.id
-                            )}
-                        </div>
-                    ))}
+                                child.id,
+                                isTemplateMode,
+                                viewMode
+                            ),
+                            { key: child.id || index }
+                        )
+                    )}
                 </div>
             );
         }
@@ -1109,13 +1148,13 @@ export const renderComponentContent = (
                         background: componentData.background || '#ffffff',
                         borderRadius: componentData.borderRadius || '8px',
                         boxShadow: componentData.boxShadow || '0 2px 8px rgba(0,0,0,0.1)',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 >
                     {componentData.title && (
                         <h3
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.titleFontSize || '1.2rem',
                                 margin: componentData.titleMargin || '0',
                                 color: componentData.titleColor || '#1f2937',
@@ -1127,7 +1166,7 @@ export const renderComponentContent = (
                     {componentData.content && (
                         <p
                             style={{
-                                ...getCleanTextStyles(styles),
+                                ...getCleanTextStyles(baseStyles),
                                 fontSize: componentData.contentFontSize || '1rem',
                                 margin: componentData.contentMargin || '10px 0 0',
                                 color: componentData.contentColor || '#4b5563',
@@ -1147,7 +1186,7 @@ export const renderComponentContent = (
                         display: 'grid',
                         gridTemplateColumns: componentData.columns ? `repeat(${componentData.columns}, 1fr)` : 'repeat(2, 1fr)',
                         gap: componentData.gap || '20px',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 >
                     {Array.isArray(componentData.items) &&
@@ -1170,7 +1209,7 @@ export const renderComponentContent = (
                                 {item.title && (
                                     <h4
                                         style={{
-                                            ...getCleanTextStyles(styles),
+                                            ...getCleanTextStyles(baseStyles),
                                             fontSize: componentData.titleFontSize || '1rem',
                                             margin: componentData.titleMargin || '10px 0 0',
                                             color: componentData.titleColor || '#1f2937',
@@ -1182,7 +1221,7 @@ export const renderComponentContent = (
                                 {item.price && (
                                     <p
                                         style={{
-                                            ...getCleanTextStyles(styles),
+                                            ...getCleanTextStyles(baseStyles),
                                             fontSize: componentData.priceFontSize || '0.9rem',
                                             margin: componentData.priceMargin || '5px 0 0',
                                             color: componentData.priceColor || '#4b5563',
@@ -1203,7 +1242,7 @@ export const renderComponentContent = (
                     style={{
                         listStyleType: componentData.listStyleType || 'none',
                         padding: componentData.padding || '0',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 >
                     {Array.isArray(componentData.items) &&
@@ -1211,7 +1250,7 @@ export const renderComponentContent = (
                             <li
                                 key={index}
                                 style={{
-                                    ...getCleanTextStyles(styles),
+                                    ...getCleanTextStyles(baseStyles),
                                     fontSize: componentData.itemFontSize || '1rem',
                                     margin: componentData.itemMargin || '5px 0',
                                     color: componentData.itemColor || '#1f2937',
@@ -1250,7 +1289,7 @@ export const renderComponentContent = (
                     <div
                         className={`lpb-gallery ${galleryClass}`}
                         style={{
-                            ...styles,
+                            ...baseStyles,
                             cursor: componentData.events?.onClick ? 'pointer' : 'default',
                         }}
                         onClick={(e) => {
@@ -1262,9 +1301,9 @@ export const renderComponentContent = (
                     >
                         <div
                             style={{
-                                display: styles.display || 'grid',
-                                gridTemplateColumns: styles.gridTemplateColumns || 'repeat(auto-fill, minmax(150px, 1fr))',
-                                gap: styles.gap || '10px',
+                                display: baseStyles.display || 'grid',
+                                gridTemplateColumns: baseStyles.gridTemplateColumns || 'repeat(auto-fill, minmax(150px, 1fr))',
+                                gap: baseStyles.gap || '10px',
                                 width: '100%',
                             }}
                         >
@@ -1274,7 +1313,7 @@ export const renderComponentContent = (
                                     style={{
                                         position: 'relative',
                                         overflow: 'hidden',
-                                        borderRadius: styles.borderRadius || '8px',
+                                        borderRadius: baseStyles.borderRadius || '8px',
                                         aspectRatio: '1 / 1',
                                         cursor: 'pointer',
                                         transition: 'transform 0.3s ease',
@@ -1304,9 +1343,9 @@ export const renderComponentContent = (
                                 </div>
                             ))}
                         </div>
-                        {children.map((child, index) => (
-                            <div key={child.id || index} style={{ marginBottom: child.marginBottom || '10px' }}>
-                                {renderComponentContent(
+                        {children.map((child, index) =>
+                            React.cloneElement(
+                                renderComponentContent(
                                     child.type,
                                     child.componentData || {},
                                     child.styles || {},
@@ -1314,10 +1353,13 @@ export const renderComponentContent = (
                                     isCanvas,
                                     onSelectChild,
                                     parentId,
-                                    child.id
-                                )}
-                            </div>
-                        ))}
+                                    child.id,
+                                    isTemplateMode,
+                                    viewMode
+                                ),
+                                { key: child.id || index }
+                            )
+                        )}
                     </div>
                 </>
             );
@@ -1331,7 +1373,7 @@ export const renderComponentContent = (
                         padding: '10px',
                         border: '1px dashed #ff0000',
                         borderRadius: '4px',
-                        ...styles,
+                        ...baseStyles,
                     }}
                 >
                     Unknown Component: {type}
@@ -1352,6 +1394,7 @@ renderComponentContent.propTypes = {
     parentId: PropTypes.string,
     childId: PropTypes.string,
     isTemplateMode: PropTypes.bool,
+    viewMode: PropTypes.string,
 };
 
 getCanvasPosition.propTypes = {

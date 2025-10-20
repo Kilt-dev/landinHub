@@ -1,4 +1,32 @@
-import { Layers, ShoppingCart, Star, Megaphone, Quote, ChevronDown } from 'lucide-react';
+import {
+    Type, FileText, Square, FormInput, Image,
+    Video, Star, Minus, ShoppingCart, LayoutGrid,
+    SlidersHorizontal, Folder, ChevronDown, Table,
+    BarChart, Menu
+} from 'lucide-react';
+
+/**
+ * Helper function to create responsive position for children
+ */
+const createResponsivePosition = (desktopPos, tabletPos = null, mobilePos = null) => {
+    const tablet = tabletPos || {
+        x: Math.round(desktopPos.x * 0.64),
+        y: desktopPos.y,
+        z: desktopPos.z || 1
+    };
+
+    const mobile = mobilePos || {
+        x: Math.round(desktopPos.x * 0.31),
+        y: desktopPos.y,
+        z: desktopPos.z || 1
+    };
+
+    return {
+        desktop: { ...desktopPos, z: desktopPos.z || 1 },
+        tablet: tablet,
+        mobile: mobile
+    };
+};
 
 export const sections = {
     name: 'Phần',
@@ -6,14 +34,36 @@ export const sections = {
         {
             id: 'standard-sections',
             name: 'Phần tiêu chuẩn',
-            lucideIcon: Layers,
+            lucideIcon: LayoutGrid,
             templates: [
+                {
+                    id: 'empty-section',
+                    name: 'Phần trống',
+                    lucideIcon: LayoutGrid,
+                    description: 'Phần cơ bản không có thành phần con, có thể tùy chỉnh',
+                    previewImage:'https://res.cloudinary.com/dubthm5m6/image/upload/v1760965968/sectiontrong_yyx2a9.png',
+                    json: {
+                        type: 'section',
+                        componentData: {
+                            structure: 'ladi-standard',
+                            title: 'Phần trống',
+                            backgroundColor: '#ffffff',
+                            dataSource: { type: 'static' },
+                            events: {}
+                        },
+                        size: { width: 1200, height: 400 },
+                        mobileSize: { width: 375, height: 300 },
+                        tabletSize: { width: 768, height: 350 },
+                        styles: { textAlign: 'center', padding: '0px 0' },
+                        children: []  // Không có thành phần con
+                    }
+                },
                 {
                     id: 'hero-section',
                     name: 'Phần tiêu đề chính',
-                    lucideIcon: Layers,
+                    lucideIcon: LayoutGrid,
                     description: 'Phần tiêu đề nổi bật cho trang đích',
-                    previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/hero-section.jpg',
+                    previewImage:'https://res.cloudinary.com/dubthm5m6/image/upload/v1760965968/sectionhero_yudwaj.png',
                     json: {
                         type: 'section',
                         componentData: {
@@ -21,81 +71,80 @@ export const sections = {
                             title: 'Chào mừng đến với trang của chúng tôi',
                             backgroundColor: '#ffffff',
                             dataSource: { type: 'static' },
-                            events: { onClick: { type: 'navigate', url: '/home' } },
+                            events: { onClick: { type: 'navigate', url: '/home' } }
                         },
-                        size: { width: 420, height: 574 },
+                        size: { width: 600, height: 574 },
+                        mobileSize: { width: 375, height: 400 },
+                        tabletSize: { width: 768, height: 500 },
                         styles: { color: '#ffffff', textAlign: 'center' },
                         children: [
                             {
                                 id: 'hero-heading',
                                 type: 'heading',
-                                componentData: { content: 'Chào mừng đến với trang của chúng tôi', title: 'Tiêu đề chính', dataSource: { type: 'static' } },
-                                size: { width: 300, height: 50 },
-                                position: { desktop: { x: 60, y: 50 }, tablet: { x: 60, y: 50 }, mobile: { x: 30, y: 30 } },
-                                styles: { fontSize: '2rem', color: '#1f2937' },
+                                componentData: {
+                                    title: 'Gradient Modern',
+                                    content: 'Chào mừng đến với trang của chúng tôi',
+                                    dataSource: { type: 'static' },
+                                    animation: { type: 'zoomIn', duration: 1200, delay: 0 }
+                                },
+                                size: { width: 700, height: 90 },
+                                mobileSize: { width: 340, height: 60 },
+                                tabletSize: { width: 550, height: 75 },
+                                position: createResponsivePosition({ x: 250, y: 50 }, { x: 109, y: 50 }, { x: 17, y: 30 }),
+                                styles: {
+                                    fontFamily: 'Montserrat, sans-serif',
+                                    fontSize: '17px',
+                                    fontWeight: '800',
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    textAlign: 'center',
+                                    margin: '0',
+                                    letterSpacing: '-1px'
+                                },
+                                responsiveStyles: {
+                                    mobile: { fontSize: '1.8rem', letterSpacing: '0px' },
+                                    tablet: { fontSize: '2.6rem', letterSpacing: '-0.5px' }
+                                }
                             },
                             {
                                 id: 'hero-button',
                                 type: 'button',
-                                componentData: { content: 'Bắt đầu ngay', title: 'Nút bắt đầu', dataSource: { type: 'static' }, events: { onClick: { type: 'navigate', url: '/signup' } } },
-                                size: { width: 150, height: 40 },
-                                position: { desktop: { x: 135, y: 120 }, tablet: { x: 135, y: 120 }, mobile: { x: 80, y: 80 } },
-                                styles: { background: '#2563eb', color: '#fff', borderRadius: '8px' },
-                            },
-                        ],
-                    },
-                },
-                {
-                    id: 'feature-section',
-                    name: 'Phần tính năng',
-                    lucideIcon: Star,
-                    description: 'Giới thiệu các tính năng hoặc dịch vụ',
-                    previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/feature-section.jpg',
-                    json: {
-                        type: 'section',
-                        componentData: {
-                            structure: 'ladi-standard',
-                            title: 'Tính năng của chúng tôi',
-                            backgroundColor: '#f9fafb',
-                            dataSource: { type: 'static' },
-                            events: {},
-                        },
-                        size: { width: 420, height: 600 },
-                        styles: { textAlign: 'center', padding: '40px 0' },
-                        children: [
-                            {
-                                id: 'feature-heading',
-                                type: 'heading',
-                                componentData: { content: 'Tính năng nổi bật', title: 'Tiêu đề tính năng', dataSource: { type: 'static' } },
-                                size: { width: 300, height: 50 },
-                                position: { desktop: { x: 60, y: 20 }, tablet: { x: 60, y: 20 }, mobile: { x: 30, y: 20 } },
-                                styles: { fontSize: '2rem', color: '#1f2937' },
-                            },
-                            {
-                                id: 'feature-card-1',
-                                type: 'card',
-                                componentData: { title: 'Tính năng 1', content: 'Mô tả tính năng 1', dataSource: { type: 'static' } },
-                                size: { width: 180, height: 200 },
-                                position: { desktop: { x: 20, y: 100 }, tablet: { x: 20, y: 100 }, mobile: { x: 20, y: 100 } },
-                                styles: { background: '#ffffff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
-                            },
-                            {
-                                id: 'feature-card-2',
-                                type: 'card',
-                                componentData: { title: 'Tính năng 2', content: 'Mô tả tính năng 2', dataSource: { type: 'static' } },
-                                size: { width: 180, height: 200 },
-                                position: { desktop: { x: 220, y: 100 }, tablet: { x: 220, y: 100 }, mobile: { x: 20, y: 320 } },
-                                styles: { background: '#ffffff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
-                            },
-                        ],
-                    },
+                                componentData: {
+                                    title: 'Gradient Flow',
+                                    content: 'Bắt đầu ngay',
+                                    dataSource: { type: 'static' },
+                                    events: { onClick: { type: 'navigate', url: '' } }
+                                },
+                                size: { width: 180, height: 50 },
+                                mobileSize: { width: 140, height: 44 },
+                                tabletSize: { width: 160, height: 48 },
+                                position: createResponsivePosition({ x: 510, y: 160 }, { x: 304, y: 150 }, { x: 117, y: 120 }),
+                                styles: {
+                                    background: 'linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1)',
+                                    color: '#fff',
+                                    borderRadius: '10px',
+                                    fontWeight: '700',
+                                    fontSize: '16px',
+                                    border: 'none',
+                                    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+                                    cursor: 'pointer',
+                                    padding: '12px 24px'
+                                },
+                                responsiveStyles: {
+                                    mobile: { fontSize: '14px', padding: '10px 18px' },
+                                    tablet: { fontSize: '15px', padding: '11px 20px' }
+                                }
+                            }
+                        ]
+                    }
                 },
                 {
                     id: 'cta-section',
                     name: 'Phần kêu gọi hành động',
-                    lucideIcon: Megaphone,
+                    lucideIcon: Square,
                     description: 'Khuyến khích người dùng hành động',
-                    previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/cta-section.jpg',
+                    previewImage:'https://res.cloudinary.com/dubthm5m6/image/upload/v1760965968/sectionhanhdong_pp4xhh.png',
                     json: {
                         type: 'section',
                         componentData: {
@@ -103,36 +152,77 @@ export const sections = {
                             title: 'Sẵn sàng bắt đầu?',
                             backgroundColor: '#2563eb',
                             dataSource: { type: 'static' },
-                            events: {},
+                            events: {}
                         },
-                        size: { width: 420, height: 300 },
-                        styles: { color: '#ffffff', textAlign: 'center', padding: '40px 0' },
+                        size: { width: 1200, height: 300 },
+                        mobileSize: { width: 375, height: 250 },
+                        tabletSize: { width: 768, height: 280 },
+                        styles: { color: '#ffffff', textAlign: 'center', padding: '0px 0' },
                         children: [
                             {
                                 id: 'cta-heading',
                                 type: 'heading',
-                                componentData: { content: 'Bắt đầu ngay hôm nay!', title: 'Tiêu đề kêu gọi', dataSource: { type: 'static' } },
-                                size: { width: 300, height: 50 },
-                                position: { desktop: { x: 60, y: 20 }, tablet: { x: 60, y: 20 }, mobile: { x: 30, y: 20 } },
-                                styles: { fontSize: '2rem', color: '#ffffff' },
+                                componentData: {
+                                    title: '3D Shadow',
+                                    content: 'Bắt đầu ngay hôm nay!',
+                                    dataSource: { type: 'static' }
+                                },
+                                size: { width: 800, height: 100 },
+                                mobileSize: { width: 340, height: 65 },
+                                tabletSize: { width: 600, height: 85 },
+                                position: createResponsivePosition({ x: 200, y: 20 }, { x: 84, y: 20 }, { x: 17, y: 20 }),
+                                styles: {
+                                    fontFamily: 'Montserrat, sans-serif',
+                                    fontSize: '19px',
+                                    fontWeight: '900',
+                                    color: '#ef4444',
+                                    textAlign: 'center',
+                                    textTransform: 'uppercase',
+                                    margin: '0',
+                                    letterSpacing: '2px'
+                                },
+                                responsiveStyles: {
+                                    mobile: { fontSize: '12px', letterSpacing: '1px' },
+                                    tablet: { fontSize: '14px', letterSpacing: '1.5px' }
+                                }
                             },
                             {
                                 id: 'cta-button',
                                 type: 'button',
-                                componentData: { content: 'Đăng ký ngay', title: 'Nút đăng ký', dataSource: { type: 'static' }, events: { onClick: { type: 'navigate', url: '/signup' } } },
-                                size: { width: 150, height: 40 },
-                                position: { desktop: { x: 135, y: 100 }, tablet: { x: 135, y: 100 }, mobile: { x: 80, y: 100 } },
-                                styles: { background: '#ffffff', color: '#2563eb', borderRadius: '8px' },
-                            },
-                        ],
-                    },
+                                componentData: {
+                                    title: 'Modern Glow',
+                                    content: 'Đăng ký ngay',
+                                    dataSource: { type: 'static' },
+                                    events: { onClick: { type: 'navigate', url: '/signup' } }
+                                },
+                                size: { width: 180, height: 50 },
+                                mobileSize: { width: 150, height: 44 },
+                                tabletSize: { width: 170, height: 48 },
+                                position: createResponsivePosition({ x: 510, y: 140 }, { x: 299, y: 130 }, { x: 112, y: 110 }),
+                                styles: {
+                                    background: 'transparent',
+                                    color: '#00ddeb',
+                                    borderRadius: '10px',
+                                    fontWeight: '700',
+                                    fontSize: '15px',
+                                    border: '2px solid #00ddeb',
+                                    cursor: 'pointer',
+                                    padding: '10px 20px'
+                                },
+                                responsiveStyles: {
+                                    mobile: { fontSize: '14px', padding: '9px 16px' },
+                                    tablet: { fontSize: '14.5px', padding: '9.5px 18px' }
+                                }
+                            }
+                        ]
+                    }
                 },
                 {
                     id: 'testimonial-section',
                     name: 'Phần đánh giá',
-                    lucideIcon: Quote,
+                    lucideIcon: FileText,
                     description: 'Hiển thị đánh giá từ khách hàng',
-                    previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/testimonial-section.jpg',
+                    previewImage:'https://res.cloudinary.com/dubthm5m6/image/upload/v1760965968/sectiondanhgia_s1t980.png',
                     json: {
                         type: 'section',
                         componentData: {
@@ -140,165 +230,123 @@ export const sections = {
                             title: 'Khách hàng nói gì',
                             backgroundColor: '#ffffff',
                             dataSource: { type: 'static' },
-                            events: {},
+                            events: {}
                         },
-                        size: { width: 420, height: 400 },
-                        styles: { textAlign: 'center', padding: '40px 0' },
+                        size: { width: 1200, height: 350 },
+                        mobileSize: { width: 375, height: 320 },
+                        tabletSize: { width: 768, height: 340 },
+                        styles: { textAlign: 'center', padding: '0px 0' },
                         children: [
                             {
                                 id: 'testimonial-heading',
                                 type: 'heading',
-                                componentData: { content: 'Đánh giá khách hàng', title: 'Tiêu đề đánh giá', dataSource: { type: 'static' } },
-                                size: { width: 300, height: 50 },
-                                position: { desktop: { x: 60, y: 20 }, tablet: { x: 60, y: 20 }, mobile: { x: 30, y: 20 } },
-                                styles: { fontSize: '2rem', color: '#1f2937' },
+                                componentData: {
+                                    title: 'Elegant Serif',
+                                    content: 'Đánh giá khách hàng',
+                                    dataSource: { type: 'static' }
+                                },
+                                size: { width: 300, height: 75 },
+                                mobileSize: { width: 340, height: 50 },
+                                tabletSize: { width: 600, height: 65 },
+                                position: createResponsivePosition({ x: 200, y: 20 }, { x: 84, y: 20 }, { x: 17, y: 20 }),
+                                styles: {
+                                    fontFamily: 'Georgia, serif',
+                                    fontSize: '20px',
+                                    fontWeight: '300',
+                                    fontStyle: 'italic',
+                                    color: '#374151',
+                                    textAlign: 'center',
+                                    margin: '0',
+                                    letterSpacing: '8px'
+                                },
+                                responsiveStyles: {
+                                    mobile: { fontSize: '16px', letterSpacing: '3px' },
+                                    tablet: { fontSize: '12px', letterSpacing: '5px' }
+                                }
                             },
                             {
                                 id: 'testimonial-1',
-                                type: 'testimonial',
-                                componentData: { quote: 'Sản phẩm và dịch vụ tuyệt vời!', title: 'Đánh giá 1', author: 'Nguyễn Văn A', dataSource: { type: 'static' } },
-                                size: { width: 380, height: 150 },
-                                position: { desktop: { x: 20, y: 100 }, tablet: { x: 20, y: 100 }, mobile: { x: 20, y: 100 } },
-                                styles: { background: '#f9fafb', borderRadius: '8px', padding: '16px' },
-                            },
-                        ],
-                    },
+                                type: 'paragraph',
+                                componentData: {
+                                    title: 'Đoạn văn trích dẫn',
+                                    content: '"Sản phẩm và dịch vụ tuyệt vời!" - Nguyễn Văn A',
+                                    dataSource: { type: 'static' }
+                                },
+                                size: { width: 300, height: 80 },
+                                mobileSize: { width: 340, height: 90 },
+                                tabletSize: { width: 700, height: 85 },
+                                position: createResponsivePosition({ x: 150, y: 120 }, { x: 34, y: 100 }, { x: 17, y: 90 }),
+                                styles: {
+                                    fontFamily: 'Roboto, sans-serif',
+                                    fontSize: '1.1rem',
+                                    fontStyle: 'italic',
+                                    color: '#374151',
+                                    lineHeight: '1.7',
+                                    textAlign: 'left',
+                                    paddingLeft: '20px',
+                                    borderLeft: '4px solid #2563eb',
+                                    margin: '0',
+                                },
+                                responsiveStyles: {
+                                    mobile: { fontSize: '14px', paddingLeft: '15px', borderLeft: '3px solid #2563eb' },
+                                    tablet: { fontSize: '12px', paddingLeft: '18px' }
+                                }
+                            }
+                        ]
+                    }
                 },
                 {
                     id: 'footer-section',
                     name: 'Phần chân trang',
                     lucideIcon: ChevronDown,
                     description: 'Chân trang với liên kết và thông tin liên hệ',
-                    previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/footer-section.jpg',
+                    previewImage:'https://res.cloudinary.com/dubthm5m6/image/upload/v1760965968/sectionfooter_excwj1.png',
+
                     json: {
                         type: 'section',
                         componentData: {
                             structure: 'ladi-standard',
                             title: 'Chân trang',
-                            backgroundColor: '#1f2937',
+                            backgroundColor: '#295da1',
                             dataSource: { type: 'static' },
-                            events: {},
+                            events: {}
                         },
-                        size: { width: 420, height: 200 },
-                        styles: { color: '#ffffff', textAlign: 'center', padding: '40px 0' },
+                        size: { width: 1200, height: 200 },
+                        mobileSize: { width: 375, height: 220 },
+                        tabletSize: { width: 768, height: 210 },
+                        styles: { color: '#363232', textAlign: 'center', padding: '0px 0',backgroundColor: '#295da1' },
                         children: [
-                            {
-                                id: 'footer-menu',
-                                type: 'menu',
-                                componentData: {
-                                    title: 'Menu chân trang',
-                                    items: [
-                                        { label: 'Trang chủ', url: '/home' },
-                                        { label: 'Liên hệ', url: '/contact' },
-                                        { label: 'Giới thiệu', url: '/about' },
-                                    ],
-                                    dataSource: { type: 'static' },
-                                },
-                                size: { width: 300, height: 50 },
-                                position: { desktop: { x: 60, y: 20 }, tablet: { x: 60, y: 20 }, mobile: { x: 30, y: 20 } },
-                                styles: { display: 'flex', gap: '20px', color: '#ffffff' },
-                            },
                             {
                                 id: 'footer-text',
                                 type: 'paragraph',
-                                componentData: { content: '© 2025 Công ty của bạn. Mọi quyền được bảo lưu.', title: 'Văn bản chân trang', dataSource: { type: 'static' } },
-                                size: { width: 300, height: 30 },
-                                position: { desktop: { x: 60, y: 80 }, tablet: { x: 60, y: 80 }, mobile: { x: 30, y: 80 } },
-                                styles: { fontSize: '0.9rem', color: '#d1d5db' },
-                            },
-                        ],
-                    },
-                },
-            ],
-        },
-        {
-            id: 'ecommerce-sections',
-            name: 'Phần thương mại điện tử',
-            lucideIcon: ShoppingCart,
-            templates: [
-                {
-                    id: 'product-showcase',
-                    name: 'Trưng bày sản phẩm',
-                    lucideIcon: ShoppingCart,
-                    description: 'Hiển thị sản phẩm dạng lưới',
-                    previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/product-showcase.jpg',
-                    json: {
-                        type: 'section',
-                        componentData: {
-                            structure: 'ladi-standard',
-                            title: 'Sản phẩm của chúng tôi',
-                            backgroundColor: '#ffffff',
-                            dataSource: { type: 'static' },
-                            events: {},
-                        },
-                        size: { width: 420, height: 600 },
-                        styles: { textAlign: 'center', padding: '40px 0' },
-                        children: [
-                            {
-                                id: 'product-heading',
-                                type: 'heading',
-                                componentData: { content: 'Khám phá sản phẩm', title: 'Tiêu đề sản phẩm', dataSource: { type: 'static' } },
-                                size: { width: 300, height: 50 },
-                                position: { desktop: { x: 60, y: 20 }, tablet: { x: 60, y: 20 }, mobile: { x: 30, y: 20 } },
-                                styles: { fontSize: '2rem', color: '#1f2937' },
-                            },
-                            {
-                                id: 'product-grid',
-                                type: 'grid',
                                 componentData: {
-                                    title: 'Lưới sản phẩm',
-                                    columns: 2,
-                                    items: [
-                                        { title: 'Sản phẩm 1', image: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/product1.jpg', price: '$29.99' },
-                                        { title: 'Sản phẩm 2', image: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/product2.jpg', price: '$39.99' },
-                                    ],
-                                    dataSource: { type: 'static' },
+                                    title: 'Copyright',
+                                    content: '© 2025 Công ty của bạn. Mọi quyền được bảo lưu.',
+                                    dataSource: { type: 'static' }
                                 },
-                                size: { width: 380, height: 400 },
-                                position: { desktop: { x: 20, y: 100 }, tablet: { x: 20, y: 100 }, mobile: { x: 20, y: 100 } },
-                                styles: { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' },
-                            },
-                        ],
-                    },
-                },
-                {
-                    id: 'cart-section',
-                    name: 'Phần giỏ hàng',
-                    lucideIcon: ShoppingCart,
-                    description: 'Tổng quan giỏ hàng',
-                    previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/cart-section.jpg',
-                    json: {
-                        type: 'section',
-                        componentData: {
-                            structure: 'ladi-standard',
-                            title: 'Giỏ hàng của bạn',
-                            backgroundColor: '#ffffff',
-                            dataSource: { type: 'state', stateKey: 'cartItems' },
-                            events: {},
-                        },
-                        size: { width: 420, height: 400 },
-                        styles: { textAlign: 'left', padding: '40px 0' },
-                        children: [
-                            {
-                                id: 'cart-heading',
-                                type: 'heading',
-                                componentData: { content: 'Giỏ hàng', title: 'Tiêu đề giỏ hàng', dataSource: { type: 'static' } },
-                                size: { width: 300, height: 50 },
-                                position: { desktop: { x: 60, y: 20 }, tablet: { x: 60, y: 20 }, mobile: { x: 30, y: 20 } },
-                                styles: { fontSize: '2rem', color: '#1f2937' },
-                            },
-                            {
-                                id: 'cart-list',
-                                type: 'list',
-                                componentData: { title: 'Danh sách giỏ hàng', items: [], dataSource: { type: 'state', stateKey: 'cartItems' } },
-                                size: { width: 380, height: 300 },
-                                position: { desktop: { x: 20, y: 80 }, tablet: { x: 20, y: 80 }, mobile: { x: 20, y: 80 } },
-                                styles: { listStyleType: 'none', padding: '0' },
-                            },
-                        ],
-                    },
-                },
-            ],
-        },
-    ],
+                                size: { width: 400, height: 60 },
+                                mobileSize: { width: 340, height: 65 },
+                                tabletSize: { width: 650, height: 62 },
+                                position: createResponsivePosition({ x: 200, y: 90 }, { x: 59, y: 80 }, { x: 17, y: 75 }),
+                                styles: {
+                                    fontFamily: 'Roboto, sans-serif',
+                                    fontSize: '1rem',
+                                    color: '#e5e7eb',
+                                    lineHeight: '1.8',
+                                    textAlign: 'center',
+                                    margin: '0',
+                                    padding: '20px',
+                                    borderRadius: '10px'
+                                },
+                                responsiveStyles: {
+                                    mobile: { fontSize: '0.85rem', padding: '15px', borderRadius: '8px' },
+                                    tablet: { fontSize: '0.92rem', padding: '18px' }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
 };

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import logo from "../../assets/logo.png";
 import '../../styles/Toolbar.css';
+import {toast} from "react-toastify";
+import {syncAllElements} from "../../utils/responsiveSync";
 
 const Toolbar = ({
                      onSave,
@@ -33,6 +35,8 @@ const Toolbar = ({
         }
     };
 
+
+
     return (
         <div className="lpb-toolbar-container">
             <div className="lpb-toolbar-inner">
@@ -40,18 +44,6 @@ const Toolbar = ({
                     <img src={logo} alt="Logo" className="logo-image" />
                 </div>
                 <div className="lpb-toolbar-right">
-                    <button
-                        onClick={() => handleViewModeChange('desktop')}
-                        className={`lpb-toolbar-action-btn ${viewMode === 'desktop' ? 'lpb-toolbar-action-active' : ''}`}
-                    >
-                        <i className="fas fa-desktop"></i> Desktop
-                    </button>
-                    <button
-                        onClick={() => handleViewModeChange('mobile')}
-                        className={`lpb-toolbar-action-btn ${viewMode === 'mobile' ? 'lpb-toolbar-action-active' : ''}`}
-                    >
-                        <i className="fas fa-mobile-alt"></i> Mobile
-                    </button>
                     <button
                         onClick={onShowAddSectionGuide}
                         className="lpb-toolbar-action-btn"
