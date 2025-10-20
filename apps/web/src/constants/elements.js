@@ -29,6 +29,8 @@ export const elements = {
                             animation: { type: 'fadeInDown', duration: 800, delay: 0 }
                         },
                         size: { width: 400, height: 80 },
+                        mobileSize: { width: 340, height: 65 },
+                        tabletSize: { width: 370, height: 72 },
                         styles: {
                             fontFamily: 'Arial, sans-serif',
                             fontSize: '3rem',
@@ -37,6 +39,10 @@ export const elements = {
                             textAlign: 'left',
                             margin: '0',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '1.95rem' },
+                            tablet: { fontSize: '2.4rem' }
+                        }
                     },
                 },
                 {
@@ -55,6 +61,8 @@ export const elements = {
                             animation: { type: 'slideInLeft', duration: 1000, delay: 200 }
                         },
                         size: { width: 350, height: 60 },
+                        mobileSize: { width: 340, height: 50 },
+                        tabletSize: { width: 345, height: 55 },
                         styles: {
                             fontFamily: 'Poppins, sans-serif',
                             fontSize: '2.25rem',
@@ -63,6 +71,10 @@ export const elements = {
                             textAlign: 'center',
                             margin: '0',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '1.5rem' },
+                            tablet: { fontSize: '1.8rem' }
+                        }
                     },
                 },
                 {
@@ -77,10 +89,11 @@ export const elements = {
                             title: 'Gradient Modern',
                             content: 'Tiêu đề Gradient Hiện Đại',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'zoomIn', duration: 1200, delay: 0 }
                         },
                         size: { width: 500, height: 90 },
+                        mobileSize: { width: 340, height: 65 },
+                        tabletSize: { width: 450, height: 80 },
                         styles: {
                             fontFamily: 'Montserrat, sans-serif',
                             fontSize: '3.5rem',
@@ -92,6 +105,10 @@ export const elements = {
                             margin: '0',
                             letterSpacing: '-1px',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '2rem', letterSpacing: '0px' },
+                            tablet: { fontSize: '2.8rem', letterSpacing: '-0.5px' }
+                        }
                     },
                 },
                 {
@@ -106,10 +123,11 @@ export const elements = {
                             title: 'Neon Glow',
                             content: 'NEON STYLE',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'pulse', duration: 1500, delay: 0, repeat: true }
                         },
                         size: { width: 450, height: 85 },
+                        mobileSize: { width: 340, height: 60 },
+                        tabletSize: { width: 405, height: 75 },
                         styles: {
                             fontFamily: 'Poppins, sans-serif',
                             fontSize: '3rem',
@@ -119,8 +137,12 @@ export const elements = {
                             textTransform: 'uppercase',
                             margin: '0',
                             letterSpacing: '4px',
-                            textShadow: '0 0 10px #06b6d4, 0 0 20px #06b6d4, 0 0 30px #06b6d4, 0 0 40px #06b6d4',
+                            textShadow: '0 0 10px #06b6d4, 0 0 20px #06b6d4',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '1.8rem', letterSpacing: '2px', textShadow: '0 0 8px #06b6d4' },
+                            tablet: { fontSize: '2.4rem', letterSpacing: '3px' }
+                        }
                     },
                 },
                 {
@@ -135,10 +157,11 @@ export const elements = {
                             title: '3D Shadow',
                             content: '3D EFFECT',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'bounceIn', duration: 1000, delay: 0 }
                         },
                         size: { width: 480, height: 100 },
+                        mobileSize: { width: 340, height: 70 },
+                        tabletSize: { width: 430, height: 90 },
                         styles: {
                             fontFamily: 'Montserrat, sans-serif',
                             fontSize: '4rem',
@@ -148,8 +171,12 @@ export const elements = {
                             textTransform: 'uppercase',
                             margin: '0',
                             letterSpacing: '2px',
-                            textShadow: '1px 1px 0px #dc2626, 2px 2px 0px #b91c1c, 3px 3px 0px #991b1b, 4px 4px 0px #7f1d1d, 5px 5px 10px rgba(0,0,0,0.4)',
+                            textShadow: '1px 1px 0px #dc2626, 2px 2px 0px #b91c1c',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '2.2rem', letterSpacing: '1px' },
+                            tablet: { fontSize: '3rem', letterSpacing: '1.5px' }
+                        }
                     },
                 },
                 {
@@ -164,10 +191,11 @@ export const elements = {
                             title: 'Outline Stroke',
                             content: 'STROKE TEXT',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'fadeInUp', duration: 1000, delay: 0 }
                         },
                         size: { width: 520, height: 95 },
+                        mobileSize: { width: 340, height: 65 },
+                        tabletSize: { width: 470, height: 85 },
                         styles: {
                             fontFamily: 'Poppins, sans-serif',
                             fontSize: '4.5rem',
@@ -178,15 +206,18 @@ export const elements = {
                             margin: '0',
                             letterSpacing: '3px',
                             WebkitTextStroke: '2px #1f2937',
-                            textStroke: '2px #1f2937',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '2.5rem', letterSpacing: '1px', WebkitTextStroke: '1.5px #1f2937' },
+                            tablet: { fontSize: '3.6rem', letterSpacing: '2px' }
+                        }
                     },
                 },
                 {
                     id: 'heading-elegant-serif',
                     name: 'Elegant Serif',
                     lucideIcon: Type,
-                    description: 'Tiêu đề sang trọng với font serif và spacing rộng',
+                    description: 'Tiêu đề sang trọng với font serif',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760078489/text_dan_twqlpg.png',
                     json: {
                         type: 'heading',
@@ -194,10 +225,11 @@ export const elements = {
                             title: 'Elegant Serif',
                             content: 'Elegance & Sophistication',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'fadeIn', duration: 1500, delay: 0 }
                         },
                         size: { width: 550, height: 75 },
+                        mobileSize: { width: 340, height: 55 },
+                        tabletSize: { width: 495, height: 68 },
                         styles: {
                             fontFamily: 'Georgia, serif',
                             fontSize: '2.5rem',
@@ -207,15 +239,18 @@ export const elements = {
                             textAlign: 'center',
                             margin: '0',
                             letterSpacing: '8px',
-                            textShadow: '1px 1px 2px rgba(0,0,0,0.1)',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '1.5rem', letterSpacing: '3px' },
+                            tablet: { fontSize: '2rem', letterSpacing: '5px' }
+                        }
                     },
                 },
                 {
                     id: 'heading-retro-bold',
                     name: 'Retro Bold',
                     lucideIcon: Type,
-                    description: 'Tiêu đề phong cách retro với màu sắc rực rỡ',
+                    description: 'Tiêu đề phong cách retro',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760078722/retro_text_zu9ai2.png',
                     json: {
                         type: 'heading',
@@ -223,10 +258,11 @@ export const elements = {
                             title: 'Retro Bold',
                             content: 'RETRO VIBES',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'rubberBand', duration: 1200, delay: 0 }
                         },
                         size: { width: 480, height: 90 },
+                        mobileSize: { width: 340, height: 65 },
+                        tabletSize: { width: 430, height: 80 },
                         styles: {
                             fontFamily: 'Poppins, sans-serif',
                             fontSize: '3.8rem',
@@ -235,16 +271,19 @@ export const elements = {
                             textAlign: 'center',
                             textTransform: 'uppercase',
                             margin: '0',
-                            letterSpacing: '1px',
-                            textShadow: '3px 3px 0px #dc2626, 6px 6px 0px #ec4899',
+                            textShadow: '3px 3px 0px #dc2626',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '2.2rem', textShadow: '2px 2px 0px #dc2626' },
+                            tablet: { fontSize: '3rem' }
+                        }
                     },
                 },
                 {
                     id: 'heading-minimal-thin',
                     name: 'Minimal Thin',
                     lucideIcon: Type,
-                    description: 'Tiêu đề tối giản với font mỏng thanh lịch',
+                    description: 'Tiêu đề tối giản',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760078489/mimi_text_pv7qez.png',
                     json: {
                         type: 'heading',
@@ -252,10 +291,11 @@ export const elements = {
                             title: 'Minimal Thin',
                             content: 'minimalist design',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'fadeInDown', duration: 1000, delay: 0 }
                         },
                         size: { width: 500, height: 65 },
+                        mobileSize: { width: 340, height: 50 },
+                        tabletSize: { width: 450, height: 58 },
                         styles: {
                             fontFamily: 'Inter, sans-serif',
                             fontSize: '2.8rem',
@@ -266,13 +306,17 @@ export const elements = {
                             letterSpacing: '12px',
                             textTransform: 'lowercase',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '1.7rem', letterSpacing: '6px' },
+                            tablet: { fontSize: '2.2rem', letterSpacing: '9px' }
+                        }
                     },
                 },
                 {
                     id: 'heading-playful-script',
                     name: 'Playful Script',
                     lucideIcon: Type,
-                    description: 'Tiêu đề vui nhộn với font chữ viết tay',
+                    description: 'Tiêu đề vui nhộn',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760078488/beauty_text_tkqau6.png',
                     json: {
                         type: 'heading',
@@ -280,10 +324,11 @@ export const elements = {
                             title: 'Playful Script',
                             content: 'Beautiful Handwriting',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'bounceInLeft', duration: 1200, delay: 0 }
                         },
                         size: { width: 500, height: 80 },
+                        mobileSize: { width: 340, height: 60 },
+                        tabletSize: { width: 450, height: 72 },
                         styles: {
                             fontFamily: "'Dancing Script', cursive",
                             fontSize: '3.2rem',
@@ -291,12 +336,16 @@ export const elements = {
                             color: '#a855f7',
                             textAlign: 'center',
                             margin: '0',
-                            textShadow: '2px 2px 4px rgba(168, 85, 247, 0.3)',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '1.9rem' },
+                            tablet: { fontSize: '2.5rem' }
+                        }
                     },
                 },
             ],
         },
+        // ==================== PARAGRAPHS (10 templates) ====================
         {
             id: 'paragraph',
             name: 'Đoạn văn',
@@ -304,20 +353,21 @@ export const elements = {
             templates: [
                 {
                     id: 'paragraph-standard-left',
-                    name: 'Đoạn văn chuẩn (Căn trái)',
+                    name: 'Đoạn văn chuẩn',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn tiêu chuẩn, căn trái với font Inter',
+                    description: 'Đoạn văn tiêu chuẩn',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759985655/daonvanbasic_bs4dit.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
-                            title: 'Đoạn văn chuẩn (Căn trái)',
-                            content: 'Đây là một đoạn văn tiêu chuẩn, dùng để mô tả nội dung chính của trang.',
+                            title: 'Đoạn văn chuẩn',
+                            content: 'Đây là một đoạn văn tiêu chuẩn.',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'fadeIn', duration: 800, delay: 0 }
                         },
                         size: { width: 400, height: 100 },
+                        mobileSize: { width: 340, height: 90 },
+                        tabletSize: { width: 370, height: 95 },
                         styles: {
                             fontFamily: 'Inter, sans-serif',
                             fontSize: '1rem',
@@ -326,24 +376,29 @@ export const elements = {
                             textAlign: 'left',
                             margin: '0',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.9rem' },
+                            tablet: { fontSize: '0.95rem' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-highlighted',
                     name: 'Đoạn văn nổi bật',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn với background màu nổi bật',
+                    description: 'Đoạn văn với background',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759985655/doanvantieuchuan_kacsto.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
                             title: 'Đoạn văn nổi bật',
-                            content: 'Đây là đoạn văn quan trọng cần được nhấn mạnh với background màu.',
+                            content: 'Đoạn văn quan trọng.',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'fadeInUp', duration: 1000, delay: 0 }
                         },
                         size: { width: 450, height: 110 },
+                        mobileSize: { width: 340, height: 100 },
+                        tabletSize: { width: 405, height: 105 },
                         styles: {
                             fontFamily: 'Roboto, sans-serif',
                             fontSize: '1.1rem',
@@ -356,24 +411,29 @@ export const elements = {
                             borderRadius: '8px',
                             borderLeft: '4px solid #f59e0b',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.95rem', padding: '15px', borderRadius: '6px' },
+                            tablet: { fontSize: '1.05rem', padding: '18px' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-boxed-info',
-                    name: 'Đoạn văn khung thông tin',
+                    name: 'Đoạn văn khung',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn trong khung với viền và shadow',
+                    description: 'Đoạn văn trong khung',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759988424/thongtinquantrong_woocmd.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
-                            title: 'Đoạn văn khung thông tin',
-                            content: 'Thông tin quan trọng được đặt trong khung để thu hút sự chú ý của người đọc.',
+                            title: 'Đoạn văn khung',
+                            content: 'Thông tin quan trọng.',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'zoomIn', duration: 900, delay: 0 }
                         },
                         size: { width: 450, height: 120 },
+                        mobileSize: { width: 340, height: 110 },
+                        tabletSize: { width: 405, height: 115 },
                         styles: {
                             fontFamily: 'Inter, sans-serif',
                             fontSize: '1rem',
@@ -385,26 +445,30 @@ export const elements = {
                             backgroundColor: '#eff6ff',
                             border: '2px solid #3b82f6',
                             borderRadius: '12px',
-                            boxShadow: '0 4px 6px rgba(59, 130, 246, 0.1)',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.9rem', padding: '18px', borderRadius: '10px' },
+                            tablet: { fontSize: '0.95rem', padding: '22px' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-quoted',
-                    name: 'Đoạn văn trích dẫn',
+                    name: 'Trích dẫn',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn trích dẫn với font Roboto, viền trái',
+                    description: 'Đoạn văn trích dẫn',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759985655/doanvantricdan_brdix6.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
-                            title: 'Đoạn văn trích dẫn',
-                            content: '"Trích dẫn này thể hiện ý tưởng quan trọng từ một nguồn đáng tin cậy."',
+                            title: 'Trích dẫn',
+                            content: '"Trích dẫn quan trọng."',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'slideInLeft', duration: 1000, delay: 0 }
                         },
                         size: { width: 400, height: 90 },
+                        mobileSize: { width: 340, height: 85 },
+                        tabletSize: { width: 370, height: 88 },
                         styles: {
                             fontFamily: 'Roboto, sans-serif',
                             fontSize: '1.1rem',
@@ -416,24 +480,29 @@ export const elements = {
                             borderLeft: '4px solid #2563eb',
                             margin: '0',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.95rem', paddingLeft: '15px' },
+                            tablet: { fontSize: '1.05rem', paddingLeft: '18px' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-elegant-large',
                     name: 'Đoạn văn thanh lịch',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn lớn, thanh lịch với spacing rộng',
+                    description: 'Đoạn văn lớn thanh lịch',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759985655/doanvantieuchuan_kacsto.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
-                            title: 'Đoạn văn thanh lịch',
-                            content: 'Nội dung được trình bày với phong cách thanh lịch, tạo cảm giác chuyên nghiệp và dễ đọc.',
+                            title: 'Thanh lịch',
+                            content: 'Nội dung thanh lịch.',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'fadeInDown', duration: 1100, delay: 0 }
                         },
                         size: { width: 480, height: 110 },
+                        mobileSize: { width: 340, height: 100 },
+                        tabletSize: { width: 430, height: 105 },
                         styles: {
                             fontFamily: 'Georgia, serif',
                             fontSize: '1.25rem',
@@ -441,26 +510,30 @@ export const elements = {
                             lineHeight: '2',
                             textAlign: 'justify',
                             margin: '0',
-                            letterSpacing: '0.5px',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '1rem', lineHeight: '1.7' },
+                            tablet: { fontSize: '1.15rem', lineHeight: '1.85' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-modern-card',
-                    name: 'Đoạn văn card hiện đại',
+                    name: 'Card hiện đại',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn trong card với gradient background',
+                    description: 'Card với gradient',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759988425/cardTim_elppyy.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
-                            title: 'Đoạn văn card hiện đại',
-                            content: 'Card hiện đại với gradient background tạo điểm nhấn thị giác độc đáo.',
+                            title: 'Card hiện đại',
+                            content: 'Card với gradient background.',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'bounceIn', duration: 1000, delay: 0 }
                         },
                         size: { width: 460, height: 130 },
+                        mobileSize: { width: 340, height: 115 },
+                        tabletSize: { width: 415, height: 123 },
                         styles: {
                             fontFamily: 'Poppins, sans-serif',
                             fontSize: '1.05rem',
@@ -471,26 +544,30 @@ export const elements = {
                             padding: '30px',
                             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                             borderRadius: '16px',
-                            boxShadow: '0 10px 25px rgba(102, 126, 234, 0.3)',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.95rem', padding: '20px', borderRadius: '12px' },
+                            tablet: { fontSize: '1rem', padding: '25px' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-caption',
                     name: 'Chú thích',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn chú thích với font Inter, kích thước nhỏ',
+                    description: 'Chú thích nhỏ',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759985654/daonvanchuthich_trxytj.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
                             title: 'Chú thích',
-                            content: 'Đây là một đoạn chú thích, thường dùng để giải thích hoặc bổ sung thông tin.',
+                            content: 'Đoạn chú thích.',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'fadeIn', duration: 800, delay: 200 }
                         },
                         size: { width: 350, height: 80 },
+                        mobileSize: { width: 340, height: 75 },
+                        tabletSize: { width: 345, height: 78 },
                         styles: {
                             fontFamily: 'Inter, sans-serif',
                             fontSize: '0.9rem',
@@ -499,24 +576,29 @@ export const elements = {
                             textAlign: 'center',
                             margin: '0',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.8rem' },
+                            tablet: { fontSize: '0.85rem' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-alert-warning',
                     name: 'Cảnh báo',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn cảnh báo với màu cam nổi bật',
+                    description: 'Cảnh báo màu cam',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759988424/infovang_uhpwlg.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
                             title: 'Cảnh báo',
-                            content: '⚠️ Thông tin quan trọng! Vui lòng đọc kỹ nội dung này trước khi tiếp tục.',
+                            content: '⚠️ Thông tin quan trọng!',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'shake', duration: 800, delay: 0 }
                         },
                         size: { width: 450, height: 100 },
+                        mobileSize: { width: 340, height: 95 },
+                        tabletSize: { width: 405, height: 98 },
                         styles: {
                             fontFamily: 'Roboto, sans-serif',
                             fontSize: '1rem',
@@ -530,24 +612,29 @@ export const elements = {
                             border: '2px solid #f59e0b',
                             borderRadius: '8px',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.9rem', padding: '15px' },
+                            tablet: { fontSize: '0.95rem', padding: '18px' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-success-message',
-                    name: 'Thông báo thành công',
+                    name: 'Thành công',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn thông báo thành công với màu xanh',
+                    description: 'Thông báo thành công',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759988424/complete_x0ed1f.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
-                            title: 'Thông báo thành công',
-                            content: '✓ Hoàn thành! Thao tác của bạn đã được thực hiện thành công.',
+                            title: 'Thành công',
+                            content: '✓ Hoàn thành!',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'bounceIn', duration: 1000, delay: 0 }
                         },
                         size: { width: 450, height: 90 },
+                        mobileSize: { width: 340, height: 85 },
+                        tabletSize: { width: 405, height: 88 },
                         styles: {
                             fontFamily: 'Inter, sans-serif',
                             fontSize: '1rem',
@@ -561,24 +648,29 @@ export const elements = {
                             border: '2px solid #10b981',
                             borderRadius: '8px',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.9rem', padding: '15px' },
+                            tablet: { fontSize: '0.95rem', padding: '18px' }
+                        }
                     },
                 },
                 {
                     id: 'paragraph-dark-mode',
-                    name: 'Đoạn văn Dark Mode',
+                    name: 'Dark Mode',
                     lucideIcon: FileText,
-                    description: 'Đoạn văn tối cho giao diện dark mode',
+                    description: 'Đoạn văn dark mode',
                     previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1759988424/dark_tu8acy.png',
                     json: {
                         type: 'paragraph',
                         componentData: {
-                            title: 'Đoạn văn Dark Mode',
-                            content: 'Nội dung được tối ưu cho giao diện tối, mang lại trải nghiệm đọc thoải mái trong môi trường ánh sáng yếu.',
+                            title: 'Dark Mode',
+                            content: 'Nội dung dark mode.',
                             dataSource: { type: 'static' },
-                            events: {},
                             animation: { type: 'fadeInUp', duration: 1000, delay: 0 }
                         },
                         size: { width: 470, height: 120 },
+                        mobileSize: { width: 340, height: 110 },
+                        tabletSize: { width: 425, height: 115 },
                         styles: {
                             fontFamily: 'Roboto, sans-serif',
                             fontSize: '1.05rem',
@@ -589,8 +681,11 @@ export const elements = {
                             padding: '25px',
                             backgroundColor: '#1f2937',
                             borderRadius: '12px',
-                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
                         },
+                        responsiveStyles: {
+                            mobile: { fontSize: '0.9rem', padding: '18px', borderRadius: '10px' },
+                            tablet: { fontSize: '1rem', padding: '22px' }
+                        }
                     },
                 },
             ],
@@ -1471,7 +1566,7 @@ export const elements = {
                             events: {},
                         },
                         size: { width: 200, height: 200 },
-                        styles: { maxWidth: '100%', borderRadius: '8px' },
+                        styles: { maxWidth: '100%', borderRadius: '8px' }
                     },
                 },
                 {
@@ -1495,31 +1590,31 @@ export const elements = {
                 },
             ],
         },
-        {
-            id: 'video',
-            name: 'Video',
-            lucideIcon: Video,
-            templates: [
-                {
-                    id: 'video-standard',
-                    name: 'Video chuẩn',
-                    lucideIcon: Video,
-                    description: 'Video tiêu chuẩn',
-                    previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/video-standard.jpg',
-                    json: {
-                        type: 'video',
-                        componentData: {
-                            title: 'Video',
-                            src: 'https://res.cloudinary.com/your_cloud_name/video/upload/v1234567890/sample.mp4',
-                            dataSource: { type: 'static' },
-                            events: {},
-                        },
-                        size: { width: 300, height: 200 },
-                        styles: { maxWidth: '100%', borderRadius: '8px' },
-                    },
-                },
-            ],
-        },
+        // {
+        //     id: 'video',
+        //     name: 'Video',
+        //     lucideIcon: Video,
+        //     templates: [
+        //         {
+        //             id: 'video-standard',
+        //             name: 'Video chuẩn',
+        //             lucideIcon: Video,
+        //             description: 'Video tiêu chuẩn',
+        //             previewImage: 'https://res.cloudinary.com/your_cloud_name/image/upload/v1234567890/video-standard.jpg',
+        //             json: {
+        //                 type: 'video',
+        //                 componentData: {
+        //                     title: 'Video',
+        //                     src: 'https://res.cloudinary.com/your_cloud_name/video/upload/v1234567890/sample.mp4',
+        //                     dataSource: { type: 'static' },
+        //                     events: {},
+        //                 },
+        //                 size: { width: 300, height: 200 },
+        //                 styles: { maxWidth: '100%', borderRadius: '8px' },
+        //             },
+        //         },
+        //     ],
+        // },
         {
             "id": "icon",
             "name": "Biểu tượng",
@@ -1850,7 +1945,7 @@ export const elements = {
                     "name": "Lưới ảnh cơ bản",
                     "lucideIcon": "LayoutGrid",
                     "description": "Lưới ảnh đơn giản với hiệu ứng fadeIn khi tải",
-                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg",
+                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760968232/luoianh22_iujwkl.png",
                     "json": {
                         "type": "gallery",
                         "componentData": {
@@ -1861,73 +1956,31 @@ export const elements = {
                             ],
                             "dataSource": { "type": "static" },
                             "events": { "onClick": { "type": "openPopup", "popupId": "image-popup" } },
-                            "animation": { "type": "fadeIn", "duration": 800, "delay": 0 }
+                            "animation": { "type": "fadeIn", "duration": 800, "delay": 0 },
+                            styles: { maxWidth: '50%', borderRadius: '8px' }
+
                         },
                         "size": { "width": 380, "height": 300 },
                         "styles": {
-                            "display": "grid",
+                            "display": "flex",
                             "gridTemplateColumns": "repeat(auto-fill, minmax(150px, 1fr))",
                             "gap": "10px",
                             "borderRadius": "8px",
                             "overflow": "hidden"
-                        }
-                    }
-                },
-                {
-                    "id": "gallery-masonry-modern",
-                    "name": "Masonry hiện đại",
-                    "lucideIcon": "LayoutGrid",
-                    "description": "Bố cục masonry linh hoạt với animation zoomIn khi hover",
-                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg",
-                    "json": {
-                        "type": "gallery",
-                        "componentData": {
-                            "title": "Masonry hiện đại",
-                            "images": [
-                                "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg",
-                                "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg",
-                                "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg"
-                            ],
-                            "dataSource": { "type": "static" },
-                            "events": { "onHover": { "type": "zoomIn", "duration": 300 } },
-                            "animation": { "type": "fadeInUp", "duration": 1000, "delay": 200 }
                         },
-                        "size": { "width": 400, "height": 350 },
-                        "styles": {
-                            "display": "grid",
-                            "gridTemplateColumns": "repeat(auto-fill, minmax(120px, 1fr))",
-                            "gap": "8px",
-                            "transition": "all 0.3s ease",
-                            ":hover": {
-                                "transform": "scale(1.05)"
+                        "responsiveStyles": {
+                            "mobile": {
+                                "gridTemplateColumns": "repeat(2, 1fr)",
+                                "gap": "1px"
+                            },
+                            "tablet": {
+                                "gridTemplateColumns": "repeat(3, 1fr)",
+                                "gap": "10px"
+                            },
+                            "desktop": {
+                                "gridTemplateColumns": "repeat(4, 1fr)",
+                                "gap": "12px"
                             }
-                        }
-                    }
-                },
-                {
-                    "id": "gallery-carousel-slide",
-                    "name": "Carousel slide",
-                    "lucideIcon": "LayoutGrid",
-                    "description": "Carousel ảnh với chuyển động mượt mà và autoplay",
-                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg",
-                    "json": {
-                        "type": "gallery",
-                        "componentData": {
-                            "title": "Carousel slide",
-                            "images": [
-                                "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg",
-                                "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg"
-                            ],
-                            "dataSource": { "type": "static" },
-                            "events": { "onClick": { "type": "navigate", "url": "/gallery-detail" } },
-                            "animation": { "type": "slideInRight", "duration": 1200, "delay": 0, "repeat": true }
-                        },
-                        "size": { "width": 380, "height": 250 },
-                        "styles": {
-                            "display": "flex",
-                            "overflow": "hidden",
-                            "borderRadius": "12px",
-                            "boxShadow": "0 4px 8px rgba(0,0,0,0.1)"
                         }
                     }
                 },
@@ -1936,7 +1989,7 @@ export const elements = {
                     "name": "Thumbnail grid",
                     "lucideIcon": "LayoutGrid",
                     "description": "Lưới thumbnail với lightbox khi click",
-                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/img_rtpdlt.jpg",
+                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760968232/luoianh_zsiefa.png",
                     "json": {
                         "type": "gallery",
                         "componentData": {
@@ -1956,6 +2009,20 @@ export const elements = {
                             "gridTemplateColumns": "repeat(3, 1fr)",
                             "gap": "12px",
                             "cursor": "pointer"
+                        },
+                        "responsiveStyles": {
+                            "mobile": {
+                                "gridTemplateColumns": "repeat(2, 1fr)",
+                                "gap": "1px"
+                            },
+                            "tablet": {
+                                "gridTemplateColumns": "repeat(3, 1fr)",
+                                "gap": "10px"
+                            },
+                            "desktop": {
+                                "gridTemplateColumns": "repeat(4, 1fr)",
+                                "gap": "12px"
+                            }
                         }
                     }
                 }

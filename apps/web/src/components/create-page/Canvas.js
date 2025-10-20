@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useCallback, useState, useEffect } from 'react';
 import { useDrop } from 'react-dnd';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'react-toastify';
@@ -10,6 +10,22 @@ import { Element } from './Element';
 import { ItemTypes, getCanvasPosition, snapToGrid, getElementBounds, renderComponentContent } from './helpers';
 import AddSectionButton from './AddSectionButton';
 import eventController from '../../utils/EventUtils';
+import { getResponsiveValues } from '../../utils/responsiveSync';
+
+/**
+ * Get canvas width based on view mode
+ */
+const getCanvasWidth = (viewMode) => {
+    switch (viewMode) {
+        case 'mobile':
+            return 375;
+        case 'tablet':
+            return 768;
+        case 'desktop':
+        default:
+            return 1200;
+    }
+};
 
 const Canvas = React.memo(({
                                pageData,
@@ -46,17 +62,23 @@ const Canvas = React.memo(({
     const [showPopup, setShowPopup] = useState(false);
     const [guideLinePosition, setGuideLinePosition] = useState(guideLine?.y || 0);
     const [visiblePopups, setVisiblePopups] = useState([]);
+
+    // Dynamic canvas width based on view mode
+    const canvasWidth = getCanvasWidth(viewMode);
+
     const [canvasBounds, setCanvasBounds] = useState({
-        width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : (viewMode === 'mobile' ? 375 : 1200),
-        height: canvasRef.current ? canvasRef.current.offsetHeight / (zoomLevel / 100) : 1000,
+        width: canvasWidth,
+        height: pageData.canvas.height || 1000,
     });
+
     useEffect(() => {
-        // Subscribe to popup events
+        console.log(`Canvas viewMode: ${viewMode}, width: ${canvasWidth}`);
+    }, [viewMode, canvasWidth]);
+
+    useEffect(() => {
         const unsubscribeOpen = eventController.subscribe('popup-open', ({ popupId }) => {
             setVisiblePopups(prev => {
-                if (!prev.includes(popupId)) {
-                    return [...prev, popupId];
-                }
+                if (!prev.includes(popupId)) return [...prev, popupId];
                 return prev;
             });
         });
@@ -65,31 +87,44 @@ const Canvas = React.memo(({
             setVisiblePopups(prev => prev.filter(id => id !== popupId));
         });
 
-        // Cleanup
         return () => {
             unsubscribeOpen();
             unsubscribeClose();
         };
     }, []);
+
+    // Update canvas bounds when view mode or zoom changes
     useEffect(() => {
         const handleResize = () => {
+            const width = canvasWidth;
             setCanvasBounds({
-                width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : (viewMode === 'mobile' ? 375 : 1200),
-                height: canvasRef.current ? canvasRef.current.offsetHeight / (zoomLevel / 100) : 1000,
+                width: width,
+                height: pageData.canvas.height || 1000,
             });
         };
+        handleResize();
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
-    }, [viewMode, zoomLevel]);
+    }, [viewMode, canvasWidth, zoomLevel, pageData.canvas.height]);
 
     const getSnapPoints = useCallback(() => {
         const points = [
             { x: 0, y: 0 },
-            { x: viewMode === 'mobile' ? 375 : 1200, y: canvasBounds.height },
-            { x: (viewMode === 'mobile' ? 375 : 1200) / 2, y: canvasBounds.height / 2 },
+            { x: canvasWidth, y: canvasBounds.height },
+            { x: canvasWidth / 2, y: canvasBounds.height / 2 },
         ];
+
         pageData.elements.forEach((el) => {
-            const bounds = getElementBounds(el);
+            const { position: elPos, size: elSize } = getResponsiveValues(el, viewMode);
+            const bounds = {
+                left: elPos.x || 0,
+                top: elPos.y || 0,
+                right: (elPos.x || 0) + (elSize.width || 200),
+                bottom: (elPos.y || 0) + (elSize.height || 50),
+                centerX: (elPos.x || 0) + (elSize.width || 200) / 2,
+                centerY: (elPos.y || 0) + (elSize.height || 50) / 2,
+            };
+
             points.push(
                 { x: bounds.left, y: bounds.top },
                 { x: bounds.right, y: bounds.bottom },
@@ -99,8 +134,17 @@ const Canvas = React.memo(({
                 { x: bounds.centerX, y: bounds.top },
                 { x: bounds.centerX, y: bounds.bottom }
             );
+
             el.children?.forEach((child) => {
-                const childBounds = getElementBounds(child);
+                const { position: childPos, size: childSize } = getResponsiveValues(child, viewMode);
+                const childBounds = {
+                    left: childPos.x || 0,
+                    top: childPos.y || 0,
+                    right: (childPos.x || 0) + (childSize.width || 200),
+                    bottom: (childPos.y || 0) + (childSize.height || 50),
+                    centerX: (childPos.x || 0) + (childSize.width || 200) / 2,
+                    centerY: (childPos.y || 0) + (childSize.height || 50) / 2,
+                };
                 points.push(
                     { x: childBounds.left, y: childBounds.top },
                     { x: childBounds.right, y: childBounds.bottom },
@@ -113,20 +157,38 @@ const Canvas = React.memo(({
             });
         });
         return points;
-    }, [pageData.elements, canvasBounds, viewMode]);
+    }, [pageData.elements, canvasBounds, viewMode, canvasWidth]);
 
     const calculateGuidelines = useCallback((snapped) => {
         const newGuidelines = [];
         pageData.elements.forEach((el) => {
-            const bounds = getElementBounds(el);
+            const { position: elPos, size: elSize } = getResponsiveValues(el, viewMode);
+            const bounds = {
+                left: elPos.x || 0,
+                top: elPos.y || 0,
+                right: (elPos.x || 0) + (elSize.width || 200),
+                bottom: (elPos.y || 0) + (elSize.height || 50),
+                centerX: (elPos.x || 0) + (elSize.width || 200) / 2,
+                centerY: (elPos.y || 0) + (elSize.height || 50) / 2,
+            };
+
             if (Math.abs(snapped.x - bounds.left) < 15) newGuidelines.push({ vertical: true, position: bounds.left });
             if (Math.abs(snapped.x - bounds.right) < 15) newGuidelines.push({ vertical: true, position: bounds.right });
             if (Math.abs(snapped.x - bounds.centerX) < 15) newGuidelines.push({ vertical: true, position: bounds.centerX });
             if (Math.abs(snapped.y - bounds.top) < 15) newGuidelines.push({ vertical: false, position: bounds.top });
             if (Math.abs(snapped.y - bounds.bottom) < 15) newGuidelines.push({ vertical: false, position: bounds.bottom });
             if (Math.abs(snapped.y - bounds.centerY) < 15) newGuidelines.push({ vertical: false, position: bounds.centerY });
+
             el.children?.forEach((child) => {
-                const childBounds = getElementBounds(child);
+                const { position: childPos, size: childSize } = getResponsiveValues(child, viewMode);
+                const childBounds = {
+                    left: childPos.x || 0,
+                    top: childPos.y || 0,
+                    right: (childPos.x || 0) + (childSize.width || 200),
+                    bottom: (childPos.y || 0) + (childSize.height || 50),
+                    centerX: (childPos.x || 0) + (childSize.width || 200) / 2,
+                    centerY: (childPos.y || 0) + (childSize.height || 50) / 2,
+                };
                 if (Math.abs(snapped.x - childBounds.left) < 15) newGuidelines.push({ vertical: true, position: childBounds.left });
                 if (Math.abs(snapped.x - childBounds.right) < 15) newGuidelines.push({ vertical: true, position: childBounds.right });
                 if (Math.abs(snapped.x - childBounds.centerX) < 15) newGuidelines.push({ vertical: true, position: childBounds.centerX });
@@ -135,17 +197,17 @@ const Canvas = React.memo(({
                 if (Math.abs(snapped.y - childBounds.centerY) < 15) newGuidelines.push({ vertical: false, position: childBounds.centerY });
             });
         });
+
+        // Canvas edge guidelines
         if (Math.abs(snapped.x) < 15) newGuidelines.push({ vertical: true, position: 0 });
-        if (Math.abs(snapped.x - (viewMode === 'mobile' ? 375 : 1200)) < 15)
-            newGuidelines.push({ vertical: true, position: viewMode === 'mobile' ? 375 : 1200 });
-        if (Math.abs(snapped.x - (viewMode === 'mobile' ? 375 : 1200) / 2) < 15)
-            newGuidelines.push({ vertical: true, position: (viewMode === 'mobile' ? 375 : 1200) / 2 });
+        if (Math.abs(snapped.x - canvasWidth) < 15) newGuidelines.push({ vertical: true, position: canvasWidth });
+        if (Math.abs(snapped.x - canvasWidth / 2) < 15) newGuidelines.push({ vertical: true, position: canvasWidth / 2 });
         if (Math.abs(snapped.y) < 15) newGuidelines.push({ vertical: false, position: 0 });
         if (Math.abs(snapped.y - canvasBounds.height) < 15) newGuidelines.push({ vertical: false, position: canvasBounds.height });
-        if (Math.abs(snapped.y - canvasBounds.height / 2) < 15)
-            newGuidelines.push({ vertical: false, position: canvasBounds.height / 2 });
+        if (Math.abs(snapped.y - canvasBounds.height / 2) < 15) newGuidelines.push({ vertical: false, position: canvasBounds.height / 2 });
+
         return newGuidelines;
-    }, [pageData.elements, viewMode, canvasBounds]);
+    }, [pageData.elements, viewMode, canvasBounds, canvasWidth]);
 
     const handleSelectElement = useCallback((ids, ctrlKey) => {
         if (typeof onSelectElement === 'function') {
@@ -164,18 +226,22 @@ const Canvas = React.memo(({
         const lastSection = pageData.elements
             .filter((el) => el.type === 'section')
             .reduce((maxY, el) => {
-                const y = el.position?.[viewMode]?.y || 0;
-                const height = el.size?.height || 400;
+                const { position: elPos, size: elSize } = getResponsiveValues(el, viewMode);
+                const y = elPos.y || 0;
+                const height = elSize.height || 400;
                 return Math.max(maxY, y + height);
             }, 0);
-        const newHeight = lastSection + 50;
-        setGuideLinePosition(lastSection + 10);
+        const newHeight = lastSection + 100;
+        setGuideLinePosition(lastSection + 20);
         return newHeight;
     }, [pageData.elements, viewMode]);
 
     useEffect(() => {
-        updateCanvasHeight();
-    }, [updateCanvasHeight]);
+        const newHeight = updateCanvasHeight();
+        if (newHeight !== pageData.canvas.height) {
+            pageData.canvas.height = newHeight;
+        }
+    }, [pageData.elements, viewMode, updateCanvasHeight]);
 
     useEffect(() => {
         const unsubscribeOpen = eventController.subscribe('popup-open', (payload) => {
@@ -212,12 +278,13 @@ const Canvas = React.memo(({
             const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
             const snapPoints = getSnapPoints();
             const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+
             if (monitor.getItemType() === ItemTypes.ELEMENT && item.json) {
                 setDragPreview({
                     id: 'preview',
                     x: snapped.x,
                     y: snapped.y,
-                    size: item.json.size || { width: viewMode === 'mobile' ? 375 : 1200, height: 400 },
+                    size: item.json.size || { width: canvasWidth, height: 400 },
                     type: item.json.type,
                     componentData: item.json.componentData || { structure: 'ladi-standard' },
                     styles: item.json.styles || {},
@@ -253,6 +320,7 @@ const Canvas = React.memo(({
             const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
             const snapPoints = getSnapPoints();
             const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+
             if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
                 const sourceSection = pageData.elements.find((el) => el.id === item.parentId);
                 if (!sourceSection) {
@@ -273,38 +341,36 @@ const Canvas = React.memo(({
                     setGuidelines([]);
                     return { moved: false };
                 }
+
                 const lastSectionY = pageData.elements
                     .filter((el) => el.type === 'section')
                     .reduce((maxY, el) => {
-                        const y = el.position?.[viewMode]?.y || 0;
-                        const height = el.size?.height || 400;
+                        const { position: elPos, size: elSize } = getResponsiveValues(el, viewMode);
+                        const y = elPos.y || 0;
+                        const height = elSize.height || 400;
                         return Math.max(maxY, y + height);
                     }, 0);
+
                 const newElement = {
                     id: `${item.json.type}-${Date.now()}`,
                     type: item.json.type,
                     componentData: JSON.parse(JSON.stringify(item.json.componentData || { structure: item.json.type === 'section' ? 'ladi-standard' : undefined })),
                     position: {
-                        [viewMode]: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
-                        desktop: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
-                        tablet: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
-                        mobile: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
+                        desktop: { x: item.json.type === 'section' ? 0 : snapped.x, y: item.json.type === 'section' ? lastSectionY + 20 : snapped.y, z: 1 },
+                        tablet: { x: item.json.type === 'section' ? 0 : snapped.x, y: item.json.type === 'section' ? lastSectionY + 20 : snapped.y, z: 1 },
+                        mobile: { x: item.json.type === 'section' ? 0 : snapped.x, y: item.json.type === 'section' ? lastSectionY + 20 : snapped.y, z: 1 },
                     },
                     size: {
-                        ...item.json.size,
-                        width: viewMode === 'mobile' ? 375 : item.json.type === 'section' ? 1200 : 600,
+                        width: item.json.type === 'section' ? 1200 : 600,
+                        height: item.json.size?.height || 400,
+                    },
+                    mobileSize: {
+                        width: item.json.type === 'section' ? 375 : Math.min(340, item.json.size?.width || 600),
+                        height: item.json.size?.height || 400
+                    },
+                    tabletSize: {
+                        width: item.json.type === 'section' ? 768 : Math.min(600, item.json.size?.width || 600),
+                        height: item.json.size?.height || 400
                     },
                     styles: JSON.parse(JSON.stringify(item.json.styles || {})),
                     children: JSON.parse(JSON.stringify(item.json.children || [])),
@@ -312,11 +378,15 @@ const Canvas = React.memo(({
                     locked: false,
                     meta: { updated_at: new Date().toISOString() },
                 };
+
                 onAddElement(newElement);
+
                 if (item.json.type === 'section') {
-                    setGuideLinePosition(lastSectionY + 10 + (item.json.size?.height || 400));
+                    const newHeight = lastSectionY + 20 + (item.json.size?.height || 400);
+                    setGuideLinePosition(newHeight);
                     updateCanvasHeight();
                 }
+
                 toast.success(`Đã thêm ${item.json.type} mới!`);
                 setDragPreview(null);
                 setGuidelines([]);
@@ -324,7 +394,7 @@ const Canvas = React.memo(({
                     moved: true,
                     newPosition: {
                         x: item.json.type === 'section' ? 0 : snapped.x,
-                        y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
+                        y: item.json.type === 'section' ? lastSectionY + 20 : snapped.y,
                     },
                 };
             }
@@ -333,7 +403,7 @@ const Canvas = React.memo(({
             return { moved: false };
         },
         collect: (monitor) => ({ isOver: monitor.isOver(), dragItem: monitor.getItem() }),
-    }), [pageData.elements, viewMode, zoomLevel, gridSize, showGrid, canvasBounds, onAddElement, onMoveChild, updateCanvasHeight]);
+    }), [pageData.elements, viewMode, zoomLevel, gridSize, showGrid, canvasBounds, onAddElement, onMoveChild, updateCanvasHeight, canvasWidth]);
 
     const handleContextMenu = useCallback((id, position) => {
         setContextMenu({ id, position });
@@ -358,19 +428,28 @@ const Canvas = React.memo(({
         if (e && typeof e.preventDefault === 'function') e.preventDefault();
         if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
         const step = e.shiftKey ? 10 : 1;
+
         ids.forEach((id) => {
             const element = pageData.elements.find((el) => el.id === id);
             if (element && element.type !== 'section' && element.type !== 'popup' && element.type !== 'modal') {
-                const newY = e.key === 'ArrowUp' ? Math.max(0, (element.position[viewMode]?.y || 0) - step) : (element.position[viewMode]?.y || 0) + step;
-                const newX = e.key === 'ArrowLeft' ? Math.max(0, (element.position[viewMode]?.x || 0) - step) : (element.position[viewMode]?.x || 0) + step;
+                const { position: currentPos } = getResponsiveValues(element, viewMode);
+
                 switch (e.key) {
                     case 'ArrowUp':
+                        const newYUp = Math.max(0, (currentPos.y || 0) - step);
+                        onUpdatePosition(id, { [viewMode]: { x: currentPos.x || 0, y: newYUp, z: currentPos.z || 1 } }, 'absolute');
+                        break;
                     case 'ArrowDown':
-                        onUpdatePosition(id, { [viewMode]: { x: element.position[viewMode]?.x || 0, y: newY } }, 'absolute');
+                        const newYDown = (currentPos.y || 0) + step;
+                        onUpdatePosition(id, { [viewMode]: { x: currentPos.x || 0, y: newYDown, z: currentPos.z || 1 } }, 'absolute');
                         break;
                     case 'ArrowLeft':
+                        const newXLeft = Math.max(0, (currentPos.x || 0) - step);
+                        onUpdatePosition(id, { [viewMode]: { x: newXLeft, y: currentPos.y || 0, z: currentPos.z || 1 } }, 'absolute');
+                        break;
                     case 'ArrowRight':
-                        onUpdatePosition(id, { [viewMode]: { x: newX, y: element.position[viewMode]?.y || 0 } }, 'absolute');
+                        const newXRight = (currentPos.x || 0) + step;
+                        onUpdatePosition(id, { [viewMode]: { x: newXRight, y: currentPos.y || 0, z: currentPos.z || 1 } }, 'absolute');
                         break;
                     case 'Delete':
                     case 'Backspace':
@@ -438,7 +517,18 @@ const Canvas = React.memo(({
         };
         return (
             <div className="lpb-drag-preview" style={previewStyle}>
-                {renderComponentContent(type, componentData || {}, styles || {}, children || [])}
+                {renderComponentContent(
+                    type,
+                    componentData || { structure: 'ladi-standard' },
+                    styles || {},
+                    children || [],
+                    true,              // isCanvas
+                    null,              // onSelectChild
+                    null,              // parentId
+                    null,              // childId
+                    false,             // isTemplateMode
+                    viewMode           // viewMode - THÊM DÒNG NÀY
+                )}
             </div>
         );
     };
@@ -450,6 +540,7 @@ const Canvas = React.memo(({
                 style={{
                     position: 'absolute',
                     left: '50%',
+                    top: '50%',
                     transform: 'translate(-50%, -50%)',
                     zIndex: 1000,
                 }}
@@ -511,16 +602,6 @@ const Canvas = React.memo(({
                     className="lpb-context-menu-item"
                     style={{ padding: '8px 12px', cursor: 'pointer' }}
                     onClick={() => {
-                        onGroupElements([contextMenu.id]);
-                        setContextMenu(null);
-                    }}
-                >
-                    Nhóm
-                </div>
-                <div
-                    className="lpb-context-menu-item"
-                    style={{ padding: '8px 12px', cursor: 'pointer' }}
-                    onClick={() => {
                         onToggleVisibility(contextMenu.id);
                         setContextMenu(null);
                     }}
@@ -549,13 +630,15 @@ const Canvas = React.memo(({
                 }`}
                 onClick={handleCanvasClick}
                 style={{
-                    width: '100%',
-                    height: pageData.canvas.height ? `${pageData.canvas.height}px` : 'auto',
-                    background: pageData.canvas.background,
+                    width: `${canvasWidth}px`,
+                    height: pageData.canvas.height ? `${pageData.canvas.height}px` : '1000px',
+                    background: pageData.canvas.background || '#ffffff',
                     transform: `scale(${zoomLevel / 100})`,
                     transformOrigin: 'top center',
                     margin: '0 auto',
                     position: 'relative',
+                    overflow: 'visible',
+                    transition: 'width 0.3s ease',
                 }}
             >
                 <Guidelines guidelines={guidelines} zoomLevel={zoomLevel} />
@@ -579,8 +662,8 @@ const Canvas = React.memo(({
                         onMoveChild={onMoveChild}
                         showGrid={showGrid}
                         setDragPreview={setDragPreview}
-                        visiblePopups={visiblePopups}
-                        onClosePopup={handleClosePopup}
+                        visibleElements={visiblePopups}
+                        onCloseElement={handleClosePopup}
                         onSaveTemplate={onSaveTemplate}
                         onToggleVisibility={onToggleVisibility}
                         onEditElement={onEditElement}
@@ -600,7 +683,7 @@ const Canvas = React.memo(({
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 top: guideLinePosition,
-                                width: viewMode === 'mobile' ? '375px' : '1200px',
+                                width: `${canvasWidth}px`,
                                 height: '1px',
                                 backgroundColor: '#2563eb',
                                 opacity: 0.5,
@@ -608,29 +691,33 @@ const Canvas = React.memo(({
                             }}
                         />
                         {pageData.elements.length > 0 && (
-                            <AddSectionButton guideLinePosition={guideLinePosition} setShowPopup={setShowPopup} onShowAddSectionPopup={onShowAddSectionPopup} />
+                            <AddSectionButton
+                                guideLinePosition={guideLinePosition}
+                                setShowPopup={setShowPopup}
+                                onShowAddSectionPopup={onShowAddSectionPopup}
+                            />
                         )}
                         <div
                             style={{
                                 position: 'absolute',
-                                left: viewMode === 'mobile' ? 'calc(50% - 187.5px)' : 'calc(50% - 600px)',
+                                left: 0,
                                 top: 0,
                                 width: '1px',
-                                height: pageData.canvas.height ? `${pageData.canvas.height}px` : '100%',
+                                height: pageData.canvas.height ? `${pageData.canvas.height}px` : '1000px',
                                 backgroundColor: '#2563eb',
-                                opacity: 0.5,
+                                opacity: 0.3,
                                 zIndex: 1001,
                             }}
                         />
                         <div
                             style={{
                                 position: 'absolute',
-                                left: viewMode === 'mobile' ? 'calc(50% + 187.5px)' : 'calc(50% + 600px)',
+                                right: 0,
                                 top: 0,
                                 width: '1px',
-                                height: pageData.canvas.height ? `${pageData.canvas.height}px` : '100%',
+                                height: pageData.canvas.height ? `${pageData.canvas.height}px` : '1000px',
                                 backgroundColor: '#2563eb',
-                                opacity: 0.5,
+                                opacity: 0.3,
                                 zIndex: 1001,
                             }}
                         />
@@ -640,6 +727,7 @@ const Canvas = React.memo(({
                     selectedElements={pageData.elements.filter((el) => Array.isArray(selectedIds) && selectedIds.includes(el.id))}
                     onResize={onUpdateSize}
                     zoomLevel={zoomLevel}
+                    viewMode={viewMode}
                 />
                 {renderContextMenu()}
                 {renderAddSectionButton()}

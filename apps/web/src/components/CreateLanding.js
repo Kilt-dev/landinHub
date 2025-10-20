@@ -20,6 +20,14 @@ import { ErrorBoundary } from './create-page/ErrorBoundary';
 import DogLoader from './Loader'; // Import the DogLoader component
 import '../styles/CreateLanding.css';
 import PreviewModal from '../components/PreviewModal'; // Import PreviewModal
+import {
+    syncElementBetweenModes,
+    syncAllElements,
+    getResponsiveValues,
+    initializeResponsiveData
+} from '../utils/responsiveSync';
+import ResponsiveToolbar from '../components/create-page/ResponsiveToolbar';
+
 
 
 // Constants
@@ -67,12 +75,35 @@ const usePageContent = (pageId, navigate, setPageData, setHistory, setHistoryInd
             try {
                 const response = await api.get(`/api/pages/${pageId}/content`);
                 if (response.data.success) {
-                    const { pageData: backendPageData, html } = response.data;
+                    let { pageData: backendPageData, html } = response.data;
                     let finalPageData = backendPageData || (html ? parseHTMLToPageData(html) : {
                         canvas: { width: DEFAULT_CANVAS_WIDTH, height: 'auto', background: DEFAULT_CANVAS_BACKGROUND },
                         elements: [],
                         meta: { created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
                     });
+
+                    // Đảm bảo các section có thuộc tính background trong componentData
+                    finalPageData.elements = finalPageData.elements.map((el) => {
+                        if (el.type === 'section' && !el.componentData.backgroundType) {
+                            return {
+                                ...el,
+                                componentData: {
+                                    ...el.componentData,
+                                    backgroundType: el.styles?.backgroundImage ? 'image' :
+                                        el.styles?.background?.includes('gradient') ? 'gradient' : 'color',
+                                    backgroundColor: el.componentData.backgroundColor || el.styles?.backgroundColor || '#ffffff',
+                                    backgroundImage: el.styles?.backgroundImage?.replace(/^url\(["']?(.+?)["']?\)$/, '$1') || undefined,
+                                    backgroundSize: el.styles?.backgroundSize || 'cover',
+                                    backgroundPosition: el.styles?.backgroundPosition || 'center',
+                                    backgroundRepeat: el.styles?.backgroundRepeat || 'no-repeat',
+                                    backgroundAttachment: el.styles?.backgroundAttachment || 'scroll',
+                                    gradient: el.styles?.background?.includes('gradient') ? el.styles.background : undefined,
+                                },
+                            };
+                        }
+                        return el;
+                    });
+
                     setPageData(finalPageData);
                     setHistory([finalPageData]);
                     setHistoryIndex(0);
@@ -122,6 +153,21 @@ const CreateLanding = () => {
     const [showPreview, setShowPreview] = useState(false);
     const [guideLine, setGuideLine] = useState({ show: true, y: 0 });
     const [previewHtml, setPreviewHtml] = useState(''); // State for preview HTML
+    useEffect(() => {
+        if (pageData.elements.length > 0) {
+            // Check nếu chưa có responsive data
+            const needsInit = pageData.elements.some(el =>
+                !el.position?.mobile || !el.position?.tablet
+            );
+
+            if (needsInit) {
+                console.log('Initializing responsive data...');
+                const initializedData = initializeResponsiveData(pageData);
+                setPageData(initializedData);
+                toast.info('Đã tự động tạo responsive data cho tất cả elements!');
+            }
+        }
+    }, []); // Chỉ chạy 1 lần khi mount
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
 
@@ -202,27 +248,28 @@ const CreateLanding = () => {
     // View mode change
     const handleViewModeChange = useCallback((mode) => {
         setViewMode(mode);
+
         setPageData((prev) => {
-            const canvasWidth = mode === 'desktop' ? 1200 : 375;
-            const newElements = prev.elements.map((element) => ({
-                ...element,
-                size: { ...element.size, width: mode === 'mobile' ? 375 : element.size.width || 1200 },
-                position: {
-                    ...element.position,
-                    [mode]: { x: mode === 'mobile' && element.type === 'section' ? 0 : element.position[mode]?.x || 0, y: element.position[mode]?.y || 0 },
-                },
-            }));
+            const syncedPageData = syncAllElements(prev, mode);
+
             const newPageData = {
-                ...prev,
-                canvas: { ...prev.canvas, width: canvasWidth },
-                elements: newElements,
-                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+                ...syncedPageData,
+                canvas: {
+                    ...syncedPageData.canvas,
+                    width: mode === 'mobile' ? 375 : mode === 'tablet' ? 768 : 1200
+                },
+                meta: {
+                    ...syncedPageData.meta,
+                    updated_at: new Date().toISOString()
+                }
             };
+
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.info(`Đã chuyển sang chế độ ${mode === 'desktop' ? 'Desktop' : 'Mobile'}`);
+
+        toast.info(`Đã chuyển sang ${mode} - Tự động điều chỉnh responsive`);
     }, [history, historyIndex]);
 
     // Add section
@@ -230,39 +277,81 @@ const CreateLanding = () => {
         const lastSectionY = pageData.elements
             .filter((el) => el.type === 'section')
             .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0);
-        const newElement = {
+
+        let newElement = {
             id: `${section.id}-${Date.now()}`,
             type: section.json.type,
-            componentData: JSON.parse(JSON.stringify(section.json.componentData || {})),
-            position: {
-                [viewMode]: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                desktop: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                tablet: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                mobile: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
+            componentData: {
+                ...JSON.parse(JSON.stringify(section.json.componentData || {})),
+                backgroundType: section.json.componentData?.backgroundType || (section.json.styles?.backgroundImage ? 'image' : section.json.styles?.background?.includes('gradient') ? 'gradient' : 'color'),
+                backgroundColor: section.json.componentData?.backgroundColor || section.json.styles?.backgroundColor || '#ffffff',
+                backgroundImage: section.json.styles?.backgroundImage?.replace(/^url\(["']?(.+?)["']?\)$/, '$1') || undefined,
+                backgroundSize: section.json.styles?.backgroundSize || 'cover',
+                backgroundPosition: section.json.styles?.backgroundPosition || 'center',
+                backgroundRepeat: section.json.styles?.backgroundRepeat || 'no-repeat',
+                backgroundAttachment: section.json.styles?.backgroundAttachment || 'scroll',
+                gradient: section.json.styles?.background?.includes('gradient') ? section.json.styles.background : undefined,
             },
-            size: { ...section.json.size, width: viewMode === 'mobile' ? 375 : section.json.type === 'popup' ? 600 : 1200 },
+            position: {
+                desktop: {
+                    x: section.json.type === 'popup' ? 100 : 0,
+                    y: section.json.type === 'popup' ? 100 : lastSectionY
+                },
+                tablet: {
+                    x: section.json.type === 'popup' ? 100 : 0,
+                    y: section.json.type === 'popup' ? 100 : lastSectionY
+                },
+                mobile: {
+                    x: section.json.type === 'popup' ? 50 : 0,
+                    y: section.json.type === 'popup' ? 100 : lastSectionY
+                }
+            },
+            size: {
+                ...section.json.size,
+                width: viewMode === 'mobile' ? 375 : section.json.type === 'popup' ? 600 : 1200
+            },
             styles: JSON.parse(JSON.stringify(section.json.styles || {})),
-            children: JSON.parse(JSON.stringify(section.json.children || [])),
+            children: JSON.parse(JSON.stringify(section.json.children || [])).map(child => ({
+                ...child,
+                styles: {
+                    ...child.styles,
+                    position: child.styles?.position || 'absolute',
+                    zIndex: child.styles?.zIndex || 100,
+                    pointerEvents: child.styles?.pointerEvents || 'auto',
+                }
+            })),
             visible: true,
             locked: false
         };
+
+        newElement = syncElementBetweenModes(newElement, 'desktop');
+
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
-            const newCanvasHeight = section.json.type === 'section' ? lastSectionY + (section.json.size?.height || 400) : prev.canvas.height;
+            const newCanvasHeight = section.json.type === 'section'
+                ? lastSectionY + (section.json.size?.height || 400)
+                : prev.canvas.height;
+
             const newPageData = {
                 ...prev,
                 elements: newElements,
-                canvas: { ...prev.canvas, height: Math.max(prev.canvas.height || 0, newCanvasHeight) },
+                canvas: {
+                    ...prev.canvas,
+                    height: Math.max(prev.canvas.height || 0, newCanvasHeight)
+                },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
+
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
+
         if (section.json.type === 'section') {
             setGuideLine({ show: true, y: lastSectionY + (section.json.size?.height || 400) });
         }
-        toast.success(`Đã thêm ${section.json.type} mới!`);
+
+        toast.success(`Đã thêm ${section.json.type} với responsive!`);
         setShowPopup(false);
     }, [pageData.elements, viewMode, history, historyIndex]);
 
@@ -324,7 +413,9 @@ const CreateLanding = () => {
                                 },
                                 styles: {
                                     ...newChild.styles,
-                                    zIndex: 2,
+                                    position: newChild.styles?.position || 'absolute',
+                                    zIndex: newChild.styles?.zIndex || 100,
+                                    pointerEvents: newChild.styles?.pointerEvents || 'auto',
                                 },
                             }],
                         };
@@ -511,38 +602,64 @@ const CreateLanding = () => {
     // Update position
     const handleUpdatePosition = useCallback((id, position, mode, e) => {
         if (e) e.stopPropagation();
+
         setPageData((prev) => {
+            const updatedElements = prev.elements.map((el) => {
+                if (el.id === id) {
+                    const updatedElement = {
+                        ...el,
+                        position: mode === 'replace' ? position : { ...el.position, ...position }
+                    };
+
+                    // Auto-sync sang các modes khác
+                    return syncElementBetweenModes(updatedElement, viewMode);
+                }
+                return el;
+            });
+
             const newPageData = {
                 ...prev,
-                elements: prev.elements.map((el) =>
-                    el.id === id
-                        ? { ...el, position: mode === 'replace' ? position : { ...el.position, ...position } }
-                        : el
-                ),
+                elements: updatedElements,
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
+
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-    }, [historyIndex]);
+    }, [historyIndex, viewMode]);
 
     // Update size
     const handleUpdateSize = useCallback((id, size, e) => {
         if (e) e.stopPropagation();
+
         setPageData((prev) => {
+            const updatedElements = prev.elements.map((el) => {
+                if (el.id === id) {
+                    const updatedElement = {
+                        ...el,
+                        size,
+                        ...(viewMode === 'mobile' ? { mobileSize: size } : {})
+                    };
+
+                    // Auto-sync
+                    return syncElementBetweenModes(updatedElement, viewMode);
+                }
+                return el;
+            });
+
             const newPageData = {
                 ...prev,
-                elements: prev.elements.map((el) =>
-                    el.id === id ? { ...el, size } : el
-                ),
+                elements: updatedElements,
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
+
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-    }, [historyIndex]);
+    }, [historyIndex, viewMode]);
+
 
     // Update canvas
     const handleUpdateCanvas = useCallback((canvasUpdates) => {
@@ -562,24 +679,46 @@ const CreateLanding = () => {
     // Edit element
     const handleEditElement = useCallback((updatedElement, e) => {
         if (e) e.stopPropagation();
+
         setPageData((prev) => {
+            const updatedElements = prev.elements.map((el) => {
+                if (el.id === selectedIds[0]) {
+                    let updated;
+
+                    if (updatedElement.isChild) {
+                        updated = {
+                            ...el,
+                            children: el.children.map((child) => {
+                                if (child.id === selectedChildId) {
+                                    const updatedChild = { ...child, ...updatedElement.json };
+                                    return syncElementBetweenModes(updatedChild, viewMode);
+                                }
+                                return child;
+                            })
+                        };
+                    } else {
+                        updated = { ...el, ...updatedElement.json };
+                        updated = syncElementBetweenModes(updated, viewMode);
+                    }
+
+                    return updated;
+                }
+                return el;
+            });
+
             const newPageData = {
                 ...prev,
-                elements: prev.elements.map((el) =>
-                    el.id === selectedIds[0]
-                        ? updatedElement.isChild
-                            ? { ...el, children: el.children.map((child) => child.id === selectedChildId ? { ...child, ...updatedElement.json } : child) }
-                            : { ...el, ...updatedElement.json }
-                        : el
-                ),
+                elements: updatedElements,
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
+
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã cập nhật phần tử!');
-    }, [historyIndex, selectedIds, selectedChildId]);
+
+        toast.success('Đã cập nhật và sync responsive!');
+    }, [historyIndex, selectedIds, selectedChildId, viewMode]);
 
     // Duplicate element
     const handleDuplicateElement = useCallback((id, e) => {
@@ -1052,7 +1191,6 @@ const CreateLanding = () => {
                             canUndo={historyIndex >= 0}
                             canRedo={historyIndex < history.length - 1}
                             zoomLevel={zoomLevel}
-                            onZoom={(direction) => setZoomLevel(direction === 'in' ? Math.min(200, zoomLevel + 10) : Math.max(50, zoomLevel - 10))}
                             onToggleGrid={() => setShowGrid(!showGrid)}
                             showGrid={showGrid}
                             gridSize={gridSize}
@@ -1066,6 +1204,16 @@ const CreateLanding = () => {
                             onDeleteElement={handleDeleteElement}
                             onShowAddSectionGuide={handleShowAddSectionPopup}
                             className="bg-white p-4 shadow-sm"
+                        />
+                        <ResponsiveToolbar
+                            viewMode={viewMode}
+                            onViewModeChange={handleViewModeChange}
+                            pageData={pageData}
+                            onUpdatePageData={(newData) => {
+                                setPageData(newData);
+                                setHistory([...history.slice(0, historyIndex + 1), newData]);
+                                setHistoryIndex(historyIndex + 1);
+                            }}
                         />
                     </ErrorBoundary>
                     <ErrorBoundary>
