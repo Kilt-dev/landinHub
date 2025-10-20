@@ -12,6 +12,7 @@ const ToolbarWrapper = styled.div`
     background: #f3f4f6;
     border-bottom: 1px solid #e5e7eb;
     justify-content: center;
+    flex-wrap: wrap;
 `;
 
 const ViewModeButton = styled.button`
@@ -28,7 +29,7 @@ const ViewModeButton = styled.button`
     font-weight: ${props => props.isActive ? '600' : '500'};
     transition: all 0.2s ease;
     box-shadow: ${props => props.isActive ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'};
-    
+
     &:hover {
         background: ${props => props.isActive ? '#ffffff' : '#e5e7eb'};
     }
@@ -134,6 +135,7 @@ const Tooltip = styled.div`
     z-index: 1000;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     animation: fadeIn 0.2s ease;
+    pointer-events: none;
 
     &::before {
         content: '';
@@ -185,7 +187,7 @@ const ResponsiveToolbar = ({
 
     // Enhanced responsive status check
     const checkResponsiveStatus = () => {
-        if (!pageData.elements || pageData.elements.length === 0) {
+        if (!pageData?.elements || pageData.elements.length === 0) {
             return { initialized: true, needsSync: false };
         }
 
@@ -219,15 +221,25 @@ const ResponsiveToolbar = ({
     const { initialized, needsSync } = checkResponsiveStatus();
 
     const handleInitResponsive = () => {
-        const initializedData = initializeResponsiveData(pageData);
-        onUpdatePageData(initializedData);
-        toast.success('✅ Đã khởi tạo responsive data cho tất cả elements!');
+        try {
+            const initializedData = initializeResponsiveData(pageData);
+            onUpdatePageData(initializedData);
+            toast.success('✅ Đã khởi tạo responsive data cho tất cả elements!');
+        } catch (error) {
+            console.error('Error initializing responsive data:', error);
+            toast.error('❌ Lỗi khi khởi tạo responsive data');
+        }
     };
 
     const handleSyncResponsive = () => {
-        const syncedData = syncAllElements(pageData, viewMode);
-        onUpdatePageData(syncedData);
-        toast.success('🔄 Đã sync responsive cho tất cả elements!');
+        try {
+            const syncedData = syncAllElements(pageData, viewMode);
+            onUpdatePageData(syncedData);
+            toast.success('🔄 Đã sync responsive cho tất cả elements!');
+        } catch (error) {
+            console.error('Error syncing responsive data:', error);
+            toast.error('❌ Lỗi khi sync responsive data');
+        }
     };
 
     const viewModes = [
@@ -264,7 +276,11 @@ const ResponsiveToolbar = ({
             {/* Responsive Status & Actions */}
             <StatusWrapper>
                 {!initialized ? (
-                    <div style={{ position: 'relative' }} onMouseEnter={() => setShowTooltip(true)} onMouseLeave={() => setShowTooltip(false)}>
+                    <div
+                        style={{ position: 'relative' }}
+                        onMouseEnter={() => setShowTooltip(true)}
+                        onMouseLeave={() => setShowTooltip(false)}
+                    >
                         <InitButton onClick={handleInitResponsive}>
                             <AlertCircle size={16} />
                             <span>Init Responsive</span>

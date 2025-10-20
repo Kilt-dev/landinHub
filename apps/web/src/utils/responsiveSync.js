@@ -1,4 +1,9 @@
 /**
+ * Responsive Sync Utilities
+ * Tự động sync size, position, styles giữa các view modes (desktop, tablet, mobile)
+ */
+
+/**
  * Tính scale factor giữa các view modes
  */
 export const getScaleFactor = (fromMode, toMode) => {
@@ -314,7 +319,7 @@ export const getResponsiveValues = (element, viewMode) => {
     let componentData = baseComponentData;
 
     switch (viewMode) {
-        case "tablet":
+        case 'tablet':
             size = element.tabletSize || baseSize;
             position = element.position?.tablet || basePosition;
             styles = element.responsiveStyles?.tablet
@@ -325,7 +330,7 @@ export const getResponsiveValues = (element, viewMode) => {
                 : baseComponentData;
             break;
 
-        case "mobile":
+        case 'mobile':
             size = element.mobileSize || element.tabletSize || baseSize;
             position = element.position?.mobile || basePosition;
             styles = element.responsiveStyles?.mobile
@@ -351,7 +356,6 @@ export const getResponsiveValues = (element, viewMode) => {
         visible: element.visible !== false,
     };
 };
-
 
 /**
  * Initialize responsive data cho elements chưa có
