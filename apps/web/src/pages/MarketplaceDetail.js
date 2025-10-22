@@ -202,7 +202,7 @@ const MarketplaceDetail = () => {
     if (loading) return <DogLoader />
     if (error)
         return (
-            <div className="marketplace-detail-container">
+            <div className="marketplace-detail-container1">
                 <Header />
                 <div className="marketplace-detail-main">
                     <Sidebar userRole={userRole} />
