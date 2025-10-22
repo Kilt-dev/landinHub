@@ -2,11 +2,11 @@
     display: flex;
     min-height: 100vh;
     background: #f5f7fa;
+    margin-top: 70px;
 }
 
 .sell-page-main {
     flex: 1;
-    margin-left: 250px;
     transition: margin-left 0.3s ease;
 }
 

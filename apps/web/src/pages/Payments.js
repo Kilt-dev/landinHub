@@ -228,9 +228,10 @@ const Payments = () => {
 
     return (
         <div className="payments-container">
-            <Sidebar role={userRole} />
+            <Header />
             <div className="payments-main">
-                <Header />
+                <Sidebar role={userRole} />
+
                 <div className="payments-content">
                     {/* Header */}
                     <div className="payments-header" data-aos="fade-down">

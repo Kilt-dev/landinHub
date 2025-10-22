@@ -1,11 +1,8 @@
-/* ============================================
-   MARKETPLACE CONTAINER & LAYOUT
-   ============================================ */
-
+/* ============================================ MARKETPLACE CONTAINER & LAYOUT ============================================ */
 .marketplace-container {
   display: flex;
   min-height: 100vh;
-  background: linear-gradient(135deg, #fafbfc 0%, #f5f7fa 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); /* Softer gradient for modern look */
 }
 
 .marketplace-main {
@@ -16,38 +13,68 @@
 
 .marketplace-content {
   flex: 1;
-  padding: 1.5rem;
   max-width: 1600px;
   margin: 0 auto;
   width: 100%;
   overflow-y: auto;
   scroll-behavior: smooth;
+  padding-top: 70px;
 }
 
-/* ============================================
-   HERO SECTION - REFINED & ELEGANT
-   ============================================ */
+.marketplace-noidung {
+  width: 90%;
+  justify-content: center;
+  align-items: center;
+  margin-left: 110px;
+}
 
+/* ============================================ HERO SECTION - REFINED & ELEGANT ============================================ */
 .marketplace-hero {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); /* Muted blue gradient for modern elegance */
   border-radius: 12px;
   padding: 60px 48px;
   text-align: center;
   margin-bottom: 40px;
   color: white;
-  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 12px 32px rgba(30, 58, 138, 0.15); /* Softer shadow */
   animation: fadeInDown 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.hero-image {
+  position: relative;
+  width: 100%;
+  height: 100%; /* Maintain original size */
+}
+
+.hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  opacity: 0.3; /* Subtle background image */
+}
+
+.hero-overlay {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
 .marketplace-hero::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -55,8 +82,8 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.03"><path d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/></g></g></svg>');
-  opacity: 0.3;
+  background: url('data:image/svg+xml,<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g fill="%23ffffff" fill-opacity="0.02"><path d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/></g></g></svg>');
+  opacity: 0.2;
   pointer-events: none;
 }
 
@@ -65,8 +92,6 @@
   font-weight: 700;
   margin-bottom: 12px;
   letter-spacing: -0.5px;
-  position: relative;
-  z-index: 1;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
@@ -75,26 +100,34 @@
   opacity: 0.95;
   font-weight: 400;
   margin: 0;
-  position: relative;
-  z-index: 1;
   letter-spacing: 0.2px;
 }
 
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.hero-cta {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); /* Blue gradient button */
+  color: white;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
-/* ============================================
-   FILTERS & SEARCH SECTION - REFINED
-   ============================================ */
+.hero-cta:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+}
 
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================ FILTERS & SEARCH SECTION - REFINED ============================================ */
 .marketplace-filters {
   background: white;
   border-radius: 12px;
@@ -106,20 +139,14 @@
 }
 
 @keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .search-bar {
   display: flex;
   gap: 10px;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .search-bar input {
@@ -143,14 +170,14 @@
 .filter-select:focus,
 .price-range input:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: #3b82f6; /* Softer blue for focus */
   background: white;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .search-bar button {
   padding: 11px 24px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); /* Muted blue */
   color: white;
   border: none;
   border-radius: 8px;
@@ -162,26 +189,22 @@
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-  letter-spacing: 0.2px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .search-bar button:hover {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
-}
-
-.search-bar button:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25);
 }
 
 .filter-row {
+  padding: 20px;
   display: flex;
-  gap: 12px;
+  gap: 75px;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
 }
 
 .filter-select {
@@ -198,9 +221,9 @@
 }
 
 .filter-select:hover {
-  border-color: #2563eb;
+  border-color: #3b82f6;
   background: white;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
 }
 
 .price-range {
@@ -220,13 +243,6 @@
   font-weight: 500;
 }
 
-.price-range input:focus {
-  outline: none;
-  border-color: #2563eb;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
 .price-range span {
   color: #6b7280;
   font-weight: 600;
@@ -235,7 +251,7 @@
 
 .price-range button {
   padding: 10px 16px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -243,19 +259,16 @@
   font-size: 0.85rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
 }
 
 .price-range button:hover {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
 }
 
-/* ============================================
-   FEATURED SECTION - REFINED
-   ============================================ */
-
+/* ============================================ FEATURED SECTION - REFINED ============================================ */
 .featured-section {
   margin-bottom: 40px;
   animation: fadeIn 0.7s ease 0.1s backwards;
@@ -278,7 +291,7 @@
   left: 0;
   width: 50px;
   height: 3px;
-  background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%); /* Muted blue */
   border-radius: 2px;
 }
 
@@ -299,52 +312,35 @@
   position: relative;
 }
 
-.featured-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 1;
-  pointer-events: none;
-}
-
 .featured-card:hover {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
   transform: translateY(-6px);
-  border-color: #e5e7eb;
-}
-
-.featured-card:hover::before {
-  opacity: 1;
 }
 
 .featured-image {
   position: relative;
   width: 100%;
-  height: 140px;
+  height: 140px; /* Keep original size */
   overflow: hidden;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); /* Neutral gradient */
 }
 
-.featured-image img {
+.card-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: all 0.4s ease;
   filter: brightness(0.95);
+  display: block;
 }
 
-.featured-card:hover .featured-image img {
+.featured-card:hover .card-img {
   transform: scale(1.08);
-  filter: brightness(1.05);
+  filter: brightness(1);
 }
 
 .featured-info {
   padding: 14px;
-  position: relative;
-  z-index: 2;
 }
 
 .featured-info h3 {
@@ -358,11 +354,10 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   transition: color 0.3s ease;
-  letter-spacing: -0.1px;
 }
 
 .featured-card:hover .featured-info h3 {
-  color: #2563eb;
+  color: #3b82f6; /* Softer blue for hover */
 }
 
 .featured-price {
@@ -374,8 +369,7 @@
 .featured-price .current-price {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #2563eb;
-  letter-spacing: -0.2px;
+  color: #3b82f6;
 }
 
 .featured-price .original-price {
@@ -385,38 +379,79 @@
   font-weight: 500;
 }
 
-.discount-badge {
+.discount-badge,
+.bestseller-badge,
+.new-badge {
   position: absolute;
   top: 10px;
   right: 10px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
   padding: 6px 11px;
   border-radius: 6px;
   font-size: 0.7rem;
   font-weight: 700;
+  color: white;
   z-index: 4;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   animation: slideIn 0.4s ease 0.08s backwards;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(15px) scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
+.discount-badge {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%); /* Keep green for discount */
 }
 
-/* ============================================
-   MARKETPLACE GRID SECTION - REFINED
-   ============================================ */
+.bestseller-badge {
+  background: linear-gradient(135deg, #facc15 0%, #eab308 100%); /* Muted yellow */
+  color: #1f2937;
+}
 
+.new-badge {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%); /* Neutral gray for new */
+}
+
+.image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: 10;
+  backdrop-filter: blur(2px);
+}
+
+.featured-card:hover .image-overlay,
+.marketplace-card:hover .image-overlay {
+  opacity: 1;
+}
+
+.quick-view-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.quick-view-btn:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  transform: scale(1.05);
+}
+
+/* ============================================ MARKETPLACE GRID SECTION - REFINED ============================================ */
 .marketplace-grid-section {
   animation: fadeIn 0.7s ease 0.15s backwards;
 }
@@ -438,7 +473,7 @@
   left: 0;
   width: 50px;
   height: 3px;
-  background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
   border-radius: 2px;
 }
 
@@ -448,10 +483,7 @@
   gap: 20px;
 }
 
-/* ============================================
-   MARKETPLACE CARD - REFINED & LUXURY
-   ============================================ */
-
+/* ============================================ MARKETPLACE CARD - REFINED & LUXURY ============================================ */
 .marketplace-card {
   background: white;
   border-radius: 10px;
@@ -468,162 +500,43 @@
 }
 
 @keyframes cardEnter {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.marketplace-card:nth-child(1) {
-  animation-delay: 0.04s;
-}
-.marketplace-card:nth-child(2) {
-  animation-delay: 0.08s;
-}
-.marketplace-card:nth-child(3) {
-  animation-delay: 0.12s;
-}
-.marketplace-card:nth-child(4) {
-  animation-delay: 0.16s;
-}
-.marketplace-card:nth-child(n + 5) {
-  animation-delay: 0.2s;
-}
-
-.marketplace-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  z-index: 1;
-  pointer-events: none;
-  border-radius: 10px;
-}
+.marketplace-card:nth-child(1) { animation-delay: 0.04s; }
+.marketplace-card:nth-child(2) { animation-delay: 0.08s; }
+.marketplace-card:nth-child(3) { animation-delay: 0.12s; }
+.marketplace-card:nth-child(4) { animation-delay: 0.16s; }
+.marketplace-card:nth-child(n + 5) { animation-delay: 0.2s; }
 
 .marketplace-card:hover {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
   transform: translateY(-8px);
-  border-color: #e5e7eb;
-}
-
-.marketplace-card:hover::before {
-  opacity: 1;
 }
 
 .card-image {
   position: relative;
   width: 100%;
-  height: 200px;
+  height: 200px; /* Keep original size */
   overflow: hidden;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  cursor: pointer;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%); /* Neutral gradient */
 }
 
-.card-image img {
+.card-image .card-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: all 0.4s ease;
   filter: brightness(0.93);
-  position: absolute;
-  top: 0;
-  left: 0;
   display: block;
   z-index: 2;
 }
 
-.marketplace-card:hover .card-image img {
-  animation: smoothScroll 6s ease-in-out infinite;
+.marketplace-card:hover .card-img {
+  transform: scale(1.08);
   filter: brightness(1);
 }
-
-@keyframes smoothScroll {
-  0% {
-    object-position: top center;
-    transform: scale(1);
-  }
-  45% {
-    object-position: bottom center;
-    transform: scale(1.02);
-  }
-  55% {
-    object-position: bottom center;
-    transform: scale(1.02);
-  }
-  100% {
-    object-position: top center;
-    transform: scale(1);
-  }
-}
-
-.card-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  background: rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  z-index: 10;
-  backdrop-filter: blur(2px);
-}
-
-.marketplace-card:hover .card-overlay {
-  opacity: 1;
-}
-
-.overlay-btn {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.5);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  transition: all 0.3s ease;
-  transform: scale(0.6);
-  opacity: 0;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-}
-
-.marketplace-card:hover .overlay-btn {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.overlay-btn:nth-child(1) {
-  transition-delay: 0.06s;
-}
-.overlay-btn:nth-child(2) {
-  transition-delay: 0.1s;
-}
-
-.overlay-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.8);
-  transform: scale(1.12) rotate(6deg);
-  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3);
-}
-
-.overlay-btn:active {
-  transform: scale(0.95);
-}
-
-/* ============================================
-   CARD CONTENT - REFINED & COMPACT
-   ============================================ */
 
 .card-content {
   padding: 16px;
@@ -631,14 +544,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: all 0.3s ease;
-  position: relative;
-  z-index: 5;
   gap: 10px;
-}
-
-.marketplace-card:hover .card-content {
-  background: linear-gradient(to bottom, #f9fafb 0%, white 100%);
 }
 
 .card-category {
@@ -653,14 +559,11 @@
   text-transform: uppercase;
   letter-spacing: 0.4px;
   transition: all 0.3s ease;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .marketplace-card:hover .card-category {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
-  transform: translateX(2px);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
 }
 
 .card-title {
@@ -673,13 +576,11 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   transition: color 0.3s ease;
-  letter-spacing: -0.2px;
   min-height: 44px;
-  flex-shrink: 0;
 }
 
 .marketplace-card:hover .card-title {
-  color: #2563eb;
+  color: #3b82f6;
 }
 
 .card-description {
@@ -692,7 +593,6 @@
   overflow: hidden;
   font-weight: 400;
   min-height: 48px;
-  flex-shrink: 0;
 }
 
 .card-meta {
@@ -704,7 +604,6 @@
   border-bottom: 1px solid #f3f4f6;
   padding-bottom: 10px;
   min-height: 20px;
-  flex-shrink: 0;
 }
 
 .card-meta span {
@@ -712,12 +611,10 @@
   align-items: center;
   gap: 4px;
   transition: all 0.3s ease;
-  font-weight: 500;
 }
 
 .marketplace-card:hover .card-meta span {
-  color: #2563eb;
-  transform: translateX(2px);
+  color: #3b82f6;
 }
 
 .card-footer {
@@ -725,9 +622,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-top: auto;
   padding-top: 10px;
-  flex-shrink: 0;
 }
 
 .card-price {
@@ -740,9 +635,7 @@
 .card-price .current-price {
   font-size: 1rem;
   font-weight: 700;
-  color: #2563eb;
-  letter-spacing: -0.2px;
-  line-height: 1.2;
+  color: #3b82f6;
 }
 
 .card-price .original-price {
@@ -750,13 +643,12 @@
   color: #9ca3af;
   text-decoration: line-through;
   font-weight: 500;
-  line-height: 1.2;
 }
 
 .view-detail-btn {
   flex: 1;
   padding: 10px 14px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border: none;
   border-radius: 7px;
@@ -764,9 +656,7 @@
   font-size: 0.8rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.25);
-  letter-spacing: 0.2px;
+  box-shadow: 0 3px 10px rgba(59, 130, 246, 0.2);
   min-height: 40px;
   display: flex;
   align-items: center;
@@ -774,20 +664,12 @@
 }
 
 .view-detail-btn:hover {
-  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
   transform: translateY(-2px);
-  box-shadow: 0 5px 14px rgba(37, 99, 235, 0.3);
+  box-shadow: 0 5px 14px rgba(59, 130, 246, 0.25);
 }
 
-.view-detail-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
-}
-
-/* ============================================
-   ERROR & EMPTY STATES
-   ============================================ */
-
+/* ============================================ ERROR & EMPTY STATES ============================================ */
 .error-message {
   background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
   border: 1px solid #fca5a5;
@@ -810,7 +692,6 @@
   color: #6b7280;
   font-size: 1rem;
   font-weight: 500;
-  letter-spacing: 0.1px;
 }
 
 .loader {
@@ -819,76 +700,57 @@
   color: #6b7280;
   font-size: 0.95rem;
   font-weight: 500;
-  letter-spacing: 0.2px;
 }
 
-/* ============================================
-   ANIMATIONS
-   ============================================ */
-
+/* ============================================ ANIMATIONS ============================================ */
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* ============================================
-   RESPONSIVE DESIGN
-   ============================================ */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(15px) scale(0.8); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
 
+/* ============================================ RESPONSIVE DESIGN ============================================ */
 @media (max-width: 1440px) {
   .marketplace-grid {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 18px;
   }
-
   .marketplace-hero h1 {
     font-size: 2.2rem;
   }
-
   .marketplace-hero p {
     font-size: 1rem;
   }
 }
 
 @media (max-width: 1024px) {
-  .marketplace-content {
-    padding: 1.2rem;
-  }
-
   .marketplace-grid {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 16px;
   }
-
   .featured-grid {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 14px;
   }
-
   .marketplace-hero {
     padding: 40px 32px;
   }
-
   .marketplace-hero h1 {
     font-size: 1.8rem;
   }
-
   .marketplace-hero p {
     font-size: 0.95rem;
   }
-
   .marketplace-filters {
     padding: 18px;
   }
-
   .filter-row {
     gap: 10px;
   }
-
   .filter-select {
     min-width: 120px;
   }
@@ -898,90 +760,71 @@
   .marketplace-content {
     padding: 0.8rem;
   }
-
   .marketplace-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
-
   .featured-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
-
   .card-image {
-    height: 180px;
+    height: 180px; /* Keep responsive size */
   }
-
   .featured-image {
-    height: 120px;
+    height: 120px; /* Keep responsive size */
   }
-
   .marketplace-hero {
     padding: 32px 24px;
     margin-bottom: 24px;
   }
-
   .marketplace-hero h1 {
     font-size: 1.4rem;
   }
-
   .marketplace-hero p {
     font-size: 0.9rem;
   }
-
   .marketplace-filters {
     padding: 14px;
   }
-
   .search-bar {
     flex-direction: column;
     gap: 10px;
   }
-
   .search-bar button {
     width: 100%;
     justify-content: center;
   }
-
   .filter-row {
     flex-direction: column;
     gap: 10px;
   }
-
   .filter-select {
     width: 100%;
     min-width: unset;
   }
-
   .price-range {
     width: 100%;
     flex-direction: column;
   }
-
   .price-range input {
     width: 100%;
   }
-
   .price-range button {
     width: 100%;
   }
-
   .card-footer {
     flex-direction: column;
     gap: 10px;
   }
-
   .view-detail-btn {
     width: 100%;
   }
-
   .marketplace-grid-section h2,
   .featured-section h2 {
     font-size: 1.3rem;
     margin-bottom: 16px;
   }
-
   .card-content {
     padding: 12px;
     gap: 8px;
@@ -989,68 +832,51 @@
 }
 
 @media (max-width: 480px) {
-  .marketplace-content {
-    padding: 0.6rem;
-  }
-
   .marketplace-grid {
     grid-template-columns: 1fr;
     gap: 10px;
   }
-
   .featured-grid {
     grid-template-columns: 1fr;
     gap: 8px;
   }
-
   .card-image {
-    height: 160px;
+    height: 160px; /* Keep responsive size */
   }
-
   .featured-image {
-    height: 110px;
+    height: 110px; /* Keep responsive size */
   }
-
   .marketplace-hero {
     padding: 24px 16px;
     margin-bottom: 16px;
   }
-
   .marketplace-hero h1 {
     font-size: 1.2rem;
   }
-
   .marketplace-hero p {
     font-size: 0.85rem;
   }
-
   .marketplace-filters {
     padding: 10px;
   }
-
   .search-bar input {
     font-size: 16px;
   }
-
   .card-title {
     font-size: 0.9rem;
   }
-
   .card-description {
     font-size: 0.75rem;
   }
-
   .card-meta {
     font-size: 0.7rem;
     gap: 8px;
   }
-
   .marketplace-grid-section h2,
   .featured-section h2 {
     font-size: 1.1rem;
     margin-bottom: 12px;
   }
-
   .card-content {
     padding: 10px;
     gap: 6px;

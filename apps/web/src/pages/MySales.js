@@ -157,9 +157,10 @@ const MySales = () => {
 
     return (
         <div className="my-sales-container">
-            <Sidebar userRole={userRole} />
+            <Header />
             <div className="my-sales-main">
-                <Header />
+                <Sidebar userRole={userRole} />
+
                 <div className="my-sales-content">
                     <div className="my-sales-header" data-aos="fade-down">
                         <div>

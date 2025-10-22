@@ -178,9 +178,9 @@ const SellPage = () => {
 
     return (
         <div className="sell-page-container">
-            <Sidebar userRole={userRole} />
+            <Header />
             <div className="sell-page-main">
-                <Header />
+                <Sidebar userRole={userRole} />
                 <div className="sell-page-content">
                     <div className="sell-page-header" data-aos="fade-down">
                         <h1>🏪 Đăng bán Landing Page</h1>

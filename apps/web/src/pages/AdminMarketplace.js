@@ -479,9 +479,9 @@ const AdminMarketplace = () => {
 
     return (
         <div className="admin-marketplace-container">
-            <Sidebar role={userRole} />
+            <Header />
             <div className="admin-marketplace-main">
-                <Header />
+                <Sidebar role={userRole} />
                 <div className="admin-marketplace-content">
                     <div className="admin-marketplace-header" data-aos="fade-down">
                         <div>

@@ -1,63 +1,5 @@
-/* ============================================
-   LUXURY REFACTOR - MARKETPLACE DETAIL
-   ============================================ */
-
-/* Nền tảng: Font chữ và Bảng màu mới */
-:root {
-  /* Font Families */
-  --font-serif: 'Playfair Display', serif; /* Font chữ sang trọng cho tiêu đề & giá */
-  --font-sans: 'Inter', sans-serif;          /* Font chữ hiện đại cho nội dung */
-
-  /* Bảng màu Monochromatic & Gold Accent */
-  --color-dark: #1a1a1a;
-  --color-body: #4f4f4f;
-  --color-light-gray: #828282;
-  --color-background: #ffffff;
-  --color-light-bg: #f9f9f9;
-  --color-border: #e0e0e0;
-  --color-accent: #c09f80; /* Màu nhấn vàng gold sang trọng */
-
-  /* Spacing */
-  --space-sm: 8px; --space-md: 16px; --space-lg: 24px;
-  --space-xl: 32px; --space-xxl: 48px; --space-xxxl: 80px;
-  --radius: 12px;
-
-  /* Shadows */
-  --shadow-soft: 0px 10px 30px rgba(0, 0, 0, 0.07);
-  --shadow-interactive: 0px 15px 35px rgba(0, 0, 0, 0.1);
-
-  /* Transition */
-  --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-}
-
-body {
-    font-family: var(--font-sans);
-    background-color: var(--color-background);
-}
-
-.marketplace-detail-main {
-    background-color: var(--color-background);
-}
-
-.marketplace-detail-content {
-    padding: var(--space-xl) var(--space-xxl);
-    max-width: 1440px;
-    margin: 0 auto;
-}
-
-.detail-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    gap: var(--space-xxxl);
-    align-items: start;
-}
-
-/* ============================================
-   CỘT TRÁI - HÌNH ẢNH SẢN PHẨM
-   ============================================ */
-.detail-left {
-    position: sticky;
-    top: var(--space-xl);
+.marketplace-detail-content{
+    margin-top: 70px;
 }
 
 .main-image {
@@ -66,7 +8,6 @@ body {
     overflow: hidden;
     box-shadow: var(--shadow-soft);
     position: relative;
-    background-color: var(--color-light-bg);
 }
 
 .main-image img {

@@ -42,12 +42,11 @@
     flex-grow: 1;
     height: 100vh;
     overflow-y: auto;
+    margin-top: 70px;
 }
 
 .admin-marketplace-content {
-    padding: var(--space-xl) var(--space-xxl);
-    max-width: 1600px;
-    margin: 0 auto;
+    margin-left: 110px;
 }
 
 .admin-marketplace-header {

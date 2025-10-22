@@ -226,9 +226,9 @@ const MarketplaceDetail = () => {
     if (error) {
         return (
             <div className="marketplace-detail-container">
-                <Sidebar userRole={userRole} />
+                <Header />
                 <div className="marketplace-detail-main">
-                    <Header />
+                    <Sidebar userRole={userRole} />
                     <div className="error-container">
                         <h2>Có lỗi xảy ra</h2>
                         <p>{error}</p>

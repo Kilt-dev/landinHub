@@ -157,18 +157,6 @@ const Sidebar = ({ role }) => {
                     );
                 })}
             </nav>
-
-            {/* Footer */}
-            {!isCompact && (
-                <div className="sidebar-footer">
-                    <div className="sidebar-status">
-                        <div className="sidebar-status-icon">
-                            <div className="sidebar-status-dot"></div>
-                        </div>
-                        <span className="sidebar-status-text">System Online</span>
-                    </div>
-                </div>
-            )}
         </aside>
     );
 };
