@@ -7,9 +7,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-import '../styles/MarketplaceDetail.css';
+import '../styles/MarketplaceDetail.css'; // Đảm bảo file CSS đã được cập nhật
 import DogLoader from '../components/Loader';
 import { toast } from 'react-toastify';
+
+// Import toàn bộ icon cần thiết từ react-icons/fi (Feather Icons)
+import {
+    FiEye, FiShoppingCart, FiStar, FiUser, FiHeart, FiExternalLink, FiDownload,
+    FiCheckCircle, FiShield, FiZap, FiSmartphone, FiSliders, FiFileText, FiPackage,
+    FiTag, FiCreditCard, FiLayers
+} from 'react-icons/fi';
 
 const MarketplaceDetail = () => {
     const { user } = useContext(UserContext);
@@ -30,9 +37,9 @@ const MarketplaceDetail = () => {
     const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
     const paymentMethods = [
-        { value: 'SANDBOX', label: '💳 Sandbox (Test)', description: 'Môi trường test thanh toán' },
-        { value: 'MOMO', label: '📱 MOMO', description: 'Thanh toán qua ví MOMO' },
-        { value: 'VNPAY', label: '🏦 VNPay', description: 'Thanh toán qua VNPay' }
+        { value: 'SANDBOX', label: 'Sandbox (Test)', description: 'Môi trường test thanh toán an toàn.' },
+        { value: 'MOMO', label: 'Ví điện tử MOMO', description: 'Thanh toán nhanh chóng qua ví MOMO.' },
+        { value: 'VNPAY', label: 'Cổng thanh toán VNPay', description: 'Hỗ trợ nhiều ngân hàng và thẻ quốc tế.' }
     ];
 
     useEffect(() => {
@@ -54,14 +61,11 @@ const MarketplaceDetail = () => {
             } catch (err) {
                 console.error('Lỗi giải mã token:', err);
                 navigate('/auth');
-            } finally {
-                setLoading(false);
             }
         };
 
         if (user?.role) {
             setUserRole(user.role);
-            setLoading(false);
         } else {
             initializeAuth();
         }
@@ -72,10 +76,10 @@ const MarketplaceDetail = () => {
     }, []);
 
     useEffect(() => {
-        if (userRole && id) {
+        if (id) {
             loadPageDetail();
         }
-    }, [userRole, id]);
+    }, [id]);
 
     const loadPageDetail = async () => {
         try {
@@ -84,16 +88,13 @@ const MarketplaceDetail = () => {
             const response = await axios.get(`${API_BASE_URL}/api/marketplace/${id}`);
             setPage(response.data.data);
 
-            // Check if user liked this page
-            const decoded = jwtDecode(token);
-            const userId = decoded.userId;
-            setIsLiked(response.data.data.liked_by?.includes(userId));
-
-            // Check if user is the seller
-            setIsSeller(response.data.data.seller_id?._id === userId);
-
-            // Check if user has purchased this page
-            await checkPurchaseStatus();
+            if (token) {
+                const decoded = jwtDecode(token);
+                const userId = decoded.userId;
+                setIsLiked(response.data.data.liked_by?.includes(userId));
+                setIsSeller(response.data.data.seller_id?._id === userId);
+                await checkPurchaseStatus();
+            }
 
             setError('');
         } catch (err) {
@@ -103,12 +104,11 @@ const MarketplaceDetail = () => {
             setLoading(false);
         }
     };
+
     const checkPurchaseStatus = async () => {
         try {
             const token = localStorage.getItem('token');
-            console.log('Check Purchase Token:', token);
             if (!token) {
-                console.log('No token found for check-purchase');
                 setHasPurchased(false);
                 return;
             }
@@ -127,7 +127,6 @@ const MarketplaceDetail = () => {
         try {
             setPurchasing(true);
             const token = localStorage.getItem('token');
-            console.log('Purchase Token:', token);
             if (!token) {
                 toast.error('Vui lòng đăng nhập để mua hàng');
                 navigate('/auth');
@@ -159,28 +158,25 @@ const MarketplaceDetail = () => {
     const handleLike = async () => {
         try {
             const token = localStorage.getItem('token');
+            if (!token) {
+                toast.error('Vui lòng đăng nhập để thích sản phẩm');
+                navigate('/auth');
+                return;
+            }
             const response = await axios.post(
                 `${API_BASE_URL}/api/marketplace/${id}/like`,
                 {},
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
             if (response.data.success) {
                 setIsLiked(response.data.data.liked);
                 setPage({ ...page, likes: response.data.data.likes });
-                toast.success(response.data.data.liked ? 'Đã thích' : 'Đã bỏ thích');
+                toast.success(response.data.data.liked ? 'Đã thêm vào yêu thích' : 'Đã bỏ yêu thích');
             }
         } catch (err) {
             console.error('Lỗi like:', err);
-            toast.error('Không thể cập nhật trạng thái like');
-        }
-    };
-
-    const handleDemoClick = () => {
-        if (page.demo_url) {
-            window.open(page.demo_url, '_blank');
+            toast.error('Không thể cập nhật trạng thái');
         }
     };
 
@@ -188,7 +184,6 @@ const MarketplaceDetail = () => {
         try {
             setDownloading(true);
             const token = localStorage.getItem('token');
-
             const endpoint = format === 'html'
                 ? `${API_BASE_URL}/api/marketplace/${id}/download/html`
                 : `${API_BASE_URL}/api/marketplace/${id}/download/iuhpage`;
@@ -198,7 +193,6 @@ const MarketplaceDetail = () => {
                 responseType: 'blob'
             });
 
-            // Create download link
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -207,7 +201,6 @@ const MarketplaceDetail = () => {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-
             toast.success(`Đã tải xuống định dạng ${format.toUpperCase()}`);
         } catch (err) {
             console.error('Lỗi tải xuống:', err);
@@ -219,10 +212,7 @@ const MarketplaceDetail = () => {
 
     const formatPrice = (price) => {
         if (price === 0) return 'Miễn phí';
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-        }).format(price);
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
     };
 
     const calculateDiscount = (price, originalPrice) => {
@@ -230,9 +220,8 @@ const MarketplaceDetail = () => {
         return Math.round(((originalPrice - price) / originalPrice) * 100);
     };
 
-    if (loading) {
-        return <DogLoader />;
-    }
+
+    if (loading) return <DogLoader />;
 
     if (error) {
         return (
@@ -241,7 +230,7 @@ const MarketplaceDetail = () => {
                 <div className="marketplace-detail-main">
                     <Header />
                     <div className="error-container">
-                        <h2>❌ Lỗi</h2>
+                        <h2>Có lỗi xảy ra</h2>
                         <p>{error}</p>
                         <button onClick={() => navigate('/marketplace')}>Quay lại Marketplace</button>
                     </div>
@@ -250,9 +239,7 @@ const MarketplaceDetail = () => {
         );
     }
 
-    if (!page) {
-        return null;
-    }
+    if (!page) return null;
 
     const discount = calculateDiscount(page.price, page.original_price);
 
@@ -262,31 +249,21 @@ const MarketplaceDetail = () => {
             <div className="marketplace-detail-main">
                 <Header />
                 <div className="marketplace-detail-content">
-                    {/* Breadcrumb */}
                     <div className="breadcrumb" data-aos="fade-down">
                         <span onClick={() => navigate('/marketplace')}>Marketplace</span>
-                        <span className="separator">›</span>
-                        <span>{page.category}</span>
-                        <span className="separator">›</span>
+                        <span className="separator">/</span>
                         <span className="current">{page.title}</span>
                     </div>
 
                     <div className="detail-grid">
-                        {/* Left Column - Images */}
+                        {/* Cột Trái - Hình ảnh */}
                         <div className="detail-left" data-aos="fade-right">
                             <div className="main-image">
                                 <img
-                                    src={page.screenshots[currentImageIndex] || page.main_screenshot || '/placeholder.png'}
+                                    src={(page.screenshots && page.screenshots[currentImageIndex]) || page.main_screenshot || '/placeholder.png'}
                                     alt={page.title}
                                 />
-                                {page.is_bestseller && (
-                                    <div className="bestseller-badge">🔥 Bán chạy</div>
-                                )}
-                                {discount > 0 && (
-                                    <div className="discount-badge">-{discount}%</div>
-                                )}
                             </div>
-
                             {page.screenshots && page.screenshots.length > 1 && (
                                 <div className="thumbnail-gallery">
                                     {page.screenshots.map((screenshot, index) => (
@@ -295,180 +272,103 @@ const MarketplaceDetail = () => {
                                             className={`thumbnail ${index === currentImageIndex ? 'active' : ''}`}
                                             onClick={() => setCurrentImageIndex(index)}
                                         >
-                                            <img src={screenshot} alt={`Screenshot ${index + 1}`} />
+                                            <img src={screenshot} alt={`Thumbnail ${index + 1}`} />
                                         </div>
                                     ))}
                                 </div>
                             )}
-
-                            {page.demo_url && (
-                                <button className="demo-btn" onClick={handleDemoClick}>
-                                    🚀 Xem Demo Live
-                                </button>
-                            )}
                         </div>
 
-                        {/* Right Column - Details */}
+                        {/* Cột Phải - Chi tiết */}
                         <div className="detail-right" data-aos="fade-left">
                             <div className="detail-header">
                                 <div className="category-badge">{page.category}</div>
                                 <h1>{page.title}</h1>
-
                                 <div className="meta-info">
-                                    <span>👁️ {page.views} lượt xem</span>
-                                    <span>🛒 {page.sold_count} đã bán</span>
-                                    <span>⭐ {page.rating.toFixed(1)} ({page.review_count} đánh giá)</span>
+                                    <span><FiEye /> {page.views} Lượt xem</span>
+                                    <span><FiShoppingCart /> {page.sold_count} Đã bán</span>
+                                    <span><FiStar /> {page.rating.toFixed(1)} ({page.review_count} đánh giá)</span>
                                 </div>
-
                                 <div className="seller-info">
-                                    <span>👤 Người bán:</span>
-                                    <strong>{page.seller_id?.name || 'Anonymous'}</strong>
+                                    <span><FiUser /> Bán bởi: <strong>{page.seller_id?.name || 'Anonymous'}</strong></span>
                                 </div>
                             </div>
 
                             <div className="price-section">
                                 <div className="price-box">
                                     <div className="current-price">{formatPrice(page.price)}</div>
-                                    {page.original_price && (
+                                    {page.original_price && page.price < page.original_price && (
                                         <div className="original-price">{formatPrice(page.original_price)}</div>
                                     )}
-                                    {discount > 0 && (
-                                        <div className="savings">Tiết kiệm {discount}%</div>
-                                    )}
                                 </div>
+                                {discount > 0 && <div className="discount-badge">-{discount}%</div>}
+                            </div>
 
-                                <button
-                                    className={`like-btn ${isLiked ? 'liked' : ''}`}
-                                    onClick={handleLike}
-                                >
-                                    {isLiked ? '❤️' : '🤍'} {page.likes}
+                            <div className="action-buttons">
+                                {!(hasPurchased || isSeller) && page.price > 0 && (
+                                    <button className="purchase-btn action-btn" onClick={handlePurchase} disabled={purchasing}>
+                                        <FiShoppingCart /> {purchasing ? 'Đang xử lý...' : 'Thanh toán ngay'}
+                                    </button>
+                                )}
+                                {page.demo_url && (
+                                    <a href={page.demo_url} target="_blank" rel="noopener noreferrer" className="demo-btn action-btn">
+                                        <FiExternalLink /> Xem Demo
+                                    </a>
+                                )}
+                                <button className={`like-btn action-btn ${isLiked ? 'liked' : ''}`} onClick={handleLike}>
+                                    <FiHeart /> {page.likes}
                                 </button>
                             </div>
 
-                            <div className="description-section">
-                                <h3>📝 Mô tả</h3>
+                            <div className="info-section description-section">
+                                <h3><FiFileText /> Mô tả chi tiết</h3>
                                 <p>{page.description}</p>
                             </div>
 
-                            <div className="features-section">
-                                <h3>✨ Tính năng</h3>
+                            <div className="info-section features-section">
+                                <h3><FiLayers /> Tính năng nổi bật</h3>
                                 <div className="features-grid">
-                                    {page.responsive && (
-                                        <div className="feature-item">
-                                            <span className="feature-icon">📱</span>
-                                            <span>Responsive Design</span>
-                                        </div>
-                                    )}
-                                    {page.customizable && (
-                                        <div className="feature-item">
-                                            <span className="feature-icon">🎨</span>
-                                            <span>Có thể tùy chỉnh</span>
-                                        </div>
-                                    )}
-                                    <div className="feature-item">
-                                        <span className="feature-icon">⚡</span>
-                                        <span>Tải nhanh</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <span className="feature-icon">🔒</span>
-                                        <span>An toàn & bảo mật</span>
-                                    </div>
+                                    {page.responsive && <div className="feature-item"><span className="feature-icon"><FiSmartphone /></span><span>Thiết kế Responsive</span></div>}
+                                    {page.customizable && <div className="feature-item"><span className="feature-icon"><FiSliders /></span><span>Dễ dàng tùy chỉnh</span></div>}
+                                    <div className="feature-item"><span className="feature-icon"><FiZap /></span><span>Tối ưu tốc độ tải</span></div>
+                                    <div className="feature-item"><span className="feature-icon"><FiShield /></span><span>An toàn & Bảo mật</span></div>
                                 </div>
                             </div>
 
                             {page.tags && page.tags.length > 0 && (
-                                <div className="tags-section">
-                                    <h3>🏷️ Tags</h3>
+                                <div className="info-section tags-section">
+                                    <h3><FiTag /> Thẻ Tags</h3>
                                     <div className="tags">
-                                        {page.tags.map((tag, index) => (
-                                            <span key={index} className="tag">{tag}</span>
-                                        ))}
+                                        {page.tags.map((tag, index) => <span key={index} className="tag">{tag}</span>)}
                                     </div>
                                 </div>
                             )}
 
-                            {/* Download Section - Show if purchased or is seller */}
                             {(hasPurchased || isSeller) && (
                                 <div className="download-section">
-                                    <h3>📥 Tải xuống Landing Page</h3>
-                                    <p className="download-info">
-                                        {isSeller ? 'Bạn là người bán, có thể tải xuống template của mình' : 'Bạn đã mua landing page này, có thể tải xuống ngay'}
-                                    </p>
-
+                                    <h3><FiDownload /> Tải xuống</h3>
+                                    <p className="download-info">{isSeller ? 'Bạn là người bán của sản phẩm này.' : 'Cảm ơn bạn đã mua sản phẩm!'}</p>
                                     <div className="download-options">
-                                        <div className="download-option">
-                                            <div className="option-header">
-                                                <span className="option-icon">📦</span>
-                                                <div className="option-info">
-                                                    <h4>HTML + Images (ZIP)</h4>
-                                                    <p>Tải về file HTML và tất cả hình ảnh để deploy</p>
-                                                </div>
-                                            </div>
-                                            <button
-                                                className="download-btn"
-                                                onClick={() => handleDownload('html')}
-                                                disabled={downloading}
-                                            >
-                                                {downloading ? '⏳ Đang tải...' : '📥 Tải ZIP'}
-                                            </button>
-                                        </div>
-
-                                        <div className="download-option">
-                                            <div className="option-header">
-                                                <span className="option-icon">📄</span>
-                                                <div className="option-info">
-                                                    <h4>.iuhpage (Import File)</h4>
-                                                    <p>Tải về file .iuhpage để import vào editor</p>
-                                                </div>
-                                            </div>
-                                            <button
-                                                className="download-btn"
-                                                onClick={() => handleDownload('iuhpage')}
-                                                disabled={downloading}
-                                            >
-                                                {downloading ? '⏳ Đang tải...' : '📥 Tải .iuhpage'}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="download-note">
-                                        <p>💡 <strong>Lưu ý:</strong></p>
-                                        <ul>
-                                            <li>File ZIP chứa HTML + images để deploy lên hosting</li>
-                                            <li>File .iuhpage để import vào editor và chỉnh sửa</li>
-                                            <li>Bạn có thể tải xuống nhiều lần không giới hạn</li>
-                                        </ul>
+                                        <button className="download-btn" onClick={() => handleDownload('html')} disabled={downloading}><FiPackage /> Tải xuống file .ZIP</button>
+                                        <button className="download-btn" onClick={() => handleDownload('iuhpage')} disabled={downloading}><FiFileText /> Tải xuống file .iuhpage</button>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Payment Section - Show if NOT purchased and NOT seller */}
-                            {!hasPurchased && !isSeller && (
+                            {!(hasPurchased || isSeller) && page.price > 0 && (
                                 <div className="payment-section">
-                                    <h3>💳 Chọn phương thức thanh toán</h3>
-                                    <div className="payment-methods">
-                                        {paymentMethods.map((method) => (
-                                            <div
-                                                key={method.value}
-                                                className={`payment-method ${selectedPaymentMethod === method.value ? 'selected' : ''}`}
-                                                onClick={() => setSelectedPaymentMethod(method.value)}
-                                            >
-                                                <div className="method-header">
-                                                    <span className="method-label">{method.label}</span>
-                                                    <span className="radio">{selectedPaymentMethod === method.value ? '⚫' : '⚪'}</span>
-                                                </div>
-                                                <div className="method-description">{method.description}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <button
-                                        className="purchase-btn"
-                                        onClick={handlePurchase}
-                                        disabled={purchasing}
-                                    >
-                                        {purchasing ? '⏳ Đang xử lý...' : '🛒 Mua ngay'}
-                                    </button>
+                                    <h3><FiCreditCard /> Phương thức thanh toán</h3>
+                                    {paymentMethods.map(method => (
+                                        <div
+                                            key={method.value}
+                                            className={`payment-method ${selectedPaymentMethod === method.value ? 'selected' : ''}`}
+                                            onClick={() => setSelectedPaymentMethod(method.value)}
+                                        >
+                                            <div className="method-label">{method.label}</div>
+                                            <div className="method-description">{method.description}</div>
+                                            <div className="radio-select">{selectedPaymentMethod === method.value && <FiCheckCircle />}</div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
                         </div>
