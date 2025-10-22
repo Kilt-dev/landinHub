@@ -1,4 +1,5 @@
 .payments-container {
+    margin-top: 70px;
     display: flex;
     min-height: 100vh;
     background-color: #f3f4f6;
@@ -12,10 +13,11 @@
 
 .payments-content {
     flex: 1;
-    padding: 2rem;
+    /*padding: 2rem;*/
     max-width: 1600px;
     margin: 0 auto;
     width: 100%;
+    padding-left: 100px;
 }
 
 .payments-header {

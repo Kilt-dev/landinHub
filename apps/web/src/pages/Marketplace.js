@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { UserContext } from '../context/UserContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
@@ -27,12 +27,14 @@ const Marketplace = () => {
     const [page, setPage] = useState(1);
     const [featuredPages, setFeaturedPages] = useState([]);
     const [bestsellers, setBestsellers] = useState([]);
-    const [viewFilter, setViewFilter] = useState('all'); // all / purchased / my-pages
+    const [viewFilter, setViewFilter] = useState('all');
     const [purchasedPageIds, setPurchasedPageIds] = useState([]);
     const [myPageIds, setMyPageIds] = useState([]);
+    const [purchasedDates, setPurchasedDates] = useState({});
 
     const navigate = useNavigate();
     const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const cartRef = useRef(null);
 
     const categories = [
         { value: 'all', label: 'Tất cả' },
@@ -61,6 +63,7 @@ const Marketplace = () => {
         { value: 'rating', label: 'Đánh giá cao nhất' }
     ];
 
+    // Auth
     useEffect(() => {
         const initializeAuth = async () => {
             const token = localStorage.getItem('token');
@@ -95,7 +98,7 @@ const Marketplace = () => {
         }
     }, [user, navigate]);
 
-    // Fetch purchased and my page IDs
+    // Fetch purchased + my pages
     useEffect(() => {
         if (userId) {
             fetchPurchasedPageIds();
@@ -110,8 +113,14 @@ const Marketplace = () => {
                 `${API_BASE_URL}/api/marketplace/my/purchased?limit=1000`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            const ids = (response.data.data || []).map(p => p._id);
+            const purchases = response.data.data || [];
+            const ids = purchases.map(p => p._id);
+            const dates = {};
+            purchases.forEach(p => {
+                dates[p._id] = new Date(p.purchased_at || Date.now()).toLocaleDateString('vi-VN');
+            });
             setPurchasedPageIds(ids);
+            setPurchasedDates(dates);
         } catch (err) {
             console.error('Fetch purchased pages error:', err);
         }
@@ -131,10 +140,13 @@ const Marketplace = () => {
         }
     };
 
+    // AOS
     useEffect(() => {
         AOS.init({ duration: 600, once: true, offset: 100 });
+        return () => AOS.refresh();
     }, []);
 
+    // Load featured + bestsellers
     useEffect(() => {
         if (userRole) {
             loadFeaturedPages();
@@ -142,6 +154,7 @@ const Marketplace = () => {
         }
     }, [userRole]);
 
+    // Reload khi filter thay đổi
     useEffect(() => {
         if (userRole) {
             setPages([]);
@@ -178,25 +191,14 @@ const Marketplace = () => {
                 sort: sortBy
             });
 
-            if (selectedCategory !== 'all') {
-                params.append('category', selectedCategory);
-            }
-
-            if (searchQuery) {
-                params.append('search', searchQuery);
-            }
-
-            if (priceRange.min) {
-                params.append('price_min', priceRange.min);
-            }
-
-            if (priceRange.max) {
-                params.append('price_max', priceRange.max);
-            }
+            if (selectedCategory !== 'all') params.append('category', selectedCategory);
+            if (searchQuery) params.append('search', searchQuery);
+            if (priceRange.min) params.append('price_min', priceRange.min);
+            if (priceRange.max) params.append('price_max', priceRange.max);
 
             const response = await axios.get(`${API_BASE_URL}/api/marketplace?${params}`);
-
             const newPages = response.data.data || [];
+
             setPages(prev => pageNum === 1 ? newPages : [...prev, ...newPages]);
             setHasMore(newPages.length === 12);
             setError('');
@@ -228,12 +230,49 @@ const Marketplace = () => {
         navigate(`/marketplace/${pageId}`);
     };
 
+    // Animation: Bay vào giỏ
+    const handleAddToCart = (e, page) => {
+        e.stopPropagation();
+        const button = e.currentTarget;
+        const img = button.closest('.marketplace-card')?.querySelector('.card-image img');
+        const cart = cartRef.current;
+
+        if (!img || !cart) return;
+
+        const clone = img.cloneNode();
+        const rect = img.getBoundingClientRect();
+        const cartRect = cart.getBoundingClientRect();
+
+        Object.assign(clone.style, {
+            position: 'fixed',
+            width: `${rect.width}px`,
+            height: `${rect.height}px`,
+            left: `${rect.left}px`,
+            top: `${rect.top}px`,
+            objectFit: 'cover',
+            borderRadius: '10px',
+            zIndex: '9999',
+            transition: 'all 0.8s cubic-bezier(0.25, 0.8, 0.25, 1)',
+            pointerEvents: 'none'
+        });
+
+        document.body.appendChild(clone);
+
+        setTimeout(() => {
+            clone.style.transform = `translate(${cartRect.left + cartRect.width / 2 - rect.left - rect.width / 2}px, ${cartRect.top + cartRect.height / 2 - rect.top - rect.height / 2}px) scale(0.2)`;
+            clone.style.opacity = '0.7';
+        }, 50);
+
+        setTimeout(() => {
+            clone.remove();
+            cart.style.transform = 'scale(1.2)';
+            setTimeout(() => cart.style.transform = 'scale(1)', 150);
+        }, 800);
+    };
+
     const formatPrice = (price) => {
         if (price === 0) return 'Miễn phí';
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND'
-        }).format(price);
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
     };
 
     const calculateDiscount = (price, originalPrice) => {
@@ -263,67 +302,27 @@ const Marketplace = () => {
             <div className="marketplace-main">
                 <Header />
                 <div className="marketplace-content">
-                    {/* Hero Section */}
+                    {/* Hero */}
                     <div className="marketplace-hero" data-aos="fade-down">
-                        <h1>Marketplace Landing Page</h1>
-                        <p>Khám phá và mua các landing page chất lượng cao từ cộng đồng</p>
+                        <div className="hero-content">
+                            <h1>Khám phá Landing Page</h1>
+                            <p>Hàng trăm mẫu thiết kế chuyên nghiệp, sẵn sàng sử dụng</p>
+                        </div>
                     </div>
-
                     {/* View Filter Tabs */}
-                    <div className="view-filter-tabs" data-aos="fade-up" style={{
-                        display: 'flex',
-                        gap: '10px',
-                        marginBottom: '20px',
-                        padding: '0 10px'
-                    }}>
-                        <button
-                            onClick={() => setViewFilter('all')}
-                            style={{
-                                padding: '10px 20px',
-                                border: 'none',
-                                borderRadius: '8px',
-                                background: viewFilter === 'all' ? '#6366f1' : '#e5e7eb',
-                                color: viewFilter === 'all' ? 'white' : '#374151',
-                                fontWeight: viewFilter === 'all' ? '600' : '400',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
+                    <div className="view-filter-tabs" data-aos="fade-up">
+                        <button onClick={() => setViewFilter('all')} className={viewFilter === 'all' ? 'active' : ''}>
                             Tất cả ({pages.length})
                         </button>
-                        <button
-                            onClick={() => setViewFilter('purchased')}
-                            style={{
-                                padding: '10px 20px',
-                                border: 'none',
-                                borderRadius: '8px',
-                                background: viewFilter === 'purchased' ? '#10b981' : '#e5e7eb',
-                                color: viewFilter === 'purchased' ? 'white' : '#374151',
-                                fontWeight: viewFilter === 'purchased' ? '600' : '400',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            ✅ Đã mua ({purchasedPageIds.length})
+                        <button onClick={() => setViewFilter('purchased')} className={viewFilter === 'purchased' ? 'active' : ''}>
+                            Đã mua ({purchasedPageIds.length})
                         </button>
-                        <button
-                            onClick={() => setViewFilter('my-pages')}
-                            style={{
-                                padding: '10px 20px',
-                                border: 'none',
-                                borderRadius: '8px',
-                                background: viewFilter === 'my-pages' ? '#f59e0b' : '#e5e7eb',
-                                color: viewFilter === 'my-pages' ? 'white' : '#374151',
-                                fontWeight: viewFilter === 'my-pages' ? '600' : '400',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                        >
-                            👤 Page của tôi ({myPageIds.length})
+                        <button onClick={() => setViewFilter('my-pages')} className={viewFilter === 'my-pages' ? 'active' : ''}>
+                            Page của tôi ({myPageIds.length})
                         </button>
                     </div>
 
-                    {/* Search and Filters */}
+                    {/* Filters */}
                     <div className="marketplace-filters" data-aos="fade-up">
                         <form onSubmit={handleSearch} className="search-bar">
                             <input
@@ -338,50 +337,28 @@ const Marketplace = () => {
                         </form>
 
                         <div className="filter-row">
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                className="filter-select"
-                            >
+                            <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="filter-select">
                                 {categories.map(cat => (
-                                    <option key={cat.value} value={cat.value}>
-                                        {cat.label}
-                                    </option>
+                                    <option key={cat.value} value={cat.value}>{cat.label}</option>
                                 ))}
                             </select>
 
-                            <select
-                                value={sortBy}
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="filter-select"
-                            >
+                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="filter-select">
                                 {sortOptions.map(opt => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
                                 ))}
                             </select>
 
                             <div className="price-range">
-                                <input
-                                    type="number"
-                                    placeholder="Giá tối thiểu"
-                                    value={priceRange.min}
-                                    onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })}
-                                />
+                                <input type="number" placeholder="Giá tối thiểu" value={priceRange.min} onChange={(e) => setPriceRange({ ...priceRange, min: e.target.value })} />
                                 <span>-</span>
-                                <input
-                                    type="number"
-                                    placeholder="Giá tối đa"
-                                    value={priceRange.max}
-                                    onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })}
-                                />
+                                <input type="number" placeholder="Giá tối đa" value={priceRange.max} onChange={(e) => setPriceRange({ ...priceRange, max: e.target.value })} />
                                 <button onClick={handleSearch}>Áp dụng</button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Featured Pages */}
+                    {/* Featured */}
                     {featuredPages.length > 0 && (
                         <div className="featured-section" data-aos="fade-up">
                             <h2>Nổi bật</h2>
@@ -389,7 +366,8 @@ const Marketplace = () => {
                                 {featuredPages.map((page) => (
                                     <div key={page._id} className="featured-card" onClick={() => handleViewDetail(page._id)}>
                                         <div className="featured-image">
-                                            <img src={page.main_screenshot || '/placeholder.png'} alt={page.title} />
+                                            <img src={page.main_screenshot || '/placeholder.png'} alt={page.title} loading="lazy" className="card-preview" />
+                                            <div className="image-overlay"></div>
                                             {calculateDiscount(page.price, page.original_price) > 0 && (
                                                 <div className="discount-badge">
                                                     -{calculateDiscount(page.price, page.original_price)}%
@@ -400,9 +378,7 @@ const Marketplace = () => {
                                             <h3>{page.title}</h3>
                                             <div className="featured-price">
                                                 <span className="current-price">{formatPrice(page.price)}</span>
-                                                {page.original_price && (
-                                                    <span className="original-price">{formatPrice(page.original_price)}</span>
-                                                )}
+                                                {page.original_price && <span className="original-price">{formatPrice(page.original_price)}</span>}
                                             </div>
                                         </div>
                                     </div>
@@ -411,105 +387,75 @@ const Marketplace = () => {
                         </div>
                     )}
 
-                    {/* Error Message */}
-                    {error && (
-                        <div className="error-message" data-aos="fade-in">
-                            {error}
-                        </div>
-                    )}
+                    {/* Error */}
+                    {error && <div className="error-message" data-aos="fade-in">{error}</div>}
 
                     {/* Main Grid */}
                     <div className="marketplace-grid-section" data-aos="fade-up">
                         <h2>
                             {viewFilter === 'all' && 'Tất cả Landing Page'}
-                            {viewFilter === 'purchased' && '✅ Đã mua'}
-                            {viewFilter === 'my-pages' && '👤 Page của tôi'}
+                            {viewFilter === 'purchased' && 'Đã mua'}
+                            {viewFilter === 'my-pages' && 'Page của tôi'}
                         </h2>
+
                         <InfiniteScroll
-                            dataLength={pages.length}
+                            dataLength={viewFilter === 'all' ? pages.length : filteredPages.length}
                             next={loadMore}
-                            hasMore={hasMore}
+                            hasMore={hasMore && viewFilter === 'all'}
                             loader={<div className="loader">Đang tải...</div>}
-                            endMessage={
-                                pages.length > 0 && (
-                                    <p style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>
-                                        Đã hiển thị tất cả landing page
-                                    </p>
-                                )
-                            }
+                            endMessage={<p style={{ textAlign: 'center', marginTop: '20px', color: '#666' }}>Đã hiển thị tất cả</p>}
                         >
                             <div className="marketplace-grid">
                                 {filteredPages.map((page) => (
                                     <div key={page._id} className="marketplace-card" data-aos="zoom-in">
                                         <div className="card-image" onClick={() => handleViewDetail(page._id)}>
-                                            <img src={page.main_screenshot || '/placeholder.png'} alt={page.title} />
+                                            <img
+                                                src={page.main_screenshot || '/placeholder.png'}
+                                                alt={page.title}
+                                                loading="lazy"
+                                            />
+                                            <div className="image-overlay"></div>
+
                                             {isMyPage(page._id) && (
-                                                <div className="my-page-badge" style={{
-                                                    position: 'absolute',
-                                                    top: '10px',
-                                                    left: '10px',
-                                                    background: '#f59e0b',
-                                                    color: 'white',
-                                                    padding: '6px 12px',
-                                                    borderRadius: '20px',
-                                                    fontSize: '12px',
-                                                    fontWeight: '600',
-                                                    zIndex: 2
-                                                }}>
-                                                    👤 Page của bạn
-                                                </div>
+                                                <div className="my-page-badge">Page của bạn</div>
                                             )}
+
                                             {isPurchased(page._id) && !isMyPage(page._id) && (
-                                                <div className="purchased-badge" style={{
-                                                    position: 'absolute',
-                                                    top: '10px',
-                                                    left: '10px',
-                                                    background: '#10b981',
-                                                    color: 'white',
-                                                    padding: '6px 12px',
-                                                    borderRadius: '20px',
-                                                    fontSize: '12px',
-                                                    fontWeight: '600',
-                                                    zIndex: 2
-                                                }}>
-                                                    ✅ Đã mua
+                                                <div className="purchased-badge" data-tooltip={`Đã mua ngày ${purchasedDates[page._id] || 'N/A'}`}>
+                                                    Đã mua
                                                 </div>
                                             )}
-                                            {page.is_bestseller && (
-                                                <div className="bestseller-badge">Bán chạy</div>
-                                            )}
+
+                                            {page.is_bestseller && <div className="bestseller-badge">Bán chạy</div>}
                                             {calculateDiscount(page.price, page.original_price) > 0 && (
                                                 <div className="discount-badge">
                                                     -{calculateDiscount(page.price, page.original_price)}%
                                                 </div>
                                             )}
+
+                                            <button className="view-detail-btn">Xem chi tiết</button>
                                         </div>
+
                                         <div className="card-content">
                                             <div className="card-category">{page.category}</div>
                                             <h3 className="card-title">{page.title}</h3>
                                             <p className="card-description">
-                                                {page.description.substring(0, 100)}
-                                                {page.description.length > 100 ? '...' : ''}
+                                                {page.description.substring(0, 100)}{page.description.length > 100 ? '...' : ''}
                                             </p>
+
                                             <div className="card-meta">
                                                 <span><Eye size={16} /> {page.views}</span>
                                                 <span><Heart size={16} /> {page.likes}</span>
                                                 <span><Star size={16} /> {page.rating.toFixed(1)}</span>
                                                 <span><ShoppingCart size={16} /> {page.sold_count}</span>
                                             </div>
+
                                             <div className="card-footer">
                                                 <div className="card-price">
                                                     <span className="current-price">{formatPrice(page.price)}</span>
-                                                    {page.original_price && (
-                                                        <span className="original-price">{formatPrice(page.original_price)}</span>
-                                                    )}
+                                                    {page.original_price && <span className="original-price">{formatPrice(page.original_price)}</span>}
                                                 </div>
-                                                <button
-                                                    className="view-detail-btn"
-                                                    onClick={() => handleViewDetail(page._id)}
-                                                >
-                                                    Xem chi tiết
-                                                </button>
+
                                             </div>
                                         </div>
                                     </div>

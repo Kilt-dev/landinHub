@@ -10,7 +10,27 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/MySales.css';
 import DogLoader from '../components/Loader';
-import { Eye, Trash2 } from 'lucide-react';
+
+// [CẬP NHẬT] Thay thế Lucide icons bằng các component/hàm icon tinh tế hơn
+// Giả định bạn có các component/hàm này. Ví dụ: IconView, IconDelete.
+// Dùng hàm để dễ dàng áp dụng className và size.
+
+const IconLuxury = ({ name, size = 18, color = 'currentColor', className = '' }) => {
+    // Trong thực tế, bạn sẽ import SVG hoặc dùng thư viện cao cấp (ví dụ: Heroicons, Remixicon với style tinh chỉnh)
+    // Ở đây, tôi dùng SVG placeholder để CSS có thể áp dụng.
+    const icons = {
+        View: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+        Trash: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
+        Box: <svg xmlns="http://www.w3.org/2000/svg" width={size*1.2} height={size*1.2} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.89 1.57l7.55 4.37A2 2 0 0 1 23 7.66v8.68a2 2 0 0 1-1.06 1.79l-7.55 4.37a2 2 0 0 1-1.89 0l-7.55-4.37A2 2 0 0 1 1 16.34V7.66a2 2 0 0 1 1.06-1.79l7.55-4.37a2 2 0 0 1 1.89 0z"></path><path d="M2.5 7.5L12 12l9.5-4.5"></path><path d="M12 22.5V12"></path></svg>,
+        Check: <svg xmlns="http://www.w3.org/2000/svg" width={size*1.2} height={size*1.2} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
+        Clock: <svg xmlns="http://www.w3.org/2000/svg" width={size*1.2} height={size*1.2} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>,
+        Dollar: <svg xmlns="http://www.w3.org/2000/svg" width={size*1.2} height={size*1.2} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>,
+        ShoppingBag: <svg xmlns="http://www.w3.org/2000/svg" width={size*1.2} height={size*1.2} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+    };
+
+    return <i className={className}>{icons[name] || null}</i>;
+};
+
 
 const MySales = () => {
     const { user } = useContext(UserContext);
@@ -32,6 +52,15 @@ const MySales = () => {
         { value: 'SUSPENDED', label: 'Tạm ngưng' },
         { value: 'SOLD_OUT', label: 'Hết hàng' }
     ];
+
+    // [CẬP NHẬT] Các Icon Stats cao cấp hơn
+    const statIcons = {
+        totalPages: { name: 'Box', color: '#B8860B' }, // Vàng Kim
+        activePages: { name: 'Check', color: '#27AE60' }, // Xanh Lá
+        pendingPages: { name: 'Clock', color: '#E6B01F' }, // Vàng Cảnh Báo
+        revenue: { name: 'Dollar', color: '#B8860B' }, // Vàng Kim
+        totalSales: { name: 'ShoppingBag', color: '#192A56' }, // Xanh Navy
+    };
 
     const fetchMyPages = useCallback(async () => {
         if (!userId) return;
@@ -56,7 +85,7 @@ const MySales = () => {
         } finally {
             setLoading(false);
         }
-    }, [userId, selectedStatus]);
+    }, [userId, selectedStatus, API_BASE_URL]);
 
     const fetchStats = useCallback(async () => {
         if (!userId) return;
@@ -65,12 +94,14 @@ const MySales = () => {
                 headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
             });
             console.log('Stats response:', response.data);
-            setStats(response.data.data);
+            if (response.data.data) {
+                setStats(response.data.data);
+            }
         } catch (err) {
             console.error('Fetch stats error:', err);
             toast.error('Không thể tải thống kê bán hàng');
         }
-    }, [userId]);
+    }, [userId, API_BASE_URL]);
 
     useEffect(() => {
         const initializeAuth = async () => {
@@ -141,7 +172,7 @@ const MySales = () => {
         };
         const badge = badges[status] || { color: '#6b7280', label: 'Không xác định' };
         return (
-            <span className="status-badge" style={{ backgroundColor: badge.color, color: 'white', padding: '4px 12px', borderRadius: '9999px', fontSize: '0.75rem' }}>
+            <span className="status-badge" style={{ backgroundColor: badge.color, color: 'white' }}>
                 {badge.label}
             </span>
         );
@@ -155,6 +186,15 @@ const MySales = () => {
         return <DogLoader />;
     }
 
+    // Tạo danh sách Stats để render dễ dàng hơn
+    const statsList = stats ? [
+        { key: 'totalPages', label: 'Tổng landing page', value: stats.totalPages, icon: statIcons.totalPages },
+        { key: 'activePages', label: 'Đang bán', value: stats.activePages, icon: statIcons.activePages },
+        { key: 'pendingPages', label: 'Chờ duyệt', value: stats.pendingPages, icon: statIcons.pendingPages },
+        { key: 'revenue', label: 'Doanh thu', value: formatPrice(stats.revenue), icon: statIcons.revenue, isCurrency: true },
+        { key: 'totalSales', label: 'Đã bán', value: stats.totalSales, icon: statIcons.totalSales }
+    ] : [];
+
     return (
         <div className="my-sales-container">
             <Header />
@@ -164,7 +204,7 @@ const MySales = () => {
                 <div className="my-sales-content">
                     <div className="my-sales-header" data-aos="fade-down">
                         <div>
-                            <h1>Quản lý Landing Page Đang Bán</h1>
+                            <h1>Quản lý Marketplace</h1>
                             <p>Theo dõi và quản lý các landing page bạn đã đăng bán</p>
                         </div>
                         <button className="btn-add" onClick={() => navigate('/sell-page')}>
@@ -174,41 +214,27 @@ const MySales = () => {
 
                     {stats && (
                         <div className="stats-grid" data-aos="fade-up">
-                            <div className="stat-card">
-                                <div className="stat-icon">📦</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{stats.totalPages}</div>
-                                    <div className="stat-label">Tổng landing page</div>
+                            {statsList.map((stat) => (
+                                <div key={stat.key} className="stat-card">
+                                    {/* Sử dụng IconLuxury mới */}
+                                    <div className="stat-icon-wrapper">
+                                        <IconLuxury
+                                            name={stat.icon.name}
+                                            color={stat.icon.color}
+                                            className="stat-icon"
+                                            size={22}
+                                        />
+                                    </div>
+                                    <div className="stat-info">
+                                        <div
+                                            className={`stat-value ${stat.isCurrency ? 'value-gold' : ''}`}
+                                        >
+                                            {stat.value}
+                                        </div>
+                                        <div className="stat-label">{stat.label}</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="stat-card">
-                                <div className="stat-icon">✅</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{stats.activePages}</div>
-                                    <div className="stat-label">Đang bán</div>
-                                </div>
-                            </div>
-                            <div className="stat-card">
-                                <div className="stat-icon">⏳</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{stats.pendingPages}</div>
-                                    <div className="stat-label">Chờ duyệt</div>
-                                </div>
-                            </div>
-                            <div className="stat-card">
-                                <div className="stat-icon">💰</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{formatPrice(stats.revenue)}</div>
-                                    <div className="stat-label">Doanh thu</div>
-                                </div>
-                            </div>
-                            <div className="stat-card">
-                                <div className="stat-icon">🛒</div>
-                                <div className="stat-info">
-                                    <div className="stat-value">{stats.totalSales}</div>
-                                    <div className="stat-label">Đã bán</div>
-                                </div>
-                            </div>
+                            ))}
                         </div>
                     )}
 
@@ -229,7 +255,7 @@ const MySales = () => {
                     <div className="pages-list" data-aos="fade-up">
                         {pages.length === 0 ? (
                             <div className="empty-state">
-                                <p>Chưa có landing page nào</p>
+                                <p>Chưa có landing page nào được đăng bán trên Marketplace</p>
                                 <button onClick={() => navigate('/sell-page')}>
                                     Đăng bán ngay
                                 </button>
@@ -250,9 +276,17 @@ const MySales = () => {
                                             {page.description?.substring(0, 150) || 'Không có mô tả'}...
                                         </p>
                                         <div className="page-meta">
-                                            <span>👁️ {page.views} lượt xem</span>
-                                            <span>❤️ {page.likes} thích</span>
-                                            <span>🛒 {page.sold_count} đã bán</span>
+                                            {/* [CẬP NHẬT] Thay thế emoji bằng icon SVG */}
+                                            <span>
+                                                <IconLuxury name="View" size={14} color="#7F8C8D" /> {page.views} lượt xem
+                                            </span>
+                                            {/* Giả định có các trường likes, sold_count */}
+                                            <span>
+                                                <IconLuxury name="Check" size={14} color="#7F8C8D" /> {page.likes} thích
+                                            </span>
+                                            <span>
+                                                <IconLuxury name="ShoppingBag" size={14} color="#7F8C8D" /> {page.sold_count} đã bán
+                                            </span>
                                         </div>
                                         {page.rejection_reason && (
                                             <div className="rejection-reason">
@@ -267,13 +301,13 @@ const MySales = () => {
                                                 className="btn-view"
                                                 onClick={() => navigate(`/marketplace/${page._id}`)}
                                             >
-                                                <Eye size={16} /> Xem
+                                                <IconLuxury name="View" size={16} color="white" /> Xem
                                             </button>
                                             <button
                                                 className="btn-delete"
                                                 onClick={() => handleDelete(page._id)}
                                             >
-                                                <Trash2 size={16} /> Xóa
+                                                <IconLuxury name="Trash" size={16} color="#C0392B" /> Xóa
                                             </button>
                                         </div>
                                     </div>

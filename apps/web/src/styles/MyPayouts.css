@@ -1,5 +1,6 @@
 /* My Payouts Page */
 .my-payouts-container {
+    margin-top: 70px;
     display: flex;
     min-height: 100vh;
     background: #f9fafb;
@@ -11,6 +12,7 @@
 }
 
 .my-payouts-content {
+    margin-top: -10px;
     padding: 2rem;
     max-width: 1400px;
 }
@@ -255,9 +257,7 @@
         margin-left: 0;
     }
 
-    .my-payouts-content {
-        padding: 1rem;
-    }
+
 
     .payouts-header {
         flex-direction: column;
