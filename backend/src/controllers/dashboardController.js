@@ -1,4 +1,5 @@
 const Page = require('../models/Page');
+const Transaction = require('../models/Transaction');
 const mongoose = require('mongoose');
 
 // ========== ULTIMATE DASHBOARD FIX ==========
@@ -6,25 +7,69 @@ const getDashboardData = async (req, res) => {
     console.log('🔍 [DASHBOARD] START - User:', req.user);
 
     try {
-        // ✅ FIX 1: ANY userId format OK
+        // ✅ FIX 1: Get userId from req.user (can be userId, id, or _id)
+        const userIdRaw = req.user.userId || req.user.id || req.user._id;
+
+        if (!userIdRaw) {
+            return res.status(401).json({
+                success: false,
+                message: 'Không tìm thấy userId trong token'
+            });
+        }
+
         let userId;
-        if (mongoose.Types.ObjectId.isValid(req.user._id)) {
-            userId = new mongoose.Types.ObjectId(req.user._id);
+        if (mongoose.Types.ObjectId.isValid(userIdRaw)) {
+            userId = new mongoose.Types.ObjectId(userIdRaw);
         } else {
-            userId = req.user._id; // String OK too
+            userId = userIdRaw; // String OK too
         }
 
         console.log('✅ [DASHBOARD] userId:', userId, 'type:', typeof userId);
 
-        // ✅ FIX 2: COUNT FIRST (DEBUG)
+        // ✅ FIX 2: COUNT PAGES
         const totalCount = await Page.countDocuments({ user_id: userId });
         console.log('✅ [DASHBOARD] TOTAL PAGES IN DB:', totalCount);
 
-        if (totalCount === 0) {
+        // ✅ NEW: Get payment stats
+        const [purchaseStats, salesStats] = await Promise.all([
+            // Purchase stats (as buyer)
+            Transaction.aggregate([
+                { $match: { buyer_id: userId, status: 'COMPLETED' } },
+                { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+            ]),
+            // Sales stats (as seller)
+            Transaction.aggregate([
+                { $match: { seller_id: userId, status: 'COMPLETED' } },
+                { $group: { _id: null, total: { $sum: '$seller_amount' }, count: { $sum: 1 } } }
+            ])
+        ]);
+
+        const paymentStats = {
+            totalSpent: purchaseStats[0]?.total || 0,
+            purchaseCount: purchaseStats[0]?.count || 0,
+            totalEarned: salesStats[0]?.total || 0,
+            salesCount: salesStats[0]?.count || 0
+        };
+
+        console.log('✅ [DASHBOARD] Payment stats:', paymentStats);
+
+        if (totalCount === 0 && paymentStats.purchaseCount === 0 && paymentStats.salesCount === 0) {
             return res.json({
                 success: true,
                 data: {
-                    stats: { totalPages: 0, totalViews: '0', totalRevenue: '0M', livePages: 0, conversionRate: '0%' },
+                    stats: {
+                        totalPages: 0,
+                        totalViews: '0',
+                        totalRevenue: '0M',
+                        livePages: 0,
+                        conversionRate: '0%'
+                    },
+                    paymentStats: {
+                        totalSpent: 0,
+                        purchaseCount: 0,
+                        totalEarned: 0,
+                        salesCount: 0
+                    },
                     pages: []
                 }
             });
@@ -74,17 +119,67 @@ const getDashboardData = async (req, res) => {
 
         console.log('✅ [DASHBOARD] SUCCESS -', formattedPages.length, 'pages');
 
+        // Format số tiền VND
+        const formatVND = (amount) => {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(amount);
+        };
+
         res.json({
             success: true,
             data: {
-                stats: {
-                    totalPages: statResult.totalPages,
-                    totalViews: statResult.totalViews.toLocaleString(),
-                    totalRevenue: (statResult.totalRevenue / 1000000).toFixed(1) + 'M',
-                    livePages: statResult.livePages,
-                    conversionRate: statResult.totalViews ? ((statResult.totalRevenue / statResult.totalViews) * 100).toFixed(1) + '%' : '0%'
+                // ========== TỔNG QUAN LANDING PAGES ==========
+                pages: {
+                    total: statResult.totalPages,
+                    live: statResult.livePages,
+                    draft: statResult.totalPages - statResult.livePages,
+                    totalViews: statResult.totalViews.toLocaleString('vi-VN'),
+                    totalRevenue: formatVND(statResult.totalRevenue)
                 },
-                pages: formattedPages
+
+                // ========== THANH TOÁN - MUA ==========
+                purchases: {
+                    title: 'Đã Mua',
+                    count: paymentStats.purchaseCount,
+                    totalSpent: formatVND(paymentStats.totalSpent),
+                    totalSpentRaw: paymentStats.totalSpent,
+                    avgPerPurchase: paymentStats.purchaseCount > 0
+                        ? formatVND(Math.round(paymentStats.totalSpent / paymentStats.purchaseCount))
+                        : formatVND(0)
+                },
+
+                // ========== THANH TOÁN - BÁN ==========
+                sales: {
+                    title: 'Đã Bán',
+                    count: paymentStats.salesCount,
+                    totalEarned: formatVND(paymentStats.totalEarned),
+                    totalEarnedRaw: paymentStats.totalEarned,
+                    avgPerSale: paymentStats.salesCount > 0
+                        ? formatVND(Math.round(paymentStats.totalEarned / paymentStats.salesCount))
+                        : formatVND(0),
+                    pendingPayout: formatVND(0) // TODO: Tính từ payout_status
+                },
+
+                // ========== SỐ DƯ ==========
+                balance: {
+                    title: 'Số Dư Ròng',
+                    amount: formatVND(paymentStats.totalEarned - paymentStats.totalSpent),
+                    amountRaw: paymentStats.totalEarned - paymentStats.totalSpent,
+                    status: paymentStats.totalEarned >= paymentStats.totalSpent ? 'positive' : 'negative',
+                    canWithdraw: paymentStats.totalEarned > paymentStats.totalSpent
+                },
+
+                // ========== HOẠT ĐỘNG ==========
+                activity: {
+                    totalTransactions: paymentStats.purchaseCount + paymentStats.salesCount,
+                    lastPurchase: null, // TODO
+                    lastSale: null // TODO
+                },
+
+                // ========== DANH SÁCH PAGES ==========
+                pagesList: formattedPages
             }
         });
 

@@ -105,10 +105,12 @@ class ExportService {
             let htmlContent;
             if (s3FilePath) {
                 htmlContent = await this.getHTMLFromS3(s3FilePath);
+                // Ensure pageData is embedded in HTML
+                htmlContent = this.embedPageDataInHTML(htmlContent, pageData);
             } else {
                 // Fallback
                 console.warn('No S3 path provided, using pageData fallback');
-                htmlContent = this.generateHTMLFile(pageData, {});
+                htmlContent = this.generateHTMLFileWithEmbeddedData(pageData, {});
             }
 
             // Extract and download images as base64
@@ -137,7 +139,7 @@ class ExportService {
                     originalId: marketplacePage._id
                 },
                 pageData: pageData,
-                htmlContent: htmlContent,  // HTML thật từ S3
+                htmlContent: htmlContent,  // HTML with embedded pageData
                 embeddedImages: embeddedImages
             };
 
@@ -151,6 +153,37 @@ class ExportService {
             }
             throw error;
         }
+    }
+
+    /**
+     * Embed pageData into HTML as a script tag
+     * @param {string} html - HTML content
+     * @param {Object} pageData - Page data to embed
+     * @returns {string} HTML with embedded pageData
+     */
+    embedPageDataInHTML(html, pageData) {
+        // Check if pageData is already embedded
+        if (html.includes('<script type="application/json" id="lpb-page-data">')) {
+            // Replace existing embedded data
+            const regex = /<script type="application\/json" id="lpb-page-data">[\s\S]*?<\/script>/;
+            const embeddedScript = `<script type="application/json" id="lpb-page-data">\n${JSON.stringify(pageData, null, 2)}\n    </script>`;
+            return html.replace(regex, embeddedScript);
+        } else {
+            // Insert before </body>
+            const embeddedScript = `\n    <!-- Embedded PageData for easy import -->\n    <script type="application/json" id="lpb-page-data">\n${JSON.stringify(pageData, null, 2)}\n    </script>\n</body>`;
+            return html.replace('</body>', embeddedScript);
+        }
+    }
+
+    /**
+     * Generate HTML file with embedded pageData
+     * @param {Object} pageData - Page data
+     * @param {Object} imageMap - Image URL mappings
+     * @returns {string} HTML content with embedded pageData
+     */
+    generateHTMLFileWithEmbeddedData(pageData, imageMap = {}) {
+        const baseHTML = this.generateHTMLFile(pageData, imageMap);
+        return this.embedPageDataInHTML(baseHTML, pageData);
     }
 
     /**
@@ -314,7 +347,7 @@ class ExportService {
         }
         .page-container {
             width: 100%;
-            max-width: ${canvas.width || 1200}px;
+            max-width: ${canvas.width};
             margin: 0 auto;
             position: relative;
         }

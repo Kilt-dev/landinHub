@@ -1,6 +1,6 @@
 const crypto = require('crypto');
-const querystring = require('querystring');
-
+const qs = require('qs');
+require('dotenv').config();
 class VNPayService {
     constructor() {
         this.tmnCode = process.env.VNPAY_TMN_CODE || 'VNPAY_TMN_CODE';
@@ -80,12 +80,12 @@ class VNPayService {
             vnpParams = this.sortObject(vnpParams);
 
             // Tạo query string
-            const signData = querystring.stringify(vnpParams, { encode: false });
+            const signData = qs.stringify(vnpParams, { encode: false });
             const secureHash = this.createSignature(signData);
 
             vnpParams.vnp_SecureHash = secureHash;
 
-            const paymentUrl = `${this.url}?${querystring.stringify(vnpParams, { encode: false })}`;
+            const paymentUrl = `${this.url}?${qs.stringify(vnpParams, { encode: false })}`;
 
             console.log('VNPay Payment URL created:', {
                 orderId,
@@ -118,7 +118,7 @@ class VNPayService {
 
             // Sắp xếp params
             const sortedParams = this.sortObject(vnpParams);
-            const signData = querystring.stringify(sortedParams, { encode: false });
+            const signData = qs.stringify(sortedParams, { encode: false });
             const expectedHash = this.createSignature(signData);
 
             if (secureHash !== expectedHash) {
@@ -182,7 +182,7 @@ class VNPayService {
             // Sắp xếp params
             vnpParams = this.sortObject(vnpParams);
 
-            const signData = querystring.stringify(vnpParams, { encode: false });
+            const signData = qs.stringify(vnpParams, { encode: false });
             const secureHash = this.createSignature(signData);
 
             vnpParams.vnp_SecureHash = secureHash;
@@ -248,7 +248,7 @@ class VNPayService {
             // Sắp xếp params
             vnpParams = this.sortObject(vnpParams);
 
-            const signData = querystring.stringify(vnpParams, { encode: false });
+            const signData = qs.stringify(vnpParams, { encode: false });
             const secureHash = this.createSignature(signData);
 
             vnpParams.vnp_SecureHash = secureHash;

@@ -127,55 +127,86 @@ exports.createTransaction = async (req, res) => {
     }
 };
 /**
- * IPN callback từ MOMO
+ * IPN callback từ MOMO (accept both GET and POST)
  */
 exports.momoIPN = async (req, res) => {
     try {
-        console.log('MOMO IPN Received:', req.body);
+        // Get data from body (POST) or query (GET)
+        const ipnData = req.method === 'POST' ? req.body : req.query;
 
-        const verification = paymentService.verifyCallback('MOMO', req.body);
+        console.log('✅ MOMO IPN Received (' + req.method + '):', JSON.stringify(ipnData));
+
+        // ✅ CHECK: Empty data (health check từ MOMO)
+        if (!ipnData || Object.keys(ipnData).length === 0) {
+            console.log('⚠️ MOMO IPN: Empty data (health check), returning 200 OK');
+            return res.status(200).json({ message: 'OK' });
+        }
+
+        // ✅ CHECK: Required fields
+        if (!ipnData.orderId || !ipnData.signature) {
+            console.error('❌ MOMO IPN: Missing required fields', {
+                hasOrderId: !!ipnData.orderId,
+                hasSignature: !!ipnData.signature
+            });
+            return res.status(200).json({ message: 'Missing fields' });
+        }
+
+        // Convert string numbers to integers if needed
+        if (typeof ipnData.resultCode === 'string') {
+            ipnData.resultCode = parseInt(ipnData.resultCode);
+        }
+        if (typeof ipnData.amount === 'string') {
+            ipnData.amount = parseInt(ipnData.amount);
+        }
+
+        console.log('🔐 MOMO IPN: Verifying signature...');
+        const verification = paymentService.verifyCallback('MOMO', ipnData);
 
         if (!verification.valid) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid signature'
+            console.error('❌ MOMO IPN: Invalid signature', {
+                orderId: ipnData.orderId,
+                error: verification.error
             });
+            return res.status(200).json({ message: 'Invalid signature' });
         }
 
         const { orderId, transId, resultCode } = verification.data;
+        console.log('✅ MOMO IPN: Signature valid, orderId:', orderId);
 
         // Lấy transaction
         const transaction = await Transaction.findById(orderId);
 
         if (!transaction) {
-            return res.status(404).json({
-                success: false,
-                message: 'Transaction not found'
-            });
+            console.error('❌ MOMO IPN: Transaction not found', orderId);
+            return res.status(200).json({ message: 'Transaction not found' });
+        }
+
+        // Check if already processed
+        if (transaction.status === 'COMPLETED') {
+            console.log('⚠️ MOMO IPN: Transaction already completed', orderId);
+            return res.status(200).json({ message: 'Already processed' });
         }
 
         // Cập nhật transaction với gateway data
         transaction.payment_gateway_transaction_id = transId;
-        transaction.payment_gateway_response = req.body;
+        transaction.payment_gateway_response = ipnData;
 
         if (resultCode === 0) {
             // Payment success
-            await paymentService.processPaymentSuccess(orderId, req.body);
+            console.log('✅ MOMO IPN: Payment success, processing...', orderId);
+            await paymentService.processPaymentSuccess(orderId, ipnData);
+            console.log('✅ MOMO IPN: Payment processed successfully!');
         } else {
             // Payment failed
-            await transaction.markAsFailed(`MOMO Error: ${req.body.message}`);
+            console.log('❌ MOMO IPN: Payment failed, resultCode:', resultCode);
+            await transaction.markAsFailed(`MOMO Error: ${ipnData.message}`);
         }
 
-        res.status(200).json({
-            success: true,
-            message: 'IPN processed'
-        });
+        // Response to MOMO (return 204 for success)
+        res.status(204).send();
     } catch (error) {
-        console.error('MOMO IPN Error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        console.error('💥 MOMO IPN Error:', error);
+        res.status(200).json({ message: 'Error processed' });
     }
 };
 
@@ -802,6 +833,317 @@ exports.exportUserTransactions = async (req, res) => {
         res.send(csv);
     } catch (error) {
         console.error('Export User Transactions Error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * ADMIN: Revenue by time period (day/week/month)
+ */
+exports.getRevenueByPeriod = async (req, res) => {
+    try {
+        const { period = 'day', days = 30 } = req.query;
+
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - parseInt(days));
+
+        let groupFormat;
+        switch (period) {
+            case 'day':
+                groupFormat = '%Y-%m-%d';
+                break;
+            case 'week':
+                groupFormat = '%Y-W%U'; // Year-Week
+                break;
+            case 'month':
+                groupFormat = '%Y-%m';
+                break;
+            default:
+                groupFormat = '%Y-%m-%d';
+        }
+
+        const revenueData = await Transaction.aggregate([
+            {
+                $match: {
+                    status: 'COMPLETED',
+                    created_at: { $gte: startDate }
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        $dateToString: { format: groupFormat, date: '$created_at' }
+                    },
+                    totalRevenue: { $sum: '$amount' },
+                    platformFee: { $sum: '$platform_fee' },
+                    sellerAmount: { $sum: '$seller_amount' },
+                    transactionCount: { $sum: 1 }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: revenueData
+        });
+    } catch (error) {
+        console.error('Get Revenue By Period Error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * ADMIN: Top sellers
+ */
+exports.getTopSellers = async (req, res) => {
+    try {
+        const { limit = 10 } = req.query;
+
+        const topSellers = await Transaction.aggregate([
+            { $match: { status: 'COMPLETED' } },
+            {
+                $group: {
+                    _id: '$seller_id',
+                    totalRevenue: { $sum: '$amount' },
+                    totalEarned: { $sum: '$seller_amount' },
+                    transactionCount: { $sum: 1 }
+                }
+            },
+            { $sort: { totalRevenue: -1 } },
+            { $limit: parseInt(limit) },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'seller'
+                }
+            },
+            { $unwind: '$seller' },
+            {
+                $project: {
+                    seller_id: '$_id',
+                    seller_name: '$seller.name',
+                    seller_email: '$seller.email',
+                    totalRevenue: 1,
+                    totalEarned: 1,
+                    transactionCount: 1,
+                    _id: 0
+                }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            data: topSellers
+        });
+    } catch (error) {
+        console.error('Get Top Sellers Error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * ADMIN: Top buyers
+ */
+exports.getTopBuyers = async (req, res) => {
+    try {
+        const { limit = 10 } = req.query;
+
+        const topBuyers = await Transaction.aggregate([
+            { $match: { status: 'COMPLETED' } },
+            {
+                $group: {
+                    _id: '$buyer_id',
+                    totalSpent: { $sum: '$amount' },
+                    purchaseCount: { $sum: 1 }
+                }
+            },
+            { $sort: { totalSpent: -1 } },
+            { $limit: parseInt(limit) },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'buyer'
+                }
+            },
+            { $unwind: '$buyer' },
+            {
+                $project: {
+                    buyer_id: '$_id',
+                    buyer_name: '$buyer.name',
+                    buyer_email: '$buyer.email',
+                    totalSpent: 1,
+                    purchaseCount: 1,
+                    avgOrderValue: { $divide: ['$totalSpent', '$purchaseCount'] },
+                    _id: 0
+                }
+            }
+        ]);
+
+        res.json({
+            success: true,
+            data: topBuyers
+        });
+    } catch (error) {
+        console.error('Get Top Buyers Error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * ADMIN: Payment method distribution
+ */
+exports.getPaymentMethodStats = async (req, res) => {
+    try {
+        const methodStats = await Transaction.aggregate([
+            { $match: { status: 'COMPLETED' } },
+            {
+                $group: {
+                    _id: '$payment_method',
+                    totalRevenue: { $sum: '$amount' },
+                    transactionCount: { $sum: 1 },
+                    avgAmount: { $avg: '$amount' }
+                }
+            },
+            { $sort: { totalRevenue: -1 } }
+        ]);
+
+        // Calculate percentages
+        const totalTransactions = methodStats.reduce((sum, stat) => sum + stat.transactionCount, 0);
+        const totalRevenue = methodStats.reduce((sum, stat) => sum + stat.totalRevenue, 0);
+
+        const enrichedStats = methodStats.map(stat => ({
+            ...stat,
+            transactionPercentage: totalTransactions > 0
+                ? ((stat.transactionCount / totalTransactions) * 100).toFixed(2)
+                : 0,
+            revenuePercentage: totalRevenue > 0
+                ? ((stat.totalRevenue / totalRevenue) * 100).toFixed(2)
+                : 0
+        }));
+
+        res.json({
+            success: true,
+            data: {
+                stats: enrichedStats,
+                totals: {
+                    totalTransactions,
+                    totalRevenue
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get Payment Method Stats Error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * ADMIN: Performance metrics
+ */
+exports.getPerformanceMetrics = async (req, res) => {
+    try {
+        const { days = 30 } = req.query;
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - parseInt(days));
+
+        // Success rate
+        const [completed, failed, cancelled] = await Promise.all([
+            Transaction.countDocuments({ status: 'COMPLETED', created_at: { $gte: startDate } }),
+            Transaction.countDocuments({ status: 'FAILED', created_at: { $gte: startDate } }),
+            Transaction.countDocuments({ status: 'CANCELLED', created_at: { $gte: startDate } })
+        ]);
+
+        const total = completed + failed + cancelled;
+        const successRate = total > 0 ? ((completed / total) * 100).toFixed(2) : 0;
+
+        // Average transaction value
+        const avgTransaction = await Transaction.aggregate([
+            { $match: { status: 'COMPLETED', created_at: { $gte: startDate } } },
+            { $group: { _id: null, avgAmount: { $avg: '$amount' } } }
+        ]);
+
+        // Average time to complete (PENDING to COMPLETED)
+        const completionTimes = await Transaction.aggregate([
+            {
+                $match: {
+                    status: 'COMPLETED',
+                    created_at: { $gte: startDate },
+                    paid_at: { $exists: true }
+                }
+            },
+            {
+                $project: {
+                    timeToComplete: {
+                        $subtract: ['$paid_at', '$created_at']
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    avgTimeMs: { $avg: '$timeToComplete' },
+                    minTimeMs: { $min: '$timeToComplete' },
+                    maxTimeMs: { $max: '$timeToComplete' }
+                }
+            }
+        ]);
+
+        // Refund rate
+        const refunded = await Transaction.countDocuments({
+            status: { $in: ['REFUNDED', 'REFUND_PENDING'] },
+            created_at: { $gte: startDate }
+        });
+        const refundRate = completed > 0 ? ((refunded / completed) * 100).toFixed(2) : 0;
+
+        res.json({
+            success: true,
+            data: {
+                transactionMetrics: {
+                    total,
+                    completed,
+                    failed,
+                    cancelled,
+                    successRate: parseFloat(successRate)
+                },
+                revenueMetrics: {
+                    avgTransactionValue: avgTransaction[0]?.avgAmount || 0
+                },
+                performanceMetrics: {
+                    avgTimeToCompleteMs: completionTimes[0]?.avgTimeMs || 0,
+                    avgTimeToCompleteMin: completionTimes[0]?.avgTimeMs
+                        ? (completionTimes[0].avgTimeMs / 60000).toFixed(2)
+                        : 0,
+                    minTimeMs: completionTimes[0]?.minTimeMs || 0,
+                    maxTimeMs: completionTimes[0]?.maxTimeMs || 0
+                },
+                refundMetrics: {
+                    refundCount: refunded,
+                    refundRate: parseFloat(refundRate)
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Get Performance Metrics Error:', error);
         res.status(500).json({
             success: false,
             message: error.message

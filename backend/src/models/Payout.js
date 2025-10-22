@@ -31,10 +31,25 @@ const PayoutSchema = new mongoose.Schema({
         default: 'PENDING'
     },
     // Thông tin ngân hàng của seller
+    bank_account_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'BankAccount'
+    },
     bank_info: {
         bank_name: String,
         account_number: String,
-        account_name: String
+        account_name: String,
+        bank_code: String
+    },
+    // Payment method for payout
+    payout_method: {
+        type: String,
+        enum: ['BANK_TRANSFER', 'MOMO', 'VNPAY', 'MANUAL'],
+        default: 'BANK_TRANSFER'
+    },
+    // Auto transfer result
+    transfer_result: {
+        type: mongoose.Schema.Types.Mixed
     },
     // Admin xử lý
     processed_by: {

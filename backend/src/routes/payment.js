@@ -17,6 +17,13 @@ router.get('/admin/stats', authMiddleware, isAdmin, paymentController.getPayment
 // Admin: Export transactions
 router.get('/admin/export', authMiddleware, isAdmin, paymentController.exportTransactionsAdmin);
 
+// Admin: Advanced reports
+router.get('/admin/revenue-by-period', authMiddleware, isAdmin, paymentController.getRevenueByPeriod);
+router.get('/admin/top-sellers', authMiddleware, isAdmin, paymentController.getTopSellers);
+router.get('/admin/top-buyers', authMiddleware, isAdmin, paymentController.getTopBuyers);
+router.get('/admin/payment-method-stats', authMiddleware, isAdmin, paymentController.getPaymentMethodStats);
+router.get('/admin/performance-metrics', authMiddleware, isAdmin, paymentController.getPerformanceMetrics);
+
 /**
  * Protected routes - yêu cầu authentication
  */
@@ -52,17 +59,21 @@ router.post('/refund/request', authMiddleware, paymentController.requestRefund);
  * Payment gateway callbacks - public
  */
 
-// MOMO IPN callback
+// MOMO IPN callback (accept both GET and POST)
 router.post('/momo/ipn', paymentController.momoIPN);
+router.get('/momo/ipn', paymentController.momoIPN);
 
-// MOMO return URL
+// MOMO return URL (support both /return and /callback)
 router.get('/momo/return', paymentController.momoReturn);
+router.get('/momo/callback', paymentController.momoReturn);
 
 // VNPay IPN callback
 router.get('/vnpay/ipn', paymentController.vnpayIPN);
+router.post('/vnpay/ipn', paymentController.vnpayIPN);
 
-// VNPay return URL
+// VNPay return URL (support both /return and /callback)
 router.get('/vnpay/return', paymentController.vnpayReturn);
+router.get('/vnpay/callback', paymentController.vnpayReturn);
 
 // Sandbox confirm (for testing)
 router.post('/sandbox/confirm', paymentController.sandboxConfirm);
