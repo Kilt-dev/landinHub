@@ -27,6 +27,9 @@ const AdminPayoutManagement = () => {
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [approveData, setApproveData] = useState({ proof_url: '', notes: '' });
     const [rejectData, setRejectData] = useState({ reason: '' });
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
     const navigate = useNavigate();
     const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -112,23 +115,79 @@ const AdminPayoutManagement = () => {
         }
     };
 
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                toast.error('Ảnh không được vượt quá 5MB');
+                return;
+            }
+            if (!file.type.startsWith('image/')) {
+                toast.error('Vui lòng chọn file ảnh');
+                return;
+            }
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
+
+    const uploadImage = async () => {
+        if (!imageFile) return null;
+
+        try {
+            setUploadingImage(true);
+            const formData = new FormData();
+            formData.append('image', imageFile);
+
+            const token = localStorage.getItem('token');
+            const response = await axios.post(
+                `${API_BASE_URL}/api/images/upload`,
+                formData,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'multipart/form-data'
+                    }
+                }
+            );
+
+            return response.data.imageUrl;
+        } catch (err) {
+            console.error('Upload image error:', err);
+            toast.error('Không thể upload ảnh');
+            return null;
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
     const handleApprovePayout = async (payoutId) => {
-        if (!approveData.proof_url) {
-            toast.error('Vui lòng nhập link ảnh chứng từ chuyển khoản');
+        if (!approveData.proof_url && !imageFile) {
+            toast.error('Vui lòng nhập link ảnh hoặc upload ảnh chứng từ chuyển khoản');
             return;
         }
 
         try {
+            let proofUrl = approveData.proof_url;
+
+            // Upload image nếu có
+            if (imageFile) {
+                proofUrl = await uploadImage();
+                if (!proofUrl) return; // Upload failed
+            }
+
             const token = localStorage.getItem('token');
             await axios.post(
                 `${API_BASE_URL}/api/payout/admin/${payoutId}/approve`,
-                approveData,
+                { ...approveData, proof_url: proofUrl },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
             toast.success('Đã duyệt yêu cầu rút tiền');
             setShowApproveModal(false);
             setApproveData({ proof_url: '', notes: '' });
+            setImageFile(null);
+            setImagePreview(null);
             loadPayouts();
             loadStats();
         } catch (err) {
@@ -381,14 +440,39 @@ const AdminPayoutManagement = () => {
                             <p><strong>Tên TK:</strong> {selectedPayout.bank_info?.account_name}</p>
                         </div>
                         <div className="form-group">
-                            <label>Link ảnh chứng từ chuyển khoản *</label>
+                            <label>Link ảnh chứng từ chuyển khoản</label>
                             <input
                                 type="url"
                                 value={approveData.proof_url}
                                 onChange={(e) => setApproveData({ ...approveData, proof_url: e.target.value })}
                                 placeholder="https://example.com/transfer-proof.jpg"
-                                required
                             />
+                        </div>
+                        <div className="form-group">
+                            <label>Hoặc upload ảnh chứng từ</label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageSelect}
+                                style={{ marginBottom: '10px' }}
+                            />
+                            {imagePreview && (
+                                <div style={{ marginTop: '10px', textAlign: 'center' }}>
+                                    <img
+                                        src={imagePreview}
+                                        alt="Preview"
+                                        style={{
+                                            maxWidth: '100%',
+                                            maxHeight: '200px',
+                                            borderRadius: '8px',
+                                            border: '1px solid #ddd'
+                                        }}
+                                    />
+                                </div>
+                            )}
+                            {uploadingImage && (
+                                <p style={{ color: '#3b82f6', marginTop: '5px' }}>Đang upload...</p>
+                            )}
                         </div>
                         <div className="form-group">
                             <label>Ghi chú</label>

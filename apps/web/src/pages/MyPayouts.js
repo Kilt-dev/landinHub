@@ -217,6 +217,7 @@ const MyPayouts = () => {
                                         <th>Ngân hàng</th>
                                         <th>Số TK</th>
                                         <th>Trạng thái</th>
+                                        <th>Chứng từ</th>
                                         <th>Ghi chú</th>
                                     </tr>
                                     </thead>
@@ -231,6 +232,32 @@ const MyPayouts = () => {
                                             </td>
                                             <td><code>{payout.bank_info?.account_number}</code></td>
                                             <td>{getStatusBadge(payout.status)}</td>
+                                            <td>
+                                                {payout.status === 'COMPLETED' && payout.proof_url ? (
+                                                    <a
+                                                        href={payout.proof_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="proof-link"
+                                                    >
+                                                        <img
+                                                            src={payout.proof_url}
+                                                            alt="Chứng từ chuyển khoản"
+                                                            style={{
+                                                                maxWidth: '80px',
+                                                                maxHeight: '60px',
+                                                                objectFit: 'cover',
+                                                                borderRadius: '4px',
+                                                                cursor: 'pointer',
+                                                                border: '1px solid #ddd'
+                                                            }}
+                                                            title="Click để xem ảnh đầy đủ"
+                                                        />
+                                                    </a>
+                                                ) : (
+                                                    <span style={{ color: '#9ca3af' }}>-</span>
+                                                )}
+                                            </td>
                                             <td>
                                                 {payout.status === 'COMPLETED' ? (
                                                     <span className="success-note">

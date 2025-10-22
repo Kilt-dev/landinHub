@@ -13,6 +13,7 @@ import Users from './pages/Users';
 import Templates from './pages/Templates';
 import Marketplace from './pages/Marketplace';
 import MarketplaceDetail from './pages/MarketplaceDetail';
+import PurchasedPages from './pages/PurchasedPages';
 import SellPage from './pages/SellPage';
 import MySales from './pages/MySales';
 import PaymentSandbox from './pages/PaymentSandbox';
@@ -56,6 +57,7 @@ function App() {
                             <Route path="/market" element={<Marketplace />} />
                             <Route path="/marketplace" element={<Marketplace />} />
                             <Route path="/marketplace/:id" element={<MarketplaceDetail />} />
+                            <Route path="/purchased-pages" element={<PurchasedPages />} />
                             <Route path="/sell-page" element={<SellPage />} />
                             <Route path="/my-sales" element={<MySales />} />
                             <Route path="/setting-form" element={<FormData />} />

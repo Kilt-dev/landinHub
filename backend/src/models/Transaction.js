@@ -338,10 +338,14 @@ TransactionSchema.statics.findUserSales = function(userId) {
 };
 
 TransactionSchema.statics.calculateRevenue = async function(options = {}) {
+    const mongoose = require('mongoose');
     const match = { status: 'COMPLETED' };
 
     if (options.seller_id) {
-        match.seller_id = options.seller_id;
+        // Convert to ObjectId if string
+        match.seller_id = typeof options.seller_id === 'string'
+            ? new mongoose.Types.ObjectId(options.seller_id)
+            : options.seller_id;
     }
 
     if (options.start_date) {
@@ -351,6 +355,8 @@ TransactionSchema.statics.calculateRevenue = async function(options = {}) {
     if (options.end_date) {
         match.created_at = { ...match.created_at, $lte: new Date(options.end_date) };
     }
+
+    console.log('calculateRevenue match:', JSON.stringify(match));
 
     const result = await this.aggregate([
         { $match: match },
@@ -364,6 +370,8 @@ TransactionSchema.statics.calculateRevenue = async function(options = {}) {
             }
         }
     ]);
+
+    console.log('calculateRevenue result:', result);
 
     return result.length > 0 ? result[0] : {
         total_revenue: 0,

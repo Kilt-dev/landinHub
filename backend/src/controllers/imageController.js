@@ -246,7 +246,8 @@ exports.uploadMultiple = [uploadToMemory.array('images', 10), processAndUploadMu
 exports.uploadImage = async (req, res) => {
     console.log('uploadImage called, file:', req.file);
 
-    if (!req.user || !req.user.userId) {
+    const userId = req.user?.id || req.user?.userId || req.user?._id;
+    if (!req.user || !userId) {
         return res.status(401).json({
             success: false,
             error: 'Không tìm thấy thông tin người dùng'
@@ -278,6 +279,7 @@ exports.uploadImage = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Upload ảnh thành công',
+            imageUrl: imageData.url, // Add direct imageUrl for easy access
             data: imageData
         });
     } catch (error) {

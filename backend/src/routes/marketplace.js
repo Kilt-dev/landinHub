@@ -10,6 +10,9 @@ const marketplaceController = require('../controllers/marketplaceController');
 // Lấy marketplace pages của user
 router.get('/my/pages', auth, marketplaceController.getMyMarketplacePages);
 
+// Lấy các page đã mua
+router.get('/my/purchased', auth, marketplaceController.getPurchasedPages);
+
 // Lấy thống kê seller
 router.get('/seller/stats', auth, marketplaceController.getSellerStats);
 

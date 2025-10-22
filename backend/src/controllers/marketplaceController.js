@@ -745,3 +745,99 @@ exports.downloadAsIUHPage = async (req, res) => {
         });
     }
 };
+
+/**
+ * Get purchased pages - Lấy danh sách các page đã mua
+ */
+exports.getPurchasedPages = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.user?.userId || req.user?._id;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Không thể xác thực người dùng'
+            });
+        }
+
+        const { page = 1, limit = 12, search, category } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Tìm tất cả transactions đã hoàn thành của user
+        const completedTransactions = await Transaction.find({
+            buyer_id: userId,
+            status: 'COMPLETED'
+        }).select('marketplace_page_id created_at');
+
+        // Lấy danh sách marketplace_page_id
+        const marketplacePageIds = completedTransactions.map(t => t.marketplace_page_id);
+
+        if (marketplacePageIds.length === 0) {
+            return res.json({
+                success: true,
+                data: [],
+                pagination: {
+                    currentPage: 1,
+                    totalPages: 0,
+                    totalItems: 0,
+                    itemsPerPage: parseInt(limit)
+                }
+            });
+        }
+
+        // Build query
+        let query = { _id: { $in: marketplacePageIds } };
+
+        if (search) {
+            query.$or = [
+                { title: { $regex: search, $options: 'i' } },
+                { description: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        if (category && category !== 'all') {
+            query.category = category;
+        }
+
+        // Get total count
+        const totalItems = await MarketplacePage.countDocuments(query);
+
+        // Get purchased pages with seller info
+        const purchasedPages = await MarketplacePage.find(query)
+            .populate('seller_id', 'name email')
+            .populate('page_id', 'title')
+            .sort({ created_at: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        // Add purchase date to each page
+        const pagesWithPurchaseDate = purchasedPages.map(page => {
+            const transaction = completedTransactions.find(
+                t => t.marketplace_page_id.toString() === page._id.toString()
+            );
+            return {
+                ...page.toObject(),
+                purchased_at: transaction?.created_at
+            };
+        });
+
+        console.log(`Found ${purchasedPages.length} purchased pages for user ${userId}`);
+
+        res.json({
+            success: true,
+            data: pagesWithPurchaseDate,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(totalItems / parseInt(limit)),
+                totalItems,
+                itemsPerPage: parseInt(limit)
+            }
+        });
+    } catch (error) {
+        console.error('Get Purchased Pages Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy danh sách page đã mua',
+            error: error.message
+        });
+    }
+};
