@@ -460,10 +460,9 @@ const Templates = () => {
 
     return (
         <div className="templates-page">
+            <Header />
             <div className="templates-main">
                 <Sidebar role={userRole} />
-                <Header />
-
                 {stats && (
                     <div className="stats-section">
                         <div className="stats-grid">

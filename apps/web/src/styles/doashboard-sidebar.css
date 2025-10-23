@@ -170,16 +170,13 @@
     position: relative;
     z-index: 10;
     overflow-y: auto;
-    padding-right: 8px;
-    margin-right: -8px;
-    margin-top: 20px;
 }
 
 .sidebar-item {
     display: flex;
     align-items: center;
     gap: 15px;
-    padding: 16px 16px;
+    padding: 19px 16px;
     border-radius: 16px;
     color: #6b7280;
     text-decoration: none;
@@ -191,7 +188,7 @@
     border: 1px solid transparent;
     backdrop-filter: blur(10px);
     overflow: hidden;
-    margin-top: 20px;
+
 }
 
 .sidebar-item.compact {

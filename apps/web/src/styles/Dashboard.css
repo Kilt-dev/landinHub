@@ -42,8 +42,8 @@
 
 /* Content wrapper */
 .dashboard-content {
+    margin-left: 120px;
     flex: 1;
-    padding: 24px 32px;
     background: transparent;
     overflow-y: auto;
     position: relative;

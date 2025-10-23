@@ -433,8 +433,10 @@ exports.getPages = async (req, res) => {
 
         const pages = await Page.find({ user_id: userId }).sort({ updated_at: -1 });
         const result = pages.map(page => ({
+            _id: page._id.toString(), // ✅ Thêm _id để SellPage có thể dùng
             id: page._id.toString(),
             name: page.name,
+            description: page.description || '', // ✅ Thêm description
             url: page.url,
             status: page.status,
             statusColor: page.status === 'ĐÃ XUẤT BẢN' ? 'green' :
@@ -449,6 +451,8 @@ exports.getPages = async (req, res) => {
             screenshot_url: page.screenshot_url || null,
             created_at: page.created_at ? page.created_at.toLocaleString('vi-VN') : null,
             updated_at: page.updated_at ? page.updated_at.toLocaleString('vi-VN') : null,
+            page_data: page.page_data || null, // ✅ Thêm page_data để SellPage filter được
+            has_content: !!(page.page_data || page.html) // ✅ Flag để check có nội dung chưa
         }));
 
         res.json(result);

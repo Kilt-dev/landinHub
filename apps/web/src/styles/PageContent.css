@@ -37,13 +37,13 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 10px 16px;
+    padding: 23px 26px;
     border-radius: 8px;
     border: none;
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    background-color: #2563eb; /* xanh đậm */
+    background-color: #223a73; /* xanh đậm */
     color: white;
     transition: all 0.2s ease;
 }
@@ -61,18 +61,7 @@
 }
 
 
-.page-content .create-btn {
-    background: #0284c7;
-    color: white;
-    border: none;
-    padding: 8px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
+
 
 .page-content .controls {
     display: flex;
