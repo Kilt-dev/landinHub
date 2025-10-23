@@ -10,7 +10,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/AdminMarketplace.css';
 import DogLoader from '../components/Loader';
-import { Check, X, Eye, Star, AlertTriangle, Trash2, Download, RefreshCw, Filter, Pause } from 'lucide-react';
+import { Check, X, Eye, Star, AlertTriangle, Trash2, Download, RefreshCw, Filter, Pause, ShoppingCart, Package, Hourglass, BadgeCheck, DollarSign, Heart } from 'lucide-react';
 
 const AdminMarketplace = () => {
     const { user } = useContext(UserContext);
@@ -485,7 +485,9 @@ const AdminMarketplace = () => {
                 <div className="admin-marketplace-content">
                     <div className="admin-marketplace-header" data-aos="fade-down">
                         <div>
-                            <h1>🛒 Quản lý Marketplace</h1>
+                            <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <ShoppingCart size={32} /> Quản lý Marketplace
+                            </h1>
                             <p>Quản lý landing page, giao dịch và yêu cầu hoàn tiền</p>
                         </div>
                     </div>
@@ -514,29 +516,25 @@ const AdminMarketplace = () => {
                     {stats && currentTab === 'pages' && (
                         <div className="stats-grid" data-aos="fade-up">
                             <div className="stat-card">
-                                <div className="stat-icon">📦</div>
-                                <div className="stat-info">
+                                <div className="stat-icon"><Package size={32} color="var(--color-gray-500)" /></div>                                <div className="stat-info">
                                     <div className="stat-value">{stats.overview?.totalPages || 0}</div>
                                     <div className="stat-label">Tổng pages</div>
                                 </div>
                             </div>
                             <div className="stat-card">
-                                <div className="stat-icon">⏳</div>
-                                <div className="stat-info">
+                                <div className="stat-icon"><Hourglass size={32} color="var(--color-warning)" /></div>                                <div className="stat-info">
                                     <div className="stat-value">{stats.overview?.pendingPages || 0}</div>
                                     <div className="stat-label">Chờ duyệt</div>
                                 </div>
                             </div>
                             <div className="stat-card">
-                                <div className="stat-icon">✅</div>
-                                <div className="stat-info">
+                                <div className="stat-icon"><BadgeCheck size={32} color="var(--color-success)" /></div>                                <div className="stat-info">
                                     <div className="stat-value">{stats.overview?.activePages || 0}</div>
                                     <div className="stat-label">Đang bán</div>
                                 </div>
                             </div>
                             <div className="stat-card">
-                                <div className="stat-icon">💰</div>
-                                <div className="stat-info">
+                                <div className="stat-icon"><DollarSign size={32} color="var(--color-info)" /></div>                                <div className="stat-info">
                                     <div className="stat-value">{formatPrice(stats.overview?.totalRevenue || 0)}</div>
                                     <div className="stat-label">Doanh thu</div>
                                 </div>
@@ -646,10 +644,18 @@ const AdminMarketplace = () => {
                                                     {page.description?.substring(0, 150)}...
                                                 </p>
                                                 <div className="page-meta">
-                                                    <span>👁️ {page.views} views</span>
-                                                    <span>❤️ {page.likes} likes</span>
-                                                    <span>🛒 {page.sold_count} sold</span>
-                                                    <span>⭐ {page.rating.toFixed(1)}</span>
+    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <Eye size={16} /> {page.views}
+    </span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <Heart size={16} /> {page.likes}
+    </span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <ShoppingCart size={16} /> {page.sold_count}
+    </span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <Star size={16} fill="#f59e0b" color="#f59e0b" /> {page.rating.toFixed(1)}
+    </span>
                                                 </div>
                                                 <p className="page-date">Ngày tạo: {formatDate(page.created_at)}</p>
                                                 {page.rejection_reason && (

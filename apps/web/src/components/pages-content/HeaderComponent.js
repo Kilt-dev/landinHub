@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus, Info } from 'lucide-react';
+import "../../styles/HeaderComponent.css";
 
 const HeaderComponent = ({ onCreateClick, totalPages = 0 }) => {
     return (

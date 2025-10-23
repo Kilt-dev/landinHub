@@ -1,0 +1,81 @@
+/* ============================= */
+/* HEADER COMPONENT - LUXURY STYLE */
+/* ============================= */
+
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2rem 3rem;
+    background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+    color: #fefefe;
+    font-family: 'Playfair Display', serif;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+}
+
+.header-texts {
+    max-width: 70%;
+}
+
+.header-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 0.5rem;
+    color: #ffd700; /* vàng ánh kim */
+}
+
+.header-subtitle {
+    font-size: 1rem;
+    color: #e0e0e0;
+    line-height: 1.6;
+}
+
+.header-subtitle strong {
+    color: #ffd700; /* nhấn mạnh số trang bằng vàng */
+}
+
+.create-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(145deg, #ffd700, #ffca28);
+    color: #1a1a1a;
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 1rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 15px rgba(255, 215, 0, 0.4);
+}
+
+.create-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(255, 215, 0, 0.6);
+    background: linear-gradient(145deg, #ffe066, #ffd700);
+}
+
+.create-btn svg {
+    stroke: #1a1a1a; /* icon màu tối để nổi trên nền vàng */
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1.5rem 2rem;
+    }
+    .header-texts {
+        max-width: 100%;
+    }
+    .header-title {
+        font-size: 1.8rem;
+    }
+}

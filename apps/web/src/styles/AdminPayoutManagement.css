@@ -1,5 +1,6 @@
 /* Admin Payout Management */
 .admin-payout-container {
+    margin-top: 70px;
     display: flex;
     min-height: 100vh;
     background: #f9fafb;
@@ -16,18 +17,39 @@
 }
 
 .payout-header {
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .payout-header h1 {
-    font-size: 2rem;
-    color: #111827;
-    margin-bottom: 0.5rem;
+    font-family: "Inter", sans-serif; /* Dùng font hiện đại, đồng bộ */
+    font-size: 2.75rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    letter-spacing: -1px;
+
+    /* --- Hiệu ứng Gradient Xanh Dương - Tin cậy & Chuyên nghiệp --- */
+    background: linear-gradient(
+            90deg,
+            #2563eb, /* Blue */
+            #14b8a6, /* Teal */
+            #22c55e, /* Green */
+            #2563eb  /* Lặp lại để animation mượt */
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* --- Animation chuyển động --- */
+    animation: payoutHeaderGradient 7s ease-in-out infinite;
 }
 
 .payout-header p {
-    color: #6b7280;
-    font-size: 1rem;
+    color: #4b5563; /* Màu xám đậm hơn cho dễ đọc */
+    font-size: 1.1rem;
+    line-height: 1.6;
 }
 
 /* Stats Grid */

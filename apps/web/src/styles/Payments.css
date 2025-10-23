@@ -12,30 +12,62 @@
 }
 
 .payments-content {
+    margin-left: 150px;
     flex: 1;
     /*padding: 2rem;*/
     max-width: 1600px;
-    margin: 0 auto;
     width: 100%;
     padding-left: 100px;
 }
 
 .payments-header {
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
+    padding: 2rem 0;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left; /* Căn lề trái cho chuyên nghiệp */
 }
 
 .payments-header h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 0.5rem;
+    font-family: "Inter", sans-serif; /* Sử dụng font hiện đại, đồng bộ */
+    font-size: 2.5rem;
+    font-weight: 800; /* Đậm hơn để tạo điểm nhấn */
+    margin: 0 0 0.75rem 0; /* Căn chỉnh margin */
+    letter-spacing: -1px;
+    background: linear-gradient(
+            90deg,
+            #2dd4bf, /* Teal */
+            #34d399, /* Green */
+            #3b82f6, /* Blue */
+            #2dd4bf  /* Lặp lại để animation mượt */
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* --- Animation chuyển động --- */
+    animation: paymentTitleGradient 5s ease-in-out infinite;
 }
 
 .payments-header p {
-    color: #6b7280;
-    font-size: 1rem;
+    color: #4b5563; /* Màu xám đậm hơn một chút cho dễ đọc */
+    font-size: 1.1rem;
+    max-width: 700px; /* Giới hạn chiều rộng để không bị quá dài */
+    line-height: 1.6;
 }
 
+/* --- Thêm Keyframe này vào cuối file CSS của bạn --- */
+@keyframes paymentTitleGradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
 /* Stats Grid */
 .stats-grid {
     display: grid;

@@ -49,10 +49,9 @@
 }
 
 .my-sales-content {
+    margin-left: 170px;
     flex-grow: 1;
     padding-left: 80px; /* Đồng bộ với templates-content */
-    max-width: 1400px;
-    margin: 0 20px 20px 80px;
     height: calc(100vh - 70px);
     overflow-y: auto;
 }
@@ -67,13 +66,37 @@
     border-bottom: 1px solid var(--color-border);
 }
 
+/* === TITLE ĐÃ CẬP NHẬT THEO PHONG CÁCH TRẺ TRUNG === */
 .my-sales-header h1 {
-    font-family: var(--font-serif);
-    font-size: 2.25rem;
-    font-weight: 600;
-    color: var(--color-text-header);
+    font-family: var(--font-sans); /* Dùng font không chân để hiện đại hơn */
+    font-size: 2.35rem;
+    font-weight: 700;
     margin: 0;
     letter-spacing: -0.5px;
+
+    /* --- Hiệu ứng Gradient Sống Động --- */
+    background: linear-gradient(
+            90deg,
+            #845EC2, /* Tím đậm */
+            #D65DB1, /* Hồng */
+            #FF6F91, /* Hồng cam */
+            #FF9671, /* Cam */
+            #FFC75F, /* Vàng */
+            #845EC2  /* Lặp lại màu đầu để animation mượt mà */
+    );
+    background-size: 300% auto; /* Kích thước lớn để gradient có thể di chuyển */
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* --- Animation chuyển động cho Gradient --- */
+    animation: flowGradient 8s ease-in-out infinite;
+
+    transition: transform 0.3s ease; /* Hiệu ứng khi hover */
+}
+
+.my-sales-header h1:hover {
+    transform: scale(1.03); /* Phóng to nhẹ khi di chuột vào */
 }
 
 .my-sales-header p {
@@ -256,17 +279,6 @@
 .page-item:nth-child(4) { animation-delay: 0.2s; }
 .page-item:nth-child(n + 5) { animation-delay: 0.25s; }
 
-@keyframes cardEnter {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 .page-item:hover {
     box-shadow: var(--shadow-interactive);
     transform: translateY(-8px);
@@ -300,25 +312,6 @@
 .page-item:hover .page-image img {
     animation: smoothScroll 8s ease-in-out infinite; /* Hiệu ứng cuộn giống template */
     filter: brightness(1);
-}
-
-@keyframes smoothScroll {
-    0% {
-        object-position: top center;
-        transform: scale(1);
-    }
-    45% {
-        object-position: bottom center;
-        transform: scale(1.02);
-    }
-    55% {
-        object-position: bottom center;
-        transform: scale(1.02);
-    }
-    100% {
-        object-position: top center;
-        transform: scale(1);
-    }
 }
 
 /* Overlay for buttons */
@@ -481,17 +474,6 @@
     z-index: 4;
 }
 
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(10px) scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0) scale(1);
-    }
-}
-
 /* Rejection Reason */
 .rejection-reason {
     margin-top: var(--space-sm);
@@ -566,7 +548,6 @@
 .btn-view1:hover {
     background: #1d4ed8;
     color: black;
-
     transform: scale(1.15) rotate(5deg);
     box-shadow: 0 8px 20px rgba(37, 99, 235, 0.5);
 }
@@ -574,7 +555,6 @@
 .btn-view1:active {
     transform: scale(0.95);
     color: black;
-
 }
 
 .btn-delete {
@@ -651,5 +631,60 @@
     }
     .page-image {
         height: 160px;
+    }
+}
+
+/* --- KEYFRAMES --- */
+@keyframes cardEnter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes smoothScroll {
+    0% {
+        object-position: top center;
+        transform: scale(1);
+    }
+    45% {
+        object-position: bottom center;
+        transform: scale(1.02);
+    }
+    55% {
+        object-position: bottom center;
+        transform: scale(1.02);
+    }
+    100% {
+        object-position: top center;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(10px) scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+/* Keyframe cho hiệu ứng gradient của title */
+@keyframes flowGradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
     }
 }

@@ -59,19 +59,21 @@ body {
    CONTAINER & LAYOUT
    ============================================ */
 .admin-marketplace-container {
+    margin-top: 70px;
     display: flex;
     min-height: 100vh;
     background-color: var(--color-gray-50);
 }
 
 .admin-marketplace-main {
+
     display: flex;
     width: 100%;
 }
 
 .admin-marketplace-content {
-    margin-top: 100px;
-    margin-left: 100px;
+    margin-top: 20px;
+    margin-left: 220px;
     flex: 1;
     padding: var(--space-2xl);
     overflow-y: auto;
@@ -82,21 +84,44 @@ body {
    ============================================ */
 .admin-marketplace-header {
     margin-bottom: var(--space-2xl);
+    padding-bottom: var(--space-xl);
+    border-bottom: 1px solid var(--color-gray-200);
 }
 
 .admin-marketplace-header h1 {
     font-family: var(--font-serif);
-    font-size: 2.5rem;
+    font-size: 2.75rem;
     font-weight: 700;
-    color: var(--color-dark);
     margin-bottom: var(--space-sm);
     letter-spacing: -0.5px;
+    /* CẬP NHẬT: Thêm flex để căn chỉnh icon */
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+
+    /* --- Hiệu ứng Gradient Than đá - Vàng kim sang trọng --- */
+    background: linear-gradient(
+            90deg,
+            #3a3a3a,             /* Than đá đậm */
+            var(--color-dark),    /* Màu đen chính */
+            var(--color-accent),  /* Vàng kim */
+            var(--color-accent-dark), /* Vàng sậm */
+            var(--color-dark)     /* Lặp lại */
+    );
+    background-size: 250% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* --- Animation chuyển động tinh tế --- */
+    animation: adminTitleGradient 8s ease-in-out infinite;
 }
 
 .admin-marketplace-header p {
-    font-size: 1rem;
+    font-size: 1.1rem;
     color: var(--color-gray-500);
     font-weight: 400;
+    line-height: 1.6;
 }
 
 /* ============================================
@@ -168,10 +193,13 @@ body {
     transform: translateY(-2px);
 }
 
+/* CẬP NHẬT: Tối ưu căn giữa cho icon SVG */
 .stat-icon {
-    font-size: 2.5rem;
     min-width: 60px;
-    text-align: center;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .stat-info {
@@ -382,7 +410,7 @@ body {
 .page-image {
     position: relative;
     border-radius: var(--radius);
-    overflow: hidden; /* bắt buộc để image không tràn */
+    overflow: hidden;
     width: 100%;
     height: 150px;
 }
@@ -463,6 +491,14 @@ body {
     color: var(--color-gray-500);
     flex-wrap: wrap;
 }
+
+/* CẬP NHẬT: Đưa inline style vào CSS */
+.page-meta span {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
 
 .rejection-reason {
     display: flex;
@@ -594,6 +630,8 @@ body {
     cursor: not-allowed;
 }
 
+/* ... (Các phần còn lại của CSS giữ nguyên) ... */
+
 /* ============================================
    TRANSACTION & REFUND ITEMS
    ============================================ */
@@ -713,17 +751,6 @@ body {
     animation: slideUp 0.3s ease-out;
 }
 
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 .modal-content h2 {
     font-family: var(--font-serif);
     font-size: 1.5rem;
@@ -772,7 +799,7 @@ body {
 }
 
 /* ============================================
-   EMPTY STATE
+   EMPTY STATE & LOADING
    ============================================ */
 .empty-state {
     text-align: center;
@@ -781,9 +808,6 @@ body {
     font-size: 1rem;
 }
 
-/* ============================================
-   LOADING OVERLAY
-   ============================================ */
 .loading-overlay {
     position: fixed;
     top: 0;
@@ -795,6 +819,32 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 999;
+}
+
+/* ============================================
+   KEYFRAMES (BỔ SUNG)
+   ============================================ */
+@keyframes adminTitleGradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* ============================================

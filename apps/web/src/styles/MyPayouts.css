@@ -19,20 +19,47 @@
 
 .payouts-header {
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    margin-bottom: 2rem;
+    align-items: flex-end; /* Căn lề dưới cho đồng bộ */
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+/* Tách riêng khối chứa title để không ảnh hưởng đến button */
+.payouts-header-title {
+    flex-grow: 1;
 }
 
 .payouts-header h1 {
-    font-size: 2rem;
-    color: #111827;
-    margin-bottom: 0.5rem;
+    font-family: "Inter", sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0 0 0.5rem 0;
+    letter-spacing: -1px;
+
+    /* --- Hiệu ứng Gradient Vàng - Cam --- */
+    background: linear-gradient(
+            90deg,
+            #f59e0b, /* Vàng đậm (Amber) */
+            #fbbf24, /* Vàng tươi (Gold) */
+            #ea580c, /* Cam rực */
+            #f59e0b  /* Lặp lại */
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+
+    /* --- Animation chuyển động --- */
+    animation: payoutTitleGradient 6s ease-in-out infinite;
 }
 
 .payouts-header p {
-    color: #6b7280;
-    font-size: 1rem;
+    color: #4b5563;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin: 0;
 }
 
 .btn-back {
