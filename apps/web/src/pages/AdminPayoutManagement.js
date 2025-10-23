@@ -248,7 +248,7 @@ const AdminPayoutManagement = () => {
 
         const info = statusMap[status] || statusMap.PENDING;
         return (
-            <span className="status-badge" style={{ backgroundColor: info.color }}>
+            <span className="status-badge-a" style={{ backgroundColor: info.color }}>
                 {info.label}
             </span>
         );

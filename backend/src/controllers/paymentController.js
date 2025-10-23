@@ -53,7 +53,6 @@ exports.createTransaction = async (req, res) => {
             });
         }
 
-        // Bỏ qua kiểm tra "mua của chính mình" trong môi trường SANDBOX
         if (payment_method !== 'SANDBOX' && marketplacePage.seller_id._id.toString() === userId.toString()) {
             return res.status(400).json({
                 success: false,
@@ -61,16 +60,22 @@ exports.createTransaction = async (req, res) => {
             });
         }
 
-        // Tính toán phí
         const amount = marketplacePage.price;
         const platform_fee = paymentService.calculatePlatformFee(amount);
         const seller_amount = paymentService.calculateSellerAmount(amount);
 
-        // Lấy IP address và user agent
         const ip_address = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress;
         const user_agent = req.headers['user-agent'];
 
-        // Tạo transaction
+        // Chuẩn hóa orderInfo
+        const orderInfo = `Thanh toan Landing Page - ${marketplace_page_id}`;
+        const cleanOrderInfo = orderInfo
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^\x00-\x7F]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
         const transaction = new Transaction({
             marketplace_page_id: marketplace_page_id,
             buyer_id: userId,
@@ -83,14 +88,13 @@ exports.createTransaction = async (req, res) => {
             ip_address: ip_address,
             user_agent: user_agent,
             metadata: {
-                page_title: marketplacePage.title,
+                page_title: cleanOrderInfo,
                 page_category: marketplacePage.category
             }
         });
 
         await transaction.save();
 
-        // Tạo payment URL
         const paymentResult = await paymentService.createPayment(
             transaction,
             payment_method,
@@ -126,9 +130,7 @@ exports.createTransaction = async (req, res) => {
         });
     }
 };
-/**
- * IPN callback từ MOMO (accept both GET and POST)
- */
+
 exports.momoIPN = async (req, res) => {
     try {
         // Get data from body (POST) or query (GET)
@@ -234,56 +236,51 @@ exports.momoReturn = async (req, res) => {
  */
 exports.vnpayIPN = async (req, res) => {
     try {
-        console.log('VNPay IPN Received:', req.query);
+        const vnpParams = req.method === 'POST' ? req.body : req.query;
+        console.log('VNPay IPN Received (' + req.method + '):', JSON.stringify(vnpParams, null, 2));
 
-        const verification = paymentService.verifyCallback('VNPAY', req.query);
+        if (!vnpParams.vnp_TxnRef || !vnpParams.vnp_SecureHash) {
+            console.error('❌ VNPay IPN: Missing fields');
+            return res.status(200).json({ RspCode: '01', Message: 'Missing fields' });
+        }
+
+        const verification = paymentService.verifyCallback('VNPAY', vnpParams);
+        console.log('VNPay IPN Verification:', verification);
 
         if (!verification.valid) {
-            return res.status(200).json({
-                RspCode: '97',
-                Message: 'Invalid signature'
-            });
+            console.error('❌ VNPay IPN: Invalid signature', verification.error);
+            return res.status(200).json({ RspCode: '97', Message: 'Invalid signature' });
         }
 
         const { orderId, transactionNo, responseCode } = verification.data;
+        console.log('✅ VNPay IPN: Processing orderId:', orderId, 'responseCode:', responseCode);
 
-        // Lấy transaction
         const transaction = await Transaction.findById(orderId);
-
         if (!transaction) {
-            return res.status(200).json({
-                RspCode: '01',
-                Message: 'Transaction not found'
-            });
+            console.error('❌ VNPay IPN: Transaction not found', orderId);
+            return res.status(200).json({ RspCode: '01', Message: 'Transaction not found' });
         }
 
-        // Cập nhật transaction
+        if (transaction.status === 'COMPLETED') {
+            console.log('⚠️ VNPay IPN: Already completed', orderId);
+            return res.status(200).json({ RspCode: '02', Message: 'Already processed' });
+        }
+
         transaction.payment_gateway_transaction_id = transactionNo;
-        transaction.payment_gateway_response = req.query;
+        transaction.payment_gateway_response = vnpParams;
 
         if (responseCode === '00') {
-            // Payment success
-            await paymentService.processPaymentSuccess(orderId, req.query);
-
-            return res.status(200).json({
-                RspCode: '00',
-                Message: 'Success'
-            });
+            await paymentService.processPaymentSuccess(orderId, vnpParams);
+            console.log('✅ VNPay IPN: Payment success processed', orderId);
         } else {
-            // Payment failed
             await transaction.markAsFailed(`VNPay Error: ${responseCode}`);
-
-            return res.status(200).json({
-                RspCode: '00',
-                Message: 'Confirmed'
-            });
+            console.log('❌ VNPay IPN: Payment failed', orderId);
         }
+
+        return res.status(200).json({ RspCode: '00', Message: 'Success' });
     } catch (error) {
-        console.error('VNPay IPN Error:', error);
-        res.status(200).json({
-            RspCode: '99',
-            Message: error.message
-        });
+        console.error('💥 VNPay IPN Error:', error);
+        return res.status(200).json({ RspCode: '99', Message: error.message });
     }
 };
 
@@ -291,17 +288,27 @@ exports.vnpayIPN = async (req, res) => {
  * Return callback từ VNPay
  */
 exports.vnpayReturn = async (req, res) => {
+    console.log('VNPay Callback Received:', req.query);
     try {
-        const { vnp_TxnRef: orderId, vnp_ResponseCode: responseCode } = req.query;
-
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const redirectUrl = `${frontendUrl}/payment/result?transaction_id=${orderId}&status=${responseCode === '00' ? 'success' : 'failed'}`;
-
-        res.redirect(redirectUrl);
+        const result = paymentService.verifyCallback('VNPAY', req.query);
+        if (!result.valid) {
+            console.error('❌ VNPay Callback Invalid:', result.error, { query: req.query });
+            return res.redirect(`${process.env.FRONTEND_URL}/payment/result?status=failed&transaction_id=${result.data?.orderId || 'undefined'}&error=${encodeURIComponent(result.error)}`);
+        }
+        if (result.success) {
+            const processResult = await paymentService.processPaymentSuccess(result.data.orderId, result.data);
+            if (processResult.success) {
+                console.log('✅ VNPay Callback Success:', { transactionId: result.data.orderId });
+                return res.redirect(`${process.env.FRONTEND_URL}/payment/result?status=success&transaction_id=${result.data.orderId}`);
+            }
+            console.error('❌ VNPay Process Payment Failed:', processResult.error);
+            return res.redirect(`${process.env.FRONTEND_URL}/payment/result?status=failed&transaction_id=${result.data.orderId}&error=${encodeURIComponent(processResult.error)}`);
+        }
+        console.error('❌ VNPay Callback Not Successful:', result.data);
+        return res.redirect(`${process.env.FRONTEND_URL}/payment/result?status=failed&transaction_id=${result.data?.orderId || 'undefined'}&error=transaction_failed`);
     } catch (error) {
-        console.error('VNPay Return Error:', error);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        res.redirect(`${frontendUrl}/payment/result?status=error`);
+        console.error('❌ VNPay Callback Error:', error.message, { query: req.query });
+        return res.redirect(`${process.env.FRONTEND_URL}/payment/result?status=failed&transaction_id=undefined&error=${encodeURIComponent(error.message)}`);
     }
 };
 

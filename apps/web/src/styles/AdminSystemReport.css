@@ -1,0 +1,380 @@
+/* ========== ADMIN SYSTEM REPORT ========== */
+.admin-report {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px 20px;
+}
+
+.admin-report.loading,
+.admin-report.error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 20px;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.report-title {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.report-title h1 {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.report-title p {
+    margin: 5px 0 0 0;
+    color: #6b7280;
+}
+
+.report-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-refresh,
+.btn-download,
+.btn-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-refresh:hover,
+.btn-download:hover,
+.btn-filter:hover {
+    background: #f9fafb;
+    border-color: #3b82f6;
+}
+
+.date-range-filter {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+    background: #f9fafb;
+    border-radius: 12px;
+    margin-bottom: 30px;
+}
+
+.date-range-filter input {
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+}
+
+/* ========== OVERVIEW GRID ========== */
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.overview-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 30px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.overview-card svg {
+    flex-shrink: 0;
+}
+
+.overview-card.revenue svg {
+    color: #10b981;
+}
+
+.overview-card.fees svg {
+    color: #3b82f6;
+}
+
+.overview-card.pages svg {
+    color: #f59e0b;
+}
+
+.overview-card h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.overview-card .value {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.overview-card .meta {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+/* ========== SECTIONS ========== */
+.section {
+    background: white;
+    padding: 30px;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.section h2 {
+    margin: 0 0 24px 0;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+/* ========== TRANSACTION GRID ========== */
+.transaction-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.transaction-card {
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid;
+}
+
+.transaction-card.status-completed {
+    background: #f0fdf4;
+    border-color: #10b981;
+}
+
+.transaction-card.status-pending {
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+
+.transaction-card.status-failed {
+    background: #fee2e2;
+    border-color: #ef4444;
+}
+
+.transaction-card .status {
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.transaction-card .count {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.transaction-card .amount {
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.transaction-card .fees {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+/* ========== PAYMENT GRID ========== */
+.payment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.payment-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    background: #f9fafb;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.payment-card svg {
+    margin-bottom: 12px;
+    color: #3b82f6;
+}
+
+.payment-card .method {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.payment-card .count {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.payment-card .amount {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* ========== LEADERBOARD TABLE ========== */
+.leaderboard-table {
+    overflow-x: auto;
+}
+
+.leaderboard-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.leaderboard-table th {
+    text-align: left;
+    padding: 12px 16px;
+    background: #f9fafb;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+.leaderboard-table td {
+    padding: 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.leaderboard-table tr:hover {
+    background: #f9fafb;
+}
+
+.rank {
+    font-weight: 700;
+    color: #3b82f6;
+}
+
+.revenue {
+    font-weight: 600;
+    color: #10b981;
+}
+
+.earned {
+    font-weight: 600;
+    color: #059669;
+}
+
+.fees {
+    color: #6b7280;
+}
+
+/* ========== DAILY CHART ========== */
+.daily-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 300px;
+    padding: 20px 0;
+}
+
+.chart-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.bar-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.bar-info .value {
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.bar-info .count {
+    font-size: 9px;
+    color: #6b7280;
+}
+
+.chart-bar {
+    width: 100%;
+    max-width: 40px;
+    background: #f3f4f6;
+    border-radius: 4px 4px 0 0;
+    overflow: hidden;
+}
+
+.bar-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+}
+
+.bar-label {
+    margin-top: 8px;
+    font-size: 9px;
+    color: #6b7280;
+    transform: rotate(-45deg);
+}
+
+/* ========== FOOTER ========== */
+.report-footer {
+    text-align: center;
+    padding: 24px;
+    color: #6b7280;
+    font-size: 13px;
+    background: #f9fafb;
+    border-radius: 12px;
+}
+
+.report-footer p {
+    margin: 8px 0;
+}
+
+@media (max-width: 768px) {
+    .report-header {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .overview-grid,
+    .transaction-grid,
+    .payment-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .daily-chart {
+        gap: 4px;
+    }
+}

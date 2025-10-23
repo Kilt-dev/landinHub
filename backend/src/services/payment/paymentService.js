@@ -11,7 +11,23 @@ class PaymentService {
         try {
             const { _id: orderId, amount, marketplace_page_id } = transaction;
 
-            const orderInfo = `Thanh toán Landing Page - ${marketplace_page_id}`;
+            // Chuẩn hóa orderInfo
+            const orderInfo = `Thanh toan Landing Page - ${marketplace_page_id}`;
+            const cleanOrderInfo = orderInfo
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^\x00-\x7F]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .substring(0, 50); // Giới hạn 50 ký tự để đồng bộ với vnpayService.js
+
+            console.log('✅ PaymentService: Creating payment', {
+                paymentMethod,
+                orderId,
+                amount,
+                cleanOrderInfo,
+                ipAddr
+            });
 
             let result;
 
@@ -20,7 +36,7 @@ class PaymentService {
                     result = await momoService.createPayment({
                         orderId,
                         amount,
-                        orderInfo,
+                        orderInfo: cleanOrderInfo,
                         extraData: JSON.stringify({
                             marketplace_page_id,
                             transaction_id: orderId
@@ -29,10 +45,10 @@ class PaymentService {
                     break;
 
                 case 'VNPAY':
-                    result = vnpayService.createPaymentUrl({
+                    result = await vnpayService.createPaymentUrl({
                         orderId,
                         amount,
-                        orderInfo,
+                        orderInfo: cleanOrderInfo,
                         ipAddr
                     });
                     break;
@@ -41,7 +57,7 @@ class PaymentService {
                     result = await sandboxService.createPayment({
                         orderId,
                         amount,
-                        orderInfo,
+                        orderInfo: cleanOrderInfo,
                         extraData: {
                             marketplace_page_id,
                             transaction_id: orderId
@@ -50,6 +66,7 @@ class PaymentService {
                     break;
 
                 default:
+                    console.error('❌ PaymentService: Unsupported payment method', { paymentMethod });
                     return {
                         success: false,
                         error: 'Unsupported payment method'
@@ -62,12 +79,20 @@ class PaymentService {
                 transaction.qr_code_url = result.qrCodeUrl;
                 transaction.deep_link = result.deeplink;
                 transaction.status = 'PROCESSING';
+                transaction.metadata.orderInfo = cleanOrderInfo; // Lưu orderInfo đã chuẩn hóa
                 await transaction.save();
+
+                console.log('✅ PaymentService: Payment created', {
+                    paymentUrl: result.paymentUrl || result.payUrl,
+                    qrCodeUrl: result.qrCodeUrl,
+                    deeplink: result.deeplink,
+                    orderId
+                });
             }
 
             return result;
         } catch (error) {
-            console.error('Payment Service Error:', error.message);
+            console.error('❌ PaymentService Error:', error.message, { transactionId: transaction?._id });
             return {
                 success: false,
                 error: error.message
@@ -80,6 +105,11 @@ class PaymentService {
      */
     verifyCallback(paymentMethod, data) {
         try {
+            console.log('🔍 PaymentService: Verifying callback', {
+                paymentMethod,
+                data: JSON.stringify(data, null, 2)
+            });
+
             switch (paymentMethod) {
                 case 'MOMO':
                     return momoService.verifyIPN(data);
@@ -91,13 +121,14 @@ class PaymentService {
                     return sandboxService.verifyIPN(data);
 
                 default:
+                    console.error('❌ PaymentService: Unsupported payment method for callback', { paymentMethod });
                     return {
                         valid: false,
                         error: 'Unsupported payment method'
                     };
             }
         } catch (error) {
-            console.error('Verify Callback Error:', error.message);
+            console.error('❌ Verify Callback Error:', error.message);
             return {
                 valid: false,
                 error: error.message
@@ -116,10 +147,12 @@ class PaymentService {
                 .populate('seller_id');
 
             if (!transaction) {
+                console.error('❌ PaymentService: Transaction not found', { transactionId });
                 throw new Error('Transaction not found');
             }
 
             if (transaction.status === 'COMPLETED') {
+                console.log('⚠️ PaymentService: Transaction already completed', { transactionId });
                 return {
                     success: true,
                     message: 'Transaction already completed',
@@ -138,8 +171,7 @@ class PaymentService {
                 await marketplacePage.incrementSoldCount();
             }
 
-            // TODO: Create page copy for buyer
-            // This will be handled by a separate service
+            console.log('✅ PaymentService: Payment success processed', { transactionId });
 
             return {
                 success: true,
@@ -147,7 +179,7 @@ class PaymentService {
                 transaction
             };
         } catch (error) {
-            console.error('Process Payment Success Error:', error.message);
+            console.error('❌ Process Payment Success Error:', error.message, { transactionId });
             return {
                 success: false,
                 error: error.message
@@ -163,10 +195,12 @@ class PaymentService {
             const transaction = await Transaction.findById(transactionId);
 
             if (!transaction) {
+                console.error('❌ PaymentService: Transaction not found', { transactionId });
                 throw new Error('Transaction not found');
             }
 
             if (transaction.status !== 'COMPLETED') {
+                console.error('❌ PaymentService: Can only refund completed transactions', { transactionId });
                 throw new Error('Can only refund completed transactions');
             }
 
@@ -186,7 +220,6 @@ class PaymentService {
                     break;
 
                 case 'VNPAY':
-                    // VNPay refund requires transaction date
                     const transactionDate = vnpayService.formatDate(transaction.created_at);
                     result = await vnpayService.refund({
                         orderId: _id,
@@ -207,6 +240,7 @@ class PaymentService {
                     break;
 
                 default:
+                    console.error('❌ PaymentService: Unsupported payment method for refund', { payment_method });
                     return {
                         success: false,
                         error: 'Unsupported payment method for refund'
@@ -214,8 +248,8 @@ class PaymentService {
             }
 
             if (result.success) {
-                // Process refund in transaction
                 await transaction.processRefund(result.refundRequestId || result.data.refundTransactionId);
+                console.log('✅ PaymentService: Refund processed', { transactionId, reason });
 
                 return {
                     success: true,
@@ -223,13 +257,14 @@ class PaymentService {
                     transaction
                 };
             } else {
+                console.error('❌ PaymentService: Refund failed', result.error, { transactionId });
                 return {
                     success: false,
                     error: result.error || 'Refund failed'
                 };
             }
         } catch (error) {
-            console.error('Process Refund Error:', error.message);
+            console.error('❌ Process Refund Error:', error.message, { transactionId });
             return {
                 success: false,
                 error: error.message
