@@ -1,66 +1,48 @@
 // src/components/CozeChat.js
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 
-// --- Hằng số ---
+// --- Hằng số chứa token của bạn ---
 const COZE_BOT_ID = '7564406577911463952';
 const YOUR_COZE_PAT_TOKEN = 'pat_FrrZbPVDVnwl97NleYEMsc9RxKvggAuykeygC0NCI9nSB1ltKbRQD3kGzve6vjgq';
-const COZE_SCRIPT_ID = 'coze-web-sdk-script';
 
 const CozeChat = () => {
-    const clientRef = useRef(null);
-
     useEffect(() => {
-        const initializeChat = () => {
-            if (window.CozeWebSDK && !clientRef.current) {
+        const script = document.createElement('script');
+        script.src = "https://sf-cdn.coze.com/obj/unpkg-va/flow-platform/chat-app-sdk/1.2.0-beta.6/libs/oversea/index.js";
+        script.async = true;
 
-                // --- ĐÂY LÀ THAY ĐỔI QUAN TRỌNG ---
-                // Tạo một ID người dùng ngẫu nhiên mỗi lần tải trang
-                const randomUserId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-                clientRef.current = new window.CozeWebSDK.WebChatClient({
+        script.onload = () => {
+            if (window.CozeWebSDK) {
+                new window.CozeWebSDK.WebChatClient({
                     config: {
                         bot_id: COZE_BOT_ID,
-                        // Cung cấp ID người dùng ngẫu nhiên này cho SDK
-                        user_id: randomUserId,
                     },
                     componentProps: {
                         title: 'LandingHub Assistant',
                         description: 'Trợ lý AI của bạn',
                     },
+                    // SỬA LẠI CHO ĐÚNG:
+                    // Sử dụng hằng số YOUR_COZE_PAT_TOKEN đã khai báo ở trên
                     auth: {
                         type: 'token',
                         token: YOUR_COZE_PAT_TOKEN,
-                        onRefreshToken: () => Promise.resolve(YOUR_COZE_PAT_TOKEN),
+                        onRefreshToken: () => YOUR_COZE_PAT_TOKEN,
                     }
                 });
             }
         };
 
-        const loadScript = () => {
-            if (document.getElementById(COZE_SCRIPT_ID)) {
-                initializeChat();
-                return;
-            }
-            const script = document.createElement('script');
-            script.id = COZE_SCRIPT_ID;
-            script.src = "https://sf-cdn.coze.com/obj/unpkg-va/flow-platform/chat-app-sdk/1.2.0-beta.6/libs/oversea/index.js";
-            script.async = true;
-            script.onload = initializeChat;
-            document.body.appendChild(script);
-        };
-
-        loadScript();
+        document.body.appendChild(script);
 
         return () => {
-            if (clientRef.current && typeof clientRef.current.destroy === 'function') {
-                clientRef.current.destroy();
+            if (document.body.contains(script)) {
+                document.body.removeChild(script);
             }
             const chatWidget = document.querySelector('.web-chat-sdk-container');
             if (chatWidget) {
-                chatWidget.parentElement.removeChild(chatWidget);
+                chatWidget.remove();
             }
-            clientRef.current = null;
         };
     }, []);
 

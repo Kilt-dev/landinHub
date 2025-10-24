@@ -4,13 +4,12 @@
 /* ============================= */
 .pages-main{
     display: flex;
-    padding-top: 70px;
 }
 
 .page-content {
     flex: 1 1;
     padding: 20px;
-    margin-left: 180px;
+    margin-left: 50px;
     transition: margin-left 0.3s
     ease;
 }

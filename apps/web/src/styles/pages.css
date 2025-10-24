@@ -1,5 +1,4 @@
 .pages-container {
-    margin-top: -60px;
     min-height: 60vh;
     background: linear-gradient(135deg, #fafafa 0%, #f8fafc 100%);
     position: relative;
@@ -36,7 +35,6 @@
 
 /* Main layout */
 .pages-main {
-
     display: flex;
     position: relative;
     z-index: 5;

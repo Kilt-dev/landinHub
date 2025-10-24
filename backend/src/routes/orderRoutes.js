@@ -17,4 +17,5 @@ router.get('/admin/orders', authMiddleware, isAdmin, orderController.getAllOrder
 router.patch('/admin/orders/:id/status', authMiddleware, isAdmin, orderController.updateOrderStatus);
 router.patch('/admin/orders/:id/refund/process', authMiddleware, isAdmin, orderController.processRefund);
 router.get('/admin/orders', authMiddleware, isAdmin, orderController.getAllOrdersAdmin);
+
 module.exports = router;

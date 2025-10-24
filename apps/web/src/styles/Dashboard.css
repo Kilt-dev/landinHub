@@ -1,6 +1,5 @@
 
 .dashboard-container {
-
     height: 100vh;
     background: linear-gradient(135deg, #fafafa 0%, #f8fafc 100%);
     position: relative;
@@ -37,9 +36,8 @@
 
 /* Main layout */
 .dashboard-main {
-
     display: flex;
-    padding-top: 8px;
+    padding-top: 70px;
 }
 
 /* Content wrapper */

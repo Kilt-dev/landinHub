@@ -5,7 +5,7 @@
     gap: 24px;
     padding: 24px;
     max-width: 1400px;
-    margin-left: 40px;
+    margin: 0 auto;
 }
 
 /* Empty State */
