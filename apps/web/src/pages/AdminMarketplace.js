@@ -10,7 +10,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/AdminMarketplace.css';
 import DogLoader from '../components/Loader';
-import { Check, X, Eye, Star, AlertTriangle, Trash2, Download, RefreshCw, Filter, Pause, ShoppingCart, Package, Hourglass, BadgeCheck, DollarSign, Heart } from 'lucide-react';
+import { Check, X, Eye, Star, AlertTriangle, Trash2, Download, RefreshCw, Filter, Pause, ShoppingCart, Package, Hourglass, BadgeCheck, DollarSign, Heart, LayoutTemplate, User, Store, Calendar } from 'lucide-react';
 
 const AdminMarketplace = () => {
     const { user } = useContext(UserContext);
@@ -111,7 +111,8 @@ const AdminMarketplace = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedStatus, page, limit, searchTerm]);
+    }, [selectedStatus, page, limit, searchTerm, API_BASE_URL]);
+
     const loadOrders = useCallback(async () => {
         setLoading(true);
         try {
@@ -128,21 +129,7 @@ const AdminMarketplace = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, limit, searchTerm]);
-    useEffect(() => {
-        if (userRole === 'admin') {
-            if (currentTab === 'pages') {
-                loadPages();
-                loadStats();
-            } else if (currentTab === 'transactions') {
-                loadTransactions();
-            } else if (currentTab === 'refunds') {
-                loadRefundRequests();
-            } else if (currentTab === 'orders') {
-                loadOrders();
-            }
-        }
-    }, [userRole, currentTab]);
+    }, [page, limit, searchTerm, API_BASE_URL]);
 
     const loadStats = useCallback(async () => {
         try {
@@ -155,25 +142,7 @@ const AdminMarketplace = () => {
             console.error('Load stats error:', err);
             toast.error(err.response?.data?.message || 'Không thể tải thống kê');
         }
-    }, []);
-
-    const loadTransactions = useCallback(async () => {
-        setLoading(true);
-        try {
-            const token = localStorage.getItem('token');
-            const url = `${API_BASE_URL}/api/admin/marketplace/transactions?page=${page}&limit=${limit}${selectedStatus !== 'all' ? `&status=${selectedStatus}` : ''}${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ''}`;
-            const response = await axios.get(url, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setTransactions(response.data.data || []);
-            setTotalPages(response.data.pagination?.totalPages || 1);
-        } catch (err) {
-            console.error('Load transactions error:', err);
-            toast.error(err.response?.data?.message || 'Không thể tải danh sách giao dịch');
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedStatus, page, limit, searchTerm]);
+    }, [API_BASE_URL]);
 
     const loadTransactions = useCallback(async () => {
         setLoading(true);
@@ -207,7 +176,7 @@ const AdminMarketplace = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [API_BASE_URL]);
 
     useEffect(() => {
         if (userRole === 'admin') {
@@ -218,6 +187,8 @@ const AdminMarketplace = () => {
                 loadTransactions();
             } else if (currentTab === 'refunds') {
                 loadRefundRequests();
+            } else if (currentTab === 'orders') {
+                loadOrders();
             }
         }
     }, [userRole, currentTab, loadPages, loadStats, loadTransactions, loadRefundRequests, loadOrders]);
@@ -684,67 +655,57 @@ const AdminMarketplace = () => {
                             <div className="admin-toolbar" data-aos="fade-up">
                                 <div className="toolbar-left">
                                     <div className="search-box">
-                                        <input
-                                            type="text"
-                                            placeholder="Tìm theo mã đơn, tên người mua/bán..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="search-input"
-                                        />
+                                        <input type="text" placeholder="Tìm theo mã đơn, sản phẩm, người mua/bán..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="search-input" />
                                         <Filter size={18} />
                                     </div>
                                 </div>
                                 <div className="toolbar-right">
-                                    <button className="toolbar-btn" onClick={loadOrders} title="Làm mới" disabled={actionLoading}>
-                                        <RefreshCw size={18} /> Làm mới
-                                    </button>
+                                    <button className="toolbar-btn" onClick={loadOrders} title="Làm mới" disabled={actionLoading}><RefreshCw size={18} /> Làm mới</button>
                                 </div>
                             </div>
 
-                            <div className="orders-list" data-aos="fade-up">
-                                {loading ? (
-                                    <DogLoader />
-                                ) : orders.length === 0 ? (
-                                    <div className="empty-state">
-                                        <p>Chưa có đơn hàng nào</p>
-                                    </div>
+                            <div className="orders-table-container" data-aos="fade-up">
+                                {loading ? (<DogLoader />) : orders.length === 0 ? (
+                                    <div className="empty-state"><p>{searchTerm ? 'Không tìm thấy đơn hàng phù hợp' : 'Chưa có đơn hàng nào'}</p></div>
                                 ) : (
-                                    orders.map(order => (
-                                        <div key={order._id} className="order-item">
-                                            <div className="order-info">
-                                                <div className="order-header">
-                                                    <h3>Mã đơn: {order.orderId}</h3>
-                                                    {getStatusBadge(order.status)}
-                                                </div>
-                                                <p>Người mua: <strong>{order.buyerId?.name || order.buyerId?.email || 'N/A'}</strong></p>
-                                                <p>Người bán: <strong>{order.sellerId?.name || order.sellerId?.email || 'N/A'}</strong></p>
-                                                <p>Trang: <strong>{order.marketplacePageId?.title || 'N/A'}</strong></p>
-                                                <p>Giá: <strong>{formatPrice(order.price)}</strong></p>
-                                                <p>Ngày: {formatDate(order.createdAt)}</p>
-                                                {order.refundReason && (
-                                                    <div className="refund-reason">
-                                                        <AlertTriangle size={16} /> Lý do hoàn tiền: {order.refundReason}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))
+                                    <table className="orders-table">
+                                        <thead>
+                                        <tr>
+                                            <th>Mã Đơn</th>
+                                            <th>Sản phẩm</th>
+                                            <th>Người Mua</th>
+                                            <th>Người Bán</th>
+                                            <th>Ngày Tạo</th>
+                                            <th className="cell-right">Giá</th>
+                                            <th className="cell-center">Trạng Thái</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {orders.map(order => (
+                                            <tr key={order._id}>
+                                                <td data-label="Mã Đơn"><strong>{order.orderId}</strong></td>
+                                                <td data-label="Sản phẩm">{order.marketplacePageId?.title || 'N/A'}</td>
+                                                <td data-label="Người Mua">{order.buyerId?.name || order.buyerId?.email || 'N/A'}</td>
+                                                <td data-label="Người Bán">{order.sellerId?.name || order.sellerId?.email || 'N/A'}</td>
+                                                <td data-label="Ngày Tạo">{formatDate(order.createdAt)}</td>
+                                                <td data-label="Giá" className="cell-right cell-price">{formatPrice(order.price)}</td>
+                                                <td data-label="Trạng Thái" className="cell-center">{getStatusBadge(order.status)}</td>
+                                            </tr>
+                                        ))}
+                                        </tbody>
+                                    </table>
                                 )}
                             </div>
 
                             {totalPages > 1 && (
                                 <div className="pagination" data-aos="fade-up">
-                                    <button onClick={() => setPage(prev => Math.max(prev - 1, 1))} disabled={page === 1 || actionLoading}>
-                                        Trước
-                                    </button>
+                                    <button onClick={() => setPage(prev => Math.max(prev - 1, 1))} disabled={page === 1 || actionLoading}>Trước</button>
                                     <span>Trang {page} / {totalPages}</span>
-                                    <button onClick={() => setPage(prev => Math.min(prev + 1, totalPages))} disabled={page === totalPages || actionLoading}>
-                                        Sau
-                                    </button>
+                                    <button onClick={() => setPage(prev => Math.min(prev + 1, totalPages))} disabled={page === totalPages || actionLoading}>Sau</button>
                                 </div>
                             )}
                         </>
-                    )}v
+                    )}
 
                     {currentTab === 'refunds' && (
                         <>

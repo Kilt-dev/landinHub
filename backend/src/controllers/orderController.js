@@ -13,7 +13,7 @@ exports.getMyOrders = async (req, res) => {
         const { status, page = 1, limit = 10 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const query = { buyerId: userId };
+        const query = { buyerId: userId, is_deleted: false }; // Thêm is_deleted
         if (status) query.status = status;
 
         const total = await Order.countDocuments(query);
@@ -21,6 +21,7 @@ exports.getMyOrders = async (req, res) => {
             .populate('marketplacePageId', 'title main_screenshot price category')
             .populate('createdPageId', 'name status url')
             .populate('sellerId', 'name email')
+            .populate('transactionId', 'amount status payment_method platform_fee seller_amount') // Thêm populate transactionId
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
@@ -50,13 +51,14 @@ exports.getSellerOrders = async (req, res) => {
         const { status, page = 1, limit = 10 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const query = { sellerId: userId };
+        const query = { sellerId: userId, is_deleted: false }; // Thêm is_deleted
         if (status) query.status = status;
 
         const total = await Order.countDocuments(query);
         const orders = await Order.find(query)
             .populate('marketplacePageId', 'title main_screenshot price category')
             .populate('buyerId', 'name email')
+            .populate('transactionId', 'amount status payment_method platform_fee seller_amount') // Thêm populate transactionId
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
@@ -80,12 +82,79 @@ exports.getSellerOrders = async (req, res) => {
 /**
  * Admin: lấy tất cả đơn hàng
  */
+exports.getMyOrders = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.userId;
+        const { status, page = 1, limit = 10 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const query = { buyerId: userId, is_deleted: false }; // Thêm is_deleted
+        if (status) query.status = status;
+
+        const total = await Order.countDocuments(query);
+        const orders = await Order.find(query)
+            .populate('marketplacePageId', 'title main_screenshot price category')
+            .populate('createdPageId', 'name status url')
+            .populate('sellerId', 'name email')
+            .populate('transactionId', 'amount status payment_method platform_fee seller_amount') // Thêm populate transactionId
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        res.json({
+            success: true,
+            data: orders,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Get My Orders Error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy đơn hàng', error: error.message });
+    }
+};
+exports.getSellerOrders = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.userId;
+        const { status, page = 1, limit = 10 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        const query = { sellerId: userId, is_deleted: false }; // Thêm is_deleted
+        if (status) query.status = status;
+
+        const total = await Order.countDocuments(query);
+        const orders = await Order.find(query)
+            .populate('marketplacePageId', 'title main_screenshot price category')
+            .populate('buyerId', 'name email')
+            .populate('transactionId', 'amount status payment_method platform_fee seller_amount') // Thêm populate transactionId
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        res.json({
+            success: true,
+            data: orders,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Get Seller Orders Error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy đơn hàng', error: error.message });
+    }
+};
 exports.getAllOrders = async (req, res) => {
     try {
         const { status, page = 1, limit = 20 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const query = {};
+        const query = { is_deleted: false }; // Thêm is_deleted
         if (status) query.status = status;
 
         const total = await Order.countDocuments(query);
@@ -93,6 +162,7 @@ exports.getAllOrders = async (req, res) => {
             .populate('marketplacePageId', 'title price category')
             .populate('buyerId', 'name email')
             .populate('sellerId', 'name email')
+            .populate('transactionId', 'amount status payment_method platform_fee seller_amount') // Thêm populate transactionId
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(parseInt(limit));
@@ -112,7 +182,47 @@ exports.getAllOrders = async (req, res) => {
         res.status(500).json({ success: false, message: 'Lỗi khi lấy đơn hàng', error: error.message });
     }
 };
+exports.getAllOrdersAdmin = async (req, res) => {
+    try {
+        const { search, status, page = 1, limit = 20 } = req.query;
+        const skip = (page - 1) * limit;
 
+        let query = { is_deleted: false }; // Thêm is_deleted
+        if (status && status !== 'all') query.status = status;
+        if (search) {
+            query.$or = [
+                { orderId: { $regex: search, $options: 'i' } },
+                { 'buyerId.name': { $regex: search, $options: 'i' } },
+                { 'sellerId.name': { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const orders = await Order.find(query)
+            .populate('buyerId', 'name email')
+            .populate('sellerId', 'name email')
+            .populate('marketplacePageId', 'title price')
+            .populate('transactionId', 'amount status payment_method platform_fee seller_amount') // Thêm populate transactionId
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const total = await Order.countDocuments(query);
+
+        res.json({
+            success: true,
+            data: orders,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Get All Orders Admin Error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
 /**
  * User hủy đơn hàng (chỉ khi chưa delivered)
  */
@@ -317,17 +427,17 @@ exports.getOrderDetail = async (req, res) => {
     try {
         const { id } = req.params;
         const userId = req.userId;
-        const userRole = req.userRole; // bạn có thể gán từ middleware
+        const userRole = req.userRole;
 
         const order = await Order.findById(id)
             .populate('marketplacePageId', 'title main_screenshot price category')
             .populate('createdPageId', 'name status url file_path')
             .populate('buyerId', 'name email')
-            .populate('sellerId', 'name email');
+            .populate('sellerId', 'name email')
+            .populate('transactionId', 'amount status payment_method platform_fee seller_amount'); // Thêm populate transactionId
 
         if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
-        // Chỉ cho phép buyer, seller hoặc admin xem
         const isBuyer = order.buyerId._id.toString() === userId;
         const isSeller = order.sellerId._id.toString() === userId;
         const isAdmin = userRole === 'admin';
@@ -342,3 +452,49 @@ exports.getOrderDetail = async (req, res) => {
     }
 };
 
+exports.getOrderTransactions = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { status, page = 1, limit = 10 } = req.query;
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        let query = {
+            $or: [{ buyerId: userId }, { sellerId: userId }],
+            is_deleted: false
+        };
+        if (status) query.status = status;
+
+        const total = await Order.countDocuments(query);
+        const orders = await Order.find(query)
+            .populate({
+                path: 'transactionId',
+                select: 'amount status payment_method platform_fee seller_amount created_at',
+                match: { is_deleted: false }
+            })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const transactions = orders
+            .filter(order => order.transactionId) // Loại bỏ order không có transaction
+            .map(order => ({
+                orderId: order.orderId,
+                orderStatus: order.status,
+                transaction: order.transactionId
+            }));
+
+        res.json({
+            success: true,
+            data: transactions,
+            pagination: {
+                total,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        console.error('Get Order Transactions Error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy giao dịch từ đơn hàng', error: error.message });
+    }
+};

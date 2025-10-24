@@ -3,9 +3,7 @@ const http = require('http');
 const server = http.createServer(app);      // tạo HTTP server
 const { Server } = require('socket.io');    // Socket.IO v4
 const jwt = require('jsonwebtoken');
-const cron = require('node-cron');
-const cleanupPendingTx = require('./cron/cleanupPendingTx');
-const dailyPayout = require('./cron/dailyPayout');
+
 
 const PORT = process.env.PORT || 5000;
 app.set('trust proxy', true);
@@ -51,7 +49,6 @@ io.on('connection', socket => {
         console.log(`Socket ${socket.id} disconnected`);
     });
 });
-cron.schedule('*/10 * * * *', cleanupPendingTx);
-cron.schedule('0 9 * * *', dailyPayout); // 9h sáng mỗi ngày
+
 // 5. Khởi động server
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

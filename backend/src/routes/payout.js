@@ -3,7 +3,6 @@ const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const { isAdmin } = require('../middleware/authMiddleware');
 const payoutController = require('../controllers/payoutController');
-
 /**
  * Admin routes
  */

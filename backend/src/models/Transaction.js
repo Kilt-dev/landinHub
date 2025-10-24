@@ -2,8 +2,7 @@ const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 const TransactionSchema = new mongoose.Schema({
-    is_deleted: { type: Boolean, default: false, index: true },
-    _id: {
+    is_deleted: { type: Boolean, default: false, index: true },    _id: {
         type: String,
         default: uuidv4,
         match: [/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, 'Invalid UUID']
@@ -195,10 +194,7 @@ TransactionSchema.virtual('formatted_seller_amount').get(function() {
     }).format(this.seller_amount);
 });
 
-TransactionSchema.virtual('is_expired').get(function() {
-    if (this.status !== 'PENDING') return false;
-    return new Date() > this.expires_at;
-});
+
 
 TransactionSchema.virtual('formatted_created_at').get(function() {
     return this.created_at ? this.created_at.toLocaleString('vi-VN') : null;
@@ -212,7 +208,7 @@ TransactionSchema.methods.markAsPaid = async function(paymentGatewayData = {}) {
     try {
         console.log('markAsPaid called for transaction:', this._id);
 
-        this.status = 'COMPLETED';
+        this.status = 'COMPLETED'
         this.paid_at = new Date();
         this.payment_gateway_response = paymentGatewayData;
         await this.save();
@@ -426,25 +422,7 @@ TransactionSchema.statics.findRefundRequests = function() {
         .populate('marketplace_page_id')
         .sort({ 'refund.requested_at': 1 });
 };
-function notDeletedPlugin(schema) {
-    schema.pre(/^find/, function() {
-        if (this.getOptions().withDeleted) return; // cho phép override
-        this.where({ is_deleted: { $ne: true } });
-    });
-    schema.pre('countDocuments', function() {
-        if (this.getOptions().withDeleted) return;
-        this.where({ is_deleted: { $ne: true } });
-    });
-}
-TransactionSchema.plugin(notDeletedPlugin);
-TransactionSchema.statics.cleanupPending = async function() {
-    const expired = new Date(Date.now() - 30 * 60 * 1000); // 30 phút trước
-    const res = await this.deleteMany({
-        status: 'PENDING',
-        created_at: { $lt: expired }
-    });
-    return res.deletedCount;
-};
+
 TransactionSchema.methods.autoRefund = async function(reason = 'User request') {
     if (!['COMPLETED', 'REFUND_PENDING'].includes(this.status))
         throw new Error('Only completed or pending-refund transactions can be refunded');
