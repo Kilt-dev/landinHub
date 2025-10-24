@@ -45,6 +45,7 @@
 
 /* Main Content */
 .templates-main {
+    margin-top: -65px;
 
     flex: 1;
     display: flex;
@@ -641,6 +642,7 @@
 /* Responsive */
 @media (max-width: 768px) {
     .templates-main {
+
         padding: 1rem;
     }
 

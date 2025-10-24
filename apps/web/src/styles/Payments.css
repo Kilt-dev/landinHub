@@ -12,8 +12,9 @@
 }
 
 .payments-content {
+    margin-left: 144px;
+
     flex: 1;
-    width: 100%;
     padding-left: 100px;
 }
 

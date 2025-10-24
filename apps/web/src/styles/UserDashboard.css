@@ -5,7 +5,7 @@
  */
 
 .user-dashboard {
-    width: 100%;
+    margin-left: 133px;
     box-sizing: border-box;
     /* Sử dụng font Inter nếu có, nếu không thì dùng font hệ thống */
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
