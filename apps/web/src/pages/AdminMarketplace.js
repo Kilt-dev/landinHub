@@ -10,8 +10,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/AdminMarketplace.css';
 import DogLoader from '../components/Loader';
-import { Check, X, Eye, Star, AlertTriangle, Trash2, Download, RefreshCw, Filter, Pause, ShoppingCart, Package, Hourglass, BadgeCheck, DollarSign, Heart } from 'lucide-react';
-
+import { Check, X, Eye, Star, AlertTriangle, Trash2, Download, RefreshCw, Filter, Pause, ShoppingCart, Package, Hourglass, BadgeCheck, DollarSign, Heart, LayoutTemplate, User, Store, Calendar } from 'lucide-react';
 const AdminMarketplace = () => {
     const { user } = useContext(UserContext);
     const [loading, setLoading] = useState(true);
@@ -111,7 +110,8 @@ const AdminMarketplace = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedStatus, page, limit, searchTerm]);
+    }, [selectedStatus, page, limit, searchTerm, API_BASE_URL]);
+
     const loadOrders = useCallback(async () => {
         setLoading(true);
         try {
@@ -128,21 +128,7 @@ const AdminMarketplace = () => {
         } finally {
             setLoading(false);
         }
-    }, [page, limit, searchTerm]);
-    useEffect(() => {
-        if (userRole === 'admin') {
-            if (currentTab === 'pages') {
-                loadPages();
-                loadStats();
-            } else if (currentTab === 'transactions') {
-                loadTransactions();
-            } else if (currentTab === 'refunds') {
-                loadRefundRequests();
-            } else if (currentTab === 'orders') {
-                loadOrders();
-            }
-        }
-    }, [userRole, currentTab]);
+    }, [page, limit, searchTerm, API_BASE_URL]);
 
     const loadStats = useCallback(async () => {
         try {
@@ -155,7 +141,7 @@ const AdminMarketplace = () => {
             console.error('Load stats error:', err);
             toast.error(err.response?.data?.message || 'Không thể tải thống kê');
         }
-    }, []);
+    }, [API_BASE_URL]);
 
     const loadTransactions = useCallback(async () => {
         setLoading(true);
@@ -173,7 +159,7 @@ const AdminMarketplace = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedStatus, page, limit, searchTerm]);
+    }, [selectedStatus, page, limit, searchTerm, API_BASE_URL]);
 
     const loadRefundRequests = useCallback(async () => {
         setLoading(true);
@@ -189,7 +175,7 @@ const AdminMarketplace = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [API_BASE_URL]);
 
     useEffect(() => {
         if (userRole === 'admin') {
@@ -200,10 +186,13 @@ const AdminMarketplace = () => {
                 loadTransactions();
             } else if (currentTab === 'refunds') {
                 loadRefundRequests();
+            } else if (currentTab === 'orders') {
+                loadOrders();
             }
         }
-    }, [userRole, currentTab, loadPages, loadStats, loadTransactions, loadRefundRequests]);
+    }, [userRole, currentTab, loadPages, loadStats, loadTransactions, loadRefundRequests, loadOrders]);
 
+    // Các hàm handle... (giữ nguyên không đổi)
     const handleApprove = async (id) => {
         if (!window.confirm('Bạn có chắc muốn duyệt landing page này?')) return;
         setActionLoading(true);
@@ -548,27 +537,27 @@ const AdminMarketplace = () => {
                         <div className="stats-grid" data-aos="fade-up">
                             <div className="stat-card">
                                 <div className="stat-icon"><Package size={32} color="var(--color-gray-500)" /></div>                                <div className="stat-info">
-                                    <div className="stat-value">{stats.overview?.totalPages || 0}</div>
-                                    <div className="stat-label">Tổng pages</div>
-                                </div>
+                                <div className="stat-value">{stats.overview?.totalPages || 0}</div>
+                                <div className="stat-label">Tổng pages</div>
+                            </div>
                             </div>
                             <div className="stat-card">
                                 <div className="stat-icon"><Hourglass size={32} color="var(--color-warning)" /></div>                                <div className="stat-info">
-                                    <div className="stat-value">{stats.overview?.pendingPages || 0}</div>
-                                    <div className="stat-label">Chờ duyệt</div>
-                                </div>
+                                <div className="stat-value">{stats.overview?.pendingPages || 0}</div>
+                                <div className="stat-label">Chờ duyệt</div>
+                            </div>
                             </div>
                             <div className="stat-card">
                                 <div className="stat-icon"><BadgeCheck size={32} color="var(--color-success)" /></div>                                <div className="stat-info">
-                                    <div className="stat-value">{stats.overview?.activePages || 0}</div>
-                                    <div className="stat-label">Đang bán</div>
-                                </div>
+                                <div className="stat-value">{stats.overview?.activePages || 0}</div>
+                                <div className="stat-label">Đang bán</div>
+                            </div>
                             </div>
                             <div className="stat-card">
                                 <div className="stat-icon"><DollarSign size={32} color="var(--color-info)" /></div>                                <div className="stat-info">
-                                    <div className="stat-value">{formatPrice(stats.overview?.totalRevenue || 0)}</div>
-                                    <div className="stat-label">Doanh thu</div>
-                                </div>
+                                <div className="stat-value">{formatPrice(stats.overview?.totalRevenue || 0)}</div>
+                                <div className="stat-label">Doanh thu</div>
+                            </div>
                             </div>
                         </div>
                     )}
@@ -675,18 +664,18 @@ const AdminMarketplace = () => {
                                                     {page.description?.substring(0, 150)}...
                                                 </p>
                                                 <div className="page-meta">
-    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <Eye size={16} /> {page.views}
-    </span>
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <Heart size={16} /> {page.likes}
-    </span>
+                                                        <Eye size={16} /> {page.views}
+                                                    </span>
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <ShoppingCart size={16} /> {page.sold_count}
-    </span>
+                                                        <Heart size={16} /> {page.likes}
+                                                    </span>
                                                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <Star size={16} fill="#f59e0b" color="#f59e0b" /> {page.rating.toFixed(1)}
-    </span>
+                                                        <ShoppingCart size={16} /> {page.sold_count}
+                                                    </span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <Star size={16} fill="#f59e0b" color="#f59e0b" /> {page.rating.toFixed(1)}
+                                                    </span>
                                                 </div>
                                                 <p className="page-date">Ngày tạo: {formatDate(page.created_at)}</p>
                                                 {page.rejection_reason && (
@@ -778,6 +767,7 @@ const AdminMarketplace = () => {
                         </>
                     )}
 
+                    {/* KHỐI CODE ĐÚNG CHO TAB ĐƠN HÀNG */}
                     {currentTab === 'orders' && (
                         <>
                             <div className="admin-toolbar" data-aos="fade-up">
@@ -805,26 +795,48 @@ const AdminMarketplace = () => {
                                     <DogLoader />
                                 ) : orders.length === 0 ? (
                                     <div className="empty-state">
-                                        <p>Chưa có đơn hàng nào</p>
+                                        <p>{searchTerm ? 'Không tìm thấy đơn hàng phù hợp' : 'Chưa có đơn hàng nào'}</p>
                                     </div>
                                 ) : (
                                     orders.map(order => (
-                                        <div key={order._id} className="order-item">
-                                            <div className="order-info">
+                                        // Cấu trúc mới cho card đơn hàng, không có cột ảnh
+                                        <div key={order._id} className="order-item-card no-image"> {/* THÊM CLASS 'no-image' */}
+                                            {/* CỘT 1: THÔNG TIN CHI TIẾT */}
+                                            <div className="order-item-details">
                                                 <div className="order-header">
                                                     <h3>Mã đơn: {order.orderId}</h3>
                                                     {getStatusBadge(order.status)}
                                                 </div>
-                                                <p>Người mua: <strong>{order.buyerId?.name || order.buyerId?.email || 'N/A'}</strong></p>
-                                                <p>Người bán: <strong>{order.sellerId?.name || order.sellerId?.email || 'N/A'}</strong></p>
-                                                <p>Trang: <strong>{order.marketplacePageId?.title || 'N/A'}</strong></p>
-                                                <p>Giá: <strong>{formatPrice(order.price)}</strong></p>
-                                                <p>Ngày: {formatDate(order.createdAt)}</p>
+
+                                                <div className="order-item-meta">
+                                                    <p>
+                                                        <LayoutTemplate size={14} />
+                                                        <span>Trang: <strong>{order.marketplacePageId?.title || 'N/A'}</strong></span>
+                                                    </p>
+                                                    <p>
+                                                        <User size={14} />
+                                                        <span>Người mua: <strong>{order.buyerId?.name || order.buyerId?.email || 'N/A'}</strong></span>
+                                                    </p>
+                                                    <p>
+                                                        <Store size={14} />
+                                                        <span>Người bán: <strong>{order.sellerId?.name || order.sellerId?.email || 'N/A'}</strong></span>
+                                                    </p>
+                                                    <p>
+                                                        <Calendar size={14} />
+                                                        <span>Ngày tạo: {formatDate(order.createdAt)}</span>
+                                                    </p>
+                                                </div>
+
                                                 {order.refundReason && (
-                                                    <div className="refund-reason">
+                                                    <div className="rejection-reason" style={{marginTop: '8px'}}>
                                                         <AlertTriangle size={16} /> Lý do hoàn tiền: {order.refundReason}
                                                     </div>
                                                 )}
+                                            </div>
+
+                                            {/* CỘT 2: GIÁ TIỀN */}
+                                            <div className="page-actions">
+                                                <div className="page-price">{formatPrice(order.price)}</div>
                                             </div>
                                         </div>
                                     ))
@@ -845,6 +857,7 @@ const AdminMarketplace = () => {
                         </>
                     )}
 
+                    {/* KHỐI CODE CHO TAB YÊU CẦU HOÀN TIỀN */}
                     {currentTab === 'refunds' && (
                         <>
                             <div className="admin-toolbar" data-aos="fade-up">
@@ -902,7 +915,7 @@ const AdminMarketplace = () => {
                         </>
                     )}
 
-                    {/* Preview Modal */}
+                    {/* Các Modals... (giữ nguyên không đổi) */}
                     {showPreviewModal && selectedPage && (
                         <div className="modal-overlay" onClick={() => setShowPreviewModal(false)}>
                             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -917,7 +930,6 @@ const AdminMarketplace = () => {
                         </div>
                     )}
 
-                    {/* Reject Modal */}
                     {showRejectModal && (
                         <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
                             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -977,7 +989,6 @@ const AdminMarketplace = () => {
                         </div>
                     )}
 
-                    {/* Suspend Modal */}
                     {showSuspendModal && (
                         <div className="modal-overlay" onClick={() => setShowSuspendModal(false)}>
                             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
