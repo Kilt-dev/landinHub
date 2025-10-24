@@ -175,6 +175,24 @@ const AdminMarketplace = () => {
         }
     }, [selectedStatus, page, limit, searchTerm]);
 
+    const loadTransactions = useCallback(async () => {
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const url = `${API_BASE_URL}/api/admin/marketplace/transactions?page=${page}&limit=${limit}${selectedStatus !== 'all' ? `&status=${selectedStatus}` : ''}${searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ''}`;
+            const response = await axios.get(url, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setTransactions(response.data.data || []);
+            setTotalPages(response.data.pagination?.totalPages || 1);
+        } catch (err) {
+            console.error('Load transactions error:', err);
+            toast.error(err.response?.data?.message || 'Không thể tải danh sách giao dịch');
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedStatus, page, limit, searchTerm, API_BASE_URL]);
+
     const loadRefundRequests = useCallback(async () => {
         setLoading(true);
         try {
@@ -202,7 +220,7 @@ const AdminMarketplace = () => {
                 loadRefundRequests();
             }
         }
-    }, [userRole, currentTab, loadPages, loadStats, loadTransactions, loadRefundRequests]);
+    }, [userRole, currentTab, loadPages, loadStats, loadTransactions, loadRefundRequests, loadOrders]);
 
     const handleApprove = async (id) => {
         if (!window.confirm('Bạn có chắc muốn duyệt landing page này?')) return;
@@ -382,7 +400,7 @@ const AdminMarketplace = () => {
         };
         const badge = badges[status] || { color: '#6b7280', label: status };
         return (
-            <span className="status-badge" style={{
+            <span className="status-badge123" style={{
                 backgroundColor: badge.color,
                 color: 'white',
                 padding: '4px 12px',
@@ -490,7 +508,6 @@ const AdminMarketplace = () => {
     };
 
     const filteredPages = useMemo(() => {
-        // Lọc phía client chỉ khi backend không hỗ trợ tìm kiếm
         if (!searchTerm) return pages;
         return pages.filter(page => {
             const term = searchTerm.toLowerCase();
@@ -516,30 +533,19 @@ const AdminMarketplace = () => {
                 <div className="admin-marketplace-content">
                     <div className="admin-marketplace-header" data-aos="fade-down">
                         <div>
-                            <h1 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <ShoppingCart size={32} /> Quản lý Marketplace
-                            </h1>
+                            <h1><ShoppingCart size={32} /> Quản lý Marketplace</h1>
                             <p>Quản lý landing page, giao dịch và yêu cầu hoàn tiền</p>
                         </div>
                     </div>
 
                     <div className="tabs" data-aos="fade-up">
-                        <button
-                            className={`tab ${currentTab === 'pages' ? 'active' : ''}`}
-                            onClick={() => setCurrentTab('pages')}
-                        >
+                        <button className={`tab ${currentTab === 'pages' ? 'active' : ''}`} onClick={() => setCurrentTab('pages')}>
                             Landing Pages
                         </button>
-                        <button
-                            className={`tab ${currentTab === 'orders' ? 'active' : ''}`}
-                            onClick={() => setCurrentTab('orders')}
-                        >
+                        <button className={`tab ${currentTab === 'orders' ? 'active' : ''}`} onClick={() => setCurrentTab('orders')}>
                             📦 Đơn hàng
                         </button>
-                        <button
-                            className={`tab ${currentTab === 'refunds' ? 'active' : ''}`}
-                            onClick={() => setCurrentTab('refunds')}
-                        >
+                        <button className={`tab ${currentTab === 'refunds' ? 'active' : ''}`} onClick={() => setCurrentTab('refunds')}>
                             Yêu cầu hoàn tiền
                         </button>
                     </div>
@@ -547,25 +553,29 @@ const AdminMarketplace = () => {
                     {stats && currentTab === 'pages' && (
                         <div className="stats-grid" data-aos="fade-up">
                             <div className="stat-card">
-                                <div className="stat-icon"><Package size={32} color="var(--color-gray-500)" /></div>                                <div className="stat-info">
+                                <div className="stat-icon"><Package size={32} color="var(--color-gray-500)" /></div>
+                                <div className="stat-info">
                                     <div className="stat-value">{stats.overview?.totalPages || 0}</div>
                                     <div className="stat-label">Tổng pages</div>
                                 </div>
                             </div>
                             <div className="stat-card">
-                                <div className="stat-icon"><Hourglass size={32} color="var(--color-warning)" /></div>                                <div className="stat-info">
+                                <div className="stat-icon"><Hourglass size={32} color="var(--color-warning)" /></div>
+                                <div className="stat-info">
                                     <div className="stat-value">{stats.overview?.pendingPages || 0}</div>
                                     <div className="stat-label">Chờ duyệt</div>
                                 </div>
                             </div>
                             <div className="stat-card">
-                                <div className="stat-icon"><BadgeCheck size={32} color="var(--color-success)" /></div>                                <div className="stat-info">
+                                <div className="stat-icon"><BadgeCheck size={32} color="var(--color-success)" /></div>
+                                <div className="stat-info">
                                     <div className="stat-value">{stats.overview?.activePages || 0}</div>
                                     <div className="stat-label">Đang bán</div>
                                 </div>
                             </div>
                             <div className="stat-card">
-                                <div className="stat-icon"><DollarSign size={32} color="var(--color-info)" /></div>                                <div className="stat-info">
+                                <div className="stat-icon"><DollarSign size={32} color="var(--color-info)" /></div>
+                                <div className="stat-info">
                                     <div className="stat-value">{formatPrice(stats.overview?.totalRevenue || 0)}</div>
                                     <div className="stat-label">Doanh thu</div>
                                 </div>
@@ -578,42 +588,20 @@ const AdminMarketplace = () => {
                             <div className="admin-toolbar" data-aos="fade-up">
                                 <div className="toolbar-left">
                                     <div className="search-box">
-                                        <input
-                                            type="text"
-                                            placeholder="Tìm kiếm theo tên, mô tả, người bán..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="search-input"
-                                        />
+                                        <input type="text" placeholder="Tìm kiếm theo tên, mô tả, người bán..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="search-input" />
                                         <Filter size={18} />
                                     </div>
-                                    <select
-                                        value={selectedStatus}
-                                        onChange={(e) => setSelectedStatus(e.target.value)}
-                                        className="status-filter"
-                                    >
-                                        {statusOptions.map(opt => (
-                                            <option key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </option>
-                                        ))}
+                                    <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="status-filter">
+                                        {statusOptions.map(opt => (<option key={opt.value} value={opt.value}>{opt.label}</option>))}
                                     </select>
                                 </div>
                                 <div className="toolbar-right">
-                                    <button className="toolbar-btn" onClick={loadPages} title="Làm mới" disabled={actionLoading}>
-                                        <RefreshCw size={18} /> Làm mới
-                                    </button>
-                                    <button className="toolbar-btn" onClick={handleExportData} title="Xuất dữ liệu" disabled={actionLoading}>
-                                        <Download size={18} /> Xuất CSV
-                                    </button>
+                                    <button className="toolbar-btn" onClick={loadPages} title="Làm mới" disabled={actionLoading}><RefreshCw size={18} /> Làm mới</button>
+                                    <button className="toolbar-btn" onClick={handleExportData} title="Xuất dữ liệu" disabled={actionLoading}><Download size={18} /> Xuất CSV</button>
                                     {selectedPages.length > 0 && (
                                         <>
-                                            <button className="toolbar-btn bulk-approve" onClick={handleBulkApprove} disabled={actionLoading}>
-                                                <Check size={18} /> Duyệt ({selectedPages.length})
-                                            </button>
-                                            <button className="toolbar-btn bulk-delete" onClick={handleBulkDelete} disabled={actionLoading}>
-                                                <Trash2 size={18} /> Xóa ({selectedPages.length})
-                                            </button>
+                                            <button className="toolbar-btn bulk-approve" onClick={handleBulkApprove} disabled={actionLoading}><Check size={18} /> Duyệt ({selectedPages.length})</button>
+                                            <button className="toolbar-btn bulk-delete" onClick={handleBulkDelete} disabled={actionLoading}><Trash2 size={18} /> Xóa ({selectedPages.length})</button>
                                         </>
                                     )}
                                 </div>
@@ -622,135 +610,58 @@ const AdminMarketplace = () => {
                             {filteredPages.length > 0 && (
                                 <div className="bulk-selection-bar" data-aos="fade-up">
                                     <label className="checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedPages.length === filteredPages.length && filteredPages.length > 0}
-                                            onChange={handleSelectAll}
-                                        />
+                                        <input type="checkbox" checked={selectedPages.length === filteredPages.length && filteredPages.length > 0} onChange={handleSelectAll} />
                                         <span>Chọn tất cả ({filteredPages.length})</span>
                                     </label>
-                                    {selectedPages.length > 0 && (
-                                        <span className="selected-count">
-                                            Đã chọn: {selectedPages.length} trang
-                                        </span>
-                                    )}
+                                    {selectedPages.length > 0 && (<span className="selected-count">Đã chọn: {selectedPages.length} trang</span>)}
                                 </div>
                             )}
 
                             <div className="pages-list" data-aos="fade-up">
-                                {loading ? (
-                                    <DogLoader />
-                                ) : filteredPages.length === 0 ? (
-                                    <div className="empty-state">
-                                        <p>{searchTerm ? 'Không tìm thấy kết quả phù hợp' : 'Không có landing page nào'}</p>
-                                    </div>
+                                {loading ? (<DogLoader />) : filteredPages.length === 0 ? (
+                                    <div className="empty-state"><p>{searchTerm ? 'Không tìm thấy kết quả phù hợp' : 'Không có landing page nào'}</p></div>
                                 ) : (
                                     filteredPages.map(page => (
                                         <div key={page._id} className="admin-page-item">
-                                            <div className="page-checkbox">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedPages.includes(page._id)}
-                                                    onChange={() => handleSelectPage(page._id)}
-                                                />
-                                            </div>
+                                            <div className="page-checkbox"><input type="checkbox" checked={selectedPages.includes(page._id)} onChange={() => handleSelectPage(page._id)} /></div>
                                             <div className="page-image">
                                                 <img src={page.main_screenshot || '/placeholder.png'} alt={page.title} />
-                                                {page.is_featured && (
-                                                    <div className="featured-badge">
-                                                        <Star size={16} fill="gold" color="gold" /> Featured
-                                                    </div>
-                                                )}
+                                                {page.is_featured && (<div className="featured-badge"><Star size={16} fill="gold" color="gold" /> Featured</div>)}
                                             </div>
                                             <div className="page-info">
                                                 <div className="page-header">
                                                     <h3>{page.title}</h3>
                                                     {getStatusBadge(page.status)}
                                                 </div>
-                                                <p className="page-seller">
-                                                    Người bán: <strong>{page.seller_id?.name || page.seller_id?.email || 'N/A'}</strong>
-                                                </p>
+                                                <p className="page-seller">Người bán: <strong>{page.seller_id?.name || page.seller_id?.email || 'N/A'}</strong></p>
                                                 <p className="page-category">{page.category}</p>
-                                                <p className="page-description">
-                                                    {page.description?.substring(0, 150)}...
-                                                </p>
+                                                <p className="page-description">{page.description?.substring(0, 150)}...</p>
                                                 <div className="page-meta">
-    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <Eye size={16} /> {page.views}
-    </span>
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <Heart size={16} /> {page.likes}
-    </span>
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <ShoppingCart size={16} /> {page.sold_count}
-    </span>
-                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-        <Star size={16} fill="#f59e0b" color="#f59e0b" /> {page.rating.toFixed(1)}
-    </span>
+                                                    <span><Eye size={16} /> {page.views}</span>
+                                                    <span><Heart size={16} /> {page.likes}</span>
+                                                    <span><ShoppingCart size={16} /> {page.sold_count}</span>
+                                                    <span><Star size={16} fill="#f59e0b" color="#f59e0b" /> {page.rating.toFixed(1)}</span>
                                                 </div>
                                                 <p className="page-date">Ngày tạo: {formatDate(page.created_at)}</p>
-                                                {page.rejection_reason && (
-                                                    <div className="rejection-reason">
-                                                        <AlertTriangle size={16} /> {page.rejection_reason}
-                                                    </div>
-                                                )}
+                                                {page.rejection_reason && (<div className="rejection-reason"><AlertTriangle size={16} /> {page.rejection_reason}</div>)}
                                             </div>
                                             <div className="page-actions">
                                                 <div className="page-price">{formatPrice(page.price)}</div>
                                                 <div className="action-buttons">
-                                                    <button
-                                                        className="btn-view"
-                                                        onClick={() => {
-                                                            setSelectedPage(page);
-                                                            setShowPreviewModal(true);
-                                                        }}
-                                                        disabled={actionLoading}
-                                                    >
-                                                        <Eye size={16} /> Xem
-                                                    </button>
+                                                    <button className="btn-view" onClick={() => { setSelectedPage(page); setShowPreviewModal(true); }} disabled={actionLoading}><Eye size={16} /> Xem</button>
                                                     {page.status === 'PENDING' && (
                                                         <>
-                                                            <button
-                                                                className="btn-approve"
-                                                                onClick={() => handleApprove(page._id)}
-                                                                disabled={actionLoading}
-                                                            >
-                                                                <Check size={16} /> Duyệt
-                                                            </button>
-                                                            <button
-                                                                className="btn-reject"
-                                                                onClick={() => openRejectModal(page._id)}
-                                                                disabled={actionLoading}
-                                                            >
-                                                                <X size={16} /> Từ chối
-                                                            </button>
+                                                            <button className="btn-approve" onClick={() => handleApprove(page._id)} disabled={actionLoading}><Check size={16} /> Duyệt</button>
+                                                            <button className="btn-reject" onClick={() => openRejectModal(page._id)} disabled={actionLoading}><X size={16} /> Từ chối</button>
                                                         </>
                                                     )}
                                                     {page.status === 'ACTIVE' && (
                                                         <>
-                                                            <button
-                                                                className="btn-suspend"
-                                                                onClick={() => openSuspendModal(page._id)}
-                                                                disabled={actionLoading}
-                                                            >
-                                                                <Pause size={16} /> Tạm ngưng
-                                                            </button>
-                                                            <button
-                                                                className="btn-featured"
-                                                                onClick={() => handleToggleFeatured(page._id)}
-                                                                disabled={actionLoading}
-                                                            >
-                                                                <Star size={16} /> {page.is_featured ? 'Bỏ' : ''} Featured
-                                                            </button>
+                                                            <button className="btn-suspend" onClick={() => openSuspendModal(page._id)} disabled={actionLoading}><Pause size={16} /> Tạm ngưng</button>
+                                                            <button className="btn-featured" onClick={() => handleToggleFeatured(page._id)} disabled={actionLoading}><Star size={16} /> {page.is_featured ? 'Bỏ' : ''} Featured</button>
                                                         </>
                                                     )}
-                                                    <button
-                                                        className="btn-delete"
-                                                        onClick={() => handleDelete(page._id)}
-                                                        disabled={actionLoading}
-                                                    >
-                                                        <Trash2 size={16} /> Xóa
-                                                    </button>
+                                                    <button className="btn-delete" onClick={() => handleDelete(page._id)} disabled={actionLoading}><Trash2 size={16} /> Xóa</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -760,19 +671,9 @@ const AdminMarketplace = () => {
 
                             {totalPages > 1 && (
                                 <div className="pagination" data-aos="fade-up">
-                                    <button
-                                        onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                                        disabled={page === 1 || actionLoading}
-                                    >
-                                        Trước
-                                    </button>
+                                    <button onClick={() => setPage(prev => Math.max(prev - 1, 1))} disabled={page === 1 || actionLoading}>Trước</button>
                                     <span>Trang {page} / {totalPages}</span>
-                                    <button
-                                        onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-                                        disabled={page === totalPages || actionLoading}
-                                    >
-                                        Sau
-                                    </button>
+                                    <button onClick={() => setPage(prev => Math.min(prev + 1, totalPages))} disabled={page === totalPages || actionLoading}>Sau</button>
                                 </div>
                             )}
                         </>
@@ -843,25 +744,16 @@ const AdminMarketplace = () => {
                                 </div>
                             )}
                         </>
-                    )}
+                    )}v
 
                     {currentTab === 'refunds' && (
                         <>
                             <div className="admin-toolbar" data-aos="fade-up">
-                                <div className="toolbar-right">
-                                    <button className="toolbar-btn" onClick={loadRefundRequests} title="Làm mới" disabled={actionLoading}>
-                                        <RefreshCw size={18} /> Làm mới
-                                    </button>
-                                </div>
+                                <div className="toolbar-right"><button className="toolbar-btn" onClick={loadRefundRequests} title="Làm mới" disabled={actionLoading}><RefreshCw size={18} /> Làm mới</button></div>
                             </div>
-
                             <div className="refund-requests-list" data-aos="fade-up">
-                                {loading ? (
-                                    <DogLoader />
-                                ) : refundRequests.length === 0 ? (
-                                    <div className="empty-state">
-                                        <p>Không có yêu cầu hoàn tiền nào</p>
-                                    </div>
+                                {loading ? (<DogLoader />) : refundRequests.length === 0 ? (
+                                    <div className="empty-state"><p>Không có yêu cầu hoàn tiền nào</p></div>
                                 ) : (
                                     refundRequests.map(request => (
                                         <div key={request._id} className="refund-request-item">
@@ -877,23 +769,8 @@ const AdminMarketplace = () => {
                                                 <p>Ngày yêu cầu: {formatDate(request.created_at)}</p>
                                             </div>
                                             <div className="refund-request-actions">
-                                                <button
-                                                    className="btn-approve"
-                                                    onClick={() => handleProcessRefund(request._id)}
-                                                    disabled={actionLoading}
-                                                >
-                                                    <Check size={16} /> Duyệt hoàn tiền
-                                                </button>
-                                                <button
-                                                    className="btn-reject"
-                                                    onClick={() => {
-                                                        const reason = prompt('Nhập lý do từ chối hoàn tiền:');
-                                                        if (reason) handleRejectRefund(request._id, reason);
-                                                    }}
-                                                    disabled={actionLoading}
-                                                >
-                                                    <X size={16} /> Từ chối
-                                                </button>
+                                                <button className="btn-approve" onClick={() => handleProcessRefund(request._id)} disabled={actionLoading}><Check size={16} /> Duyệt hoàn tiền</button>
+                                                <button className="btn-reject" onClick={() => { const reason = prompt('Nhập lý do từ chối hoàn tiền:'); if (reason) handleRejectRefund(request._id, reason); }} disabled={actionLoading}><X size={16} /> Từ chối</button>
                                             </div>
                                         </div>
                                     ))
@@ -902,7 +779,6 @@ const AdminMarketplace = () => {
                         </>
                     )}
 
-                    {/* Preview Modal */}
                     {showPreviewModal && selectedPage && (
                         <div className="modal-overlay" onClick={() => setShowPreviewModal(false)}>
                             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -917,131 +793,35 @@ const AdminMarketplace = () => {
                         </div>
                     )}
 
-                    {/* Reject Modal */}
                     {showRejectModal && (
                         <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
                             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                                 <h2>Từ chối landing page</h2>
                                 <p style={{ marginBottom: '15px', color: '#6b7280' }}>Vui lòng nhập lý do từ chối để người bán có thể cải thiện:</p>
-                                <textarea
-                                    placeholder="Ví dụ: Nội dung không phù hợp, vi phạm bản quyền, chất lượng kém..."
-                                    value={rejectReason}
-                                    onChange={(e) => setRejectReason(e.target.value)}
-                                    rows={5}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        resize: 'vertical'
-                                    }}
-                                />
+                                <textarea placeholder="Ví dụ: Nội dung không phù hợp, vi phạm bản quyền, chất lượng kém..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={5} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', resize: 'vertical' }} />
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                                    <button
-                                        onClick={() => {
-                                            setShowRejectModal(false);
-                                            setRejectReason('');
-                                            setPageToReject(null);
-                                        }}
-                                        style={{
-                                            flex: 1,
-                                            padding: '10px',
-                                            background: '#e5e7eb',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer'
-                                        }}
-                                        disabled={actionLoading}
-                                    >
-                                        Hủy
-                                    </button>
-                                    <button
-                                        onClick={handleReject}
-                                        style={{
-                                            flex: 1,
-                                            padding: '10px',
-                                            background: '#ef4444',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            fontWeight: '500'
-                                        }}
-                                        disabled={actionLoading}
-                                    >
-                                        Xác nhận từ chối
-                                    </button>
+                                    <button onClick={() => { setShowRejectModal(false); setRejectReason(''); setPageToReject(null); }} style={{ flex: 1, padding: '10px', background: '#e5e7eb', border: 'none', borderRadius: '8px', cursor: 'pointer' }} disabled={actionLoading}>Hủy</button>
+                                    <button onClick={handleReject} style={{ flex: 1, padding: '10px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }} disabled={actionLoading}>Xác nhận từ chối</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Suspend Modal */}
                     {showSuspendModal && (
                         <div className="modal-overlay" onClick={() => setShowSuspendModal(false)}>
                             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                                 <h2>Tạm ngưng landing page</h2>
                                 <p style={{ marginBottom: '15px', color: '#6b7280' }}>Vui lòng nhập lý do tạm ngưng:</p>
-                                <textarea
-                                    placeholder="Ví dụ: Vi phạm chính sách, cần kiểm tra lại..."
-                                    value={suspendReason}
-                                    onChange={(e) => setSuspendReason(e.target.value)}
-                                    rows={5}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        resize: 'vertical'
-                                    }}
-                                />
+                                <textarea placeholder="Ví dụ: Vi phạm chính sách, cần kiểm tra lại..." value={suspendReason} onChange={(e) => setSuspendReason(e.target.value)} rows={5} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', resize: 'vertical' }} />
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                                    <button
-                                        onClick={() => {
-                                            setShowSuspendModal(false);
-                                            setSuspendReason('');
-                                            setPageToSuspend(null);
-                                        }}
-                                        style={{
-                                            flex: 1,
-                                            padding: '10px',
-                                            background: '#e5e7eb',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer'
-                                        }}
-                                        disabled={actionLoading}
-                                    >
-                                        Hủy
-                                    </button>
-                                    <button
-                                        onClick={handleSuspend}
-                                        style={{
-                                            flex: 1,
-                                            padding: '10px',
-                                            background: '#f97316',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            fontWeight: '500'
-                                        }}
-                                        disabled={actionLoading}
-                                    >
-                                        Xác nhận tạm ngưng
-                                    </button>
+                                    <button onClick={() => { setShowSuspendModal(false); setSuspendReason(''); setPageToSuspend(null); }} style={{ flex: 1, padding: '10px', background: '#e5e7eb', border: 'none', borderRadius: '8px', cursor: 'pointer' }} disabled={actionLoading}>Hủy</button>
+                                    <button onClick={handleSuspend} style={{ flex: 1, padding: '10px', background: '#f97316', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }} disabled={actionLoading}>Xác nhận tạm ngưng</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {actionLoading && (
-                        <div className="loading-overlay">
-                            <DogLoader />
-                        </div>
-                    )}
+                    {actionLoading && (<div className="loading-overlay"><DogLoader /></div>)}
                 </div>
             </div>
         </div>
@@ -1049,3 +829,4 @@ const AdminMarketplace = () => {
 };
 
 export default AdminMarketplace;
+
