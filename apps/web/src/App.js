@@ -6,10 +6,18 @@ import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 import Pages from './pages/Pages';
 import Payments from './pages/Payments';
+import MyPayouts from './pages/MyPayouts';
+import AdminPayoutManagement from './pages/AdminPayoutManagement';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Templates from './pages/Templates';
 import Marketplace from './pages/Marketplace';
+import MarketplaceDetail from './pages/MarketplaceDetail';
+import PurchasedPages from './pages/PurchasedPages';
+import SellPage from './pages/SellPage';
+import MySales from './pages/MySales';
+import PaymentSandbox from './pages/PaymentSandbox';
+import PaymentResult from './pages/PaymentResult';
 import FormData from './pages/FormData';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -20,6 +28,7 @@ import Contact from './components/about_public/Contact';
 import PageAbout from './components/about_public/Pages ';
 import Blog from './components/about_public/Blog';
 import AdminAddTemplate from './components/AdminAddTemplate'; // Thêm component cho admin
+import AdminMarketplace from './pages/AdminMarketplace';
 
 function App() {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -46,12 +55,22 @@ function App() {
                             <Route path="/create-landing" element={<Navigate to="/pages/create" replace />} />
                             <Route path="/templates" element={<Templates />} />
                             <Route path="/market" element={<Marketplace />} />
+                            <Route path="/marketplace" element={<Marketplace />} />
+                            <Route path="/marketplace/:id" element={<MarketplaceDetail />} />
+                            <Route path="/purchased-pages" element={<PurchasedPages />} />
+                            <Route path="/sell-page" element={<SellPage />} />
+                            <Route path="/my-sales" element={<MySales />} />
                             <Route path="/setting-form" element={<FormData />} />
-
                             <Route path="/payments" element={<Payments />} />
+                            <Route path="/my-payouts" element={<MyPayouts />} />
+                            <Route path="/payment/sandbox" element={<PaymentSandbox />} />
+                            <Route path="/payment/result" element={<PaymentResult />} />
+
                             {/* Admin route */}
                             <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/qltemplates" element={<AdminAddTemplate />} />
+                            <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+                            <Route path="/admin/payouts" element={<AdminPayoutManagement />} />
                             <Route path="/reports" element={<Reports />} />
                             <Route path="/users" element={<Users />} />
                             {/* Catch-all route */}

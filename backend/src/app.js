@@ -24,5 +24,9 @@ app.use('/api/pages', require('./routes/pages'));
 app.use('/api/images',  require('./routes/imageRoutes'))
 app.use('/api/templates', require('./routes/templateRoutes'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/marketplace', require('./routes/marketplace'));
+app.use('/api/payment', require('./routes/payment'));
+app.use('/api/payout', require('./routes/payout'));
+app.use('/api/admin/marketplace', require('./routes/adminMarketplace'));
 
 module.exports = app;

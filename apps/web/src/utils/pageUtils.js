@@ -520,7 +520,7 @@ const renderElementHTML = (element, isChild = false) => {
                     ${baseAttrs}
                     style="${inlineStyles}; ${positionStyles}"
                 >
-                    ${componentData.content || 'Button'}
+                    ${componentData.content || componentData.text || 'Button'}
                 </button>
             `;
 
@@ -531,7 +531,7 @@ const renderElementHTML = (element, isChild = false) => {
                     ${baseAttrs}
                     style="${inlineStyles}; ${positionStyles}"
                 >
-                    ${componentData.content || 'Heading'}
+                    ${componentData.content || componentData.text || 'Heading'}
                 </${HeadingTag}>
             `;
 
@@ -541,7 +541,7 @@ const renderElementHTML = (element, isChild = false) => {
                     ${baseAttrs}
                     style="${inlineStyles}; ${positionStyles}"
                 >
-                    ${componentData.content || 'Paragraph'}
+                    ${componentData.content || componentData.text || 'Paragraph'}
                 </p>
             `;
 
@@ -577,13 +577,105 @@ const renderElementHTML = (element, isChild = false) => {
         case 'gallery':
             return renderGalleryHTML(element, isChild);
 
-        default:
+        case 'video':
+            return `
+                <video
+                    ${baseAttrs}
+                    src="${componentData.src || componentData.videoUrl || ''}"
+                    controls="${componentData.controls !== false}"
+                    autoplay="${componentData.autoplay === true}"
+                    loop="${componentData.loop === true}"
+                    muted="${componentData.muted === true}"
+                    style="${inlineStyles}; ${positionStyles}"
+                >
+                    ${componentData.fallbackText || 'Your browser does not support the video tag.'}
+                </video>
+            `;
+
+        case 'divider':
+        case 'hr':
+            return `
+                <hr
+                    ${baseAttrs}
+                    style="${inlineStyles}; ${positionStyles}; border:none; height:${componentData.thickness || '2px'}; background:${componentData.color || '#e5e7eb'};"
+                />
+            `;
+
+        case 'link':
+        case 'anchor':
+            return `
+                <a
+                    ${baseAttrs}
+                    href="${componentData.href || componentData.url || '#'}"
+                    target="${componentData.newTab || componentData.target === '_blank' ? '_blank' : '_self'}"
+                    rel="${componentData.newTab || componentData.target === '_blank' ? 'noopener noreferrer' : ''}"
+                    style="${inlineStyles}; ${positionStyles}"
+                >
+                    ${componentData.content || componentData.text || 'Link'}
+                </a>
+            `;
+
+        case 'form':
+            const formChildren = children.map(child => renderElementHTML(child, true)).join('\n');
+            return `
+                <form
+                    ${baseAttrs}
+                    action="${componentData.action || '#'}"
+                    method="${componentData.method || 'POST'}"
+                    style="${inlineStyles}; ${positionStyles}"
+                >
+                    ${formChildren || '<p>Empty form</p>'}
+                </form>
+            `;
+
+        case 'input':
+            return `
+                <input
+                    ${baseAttrs}
+                    type="${componentData.inputType || 'text'}"
+                    name="${componentData.name || id}"
+                    placeholder="${componentData.placeholder || ''}"
+                    value="${componentData.value || ''}"
+                    required="${componentData.required === true}"
+                    style="${inlineStyles}; ${positionStyles}"
+                />
+            `;
+
+        case 'textarea':
+            return `
+                <textarea
+                    ${baseAttrs}
+                    name="${componentData.name || id}"
+                    placeholder="${componentData.placeholder || ''}"
+                    rows="${componentData.rows || 4}"
+                    required="${componentData.required === true}"
+                    style="${inlineStyles}; ${positionStyles}"
+                >${componentData.value || ''}</textarea>
+            `;
+
+        case 'container':
+        case 'div':
+            const containerChildren = children.map(child => renderElementHTML(child, true)).join('\n');
             return `
                 <div
                     ${baseAttrs}
                     style="${inlineStyles}; ${positionStyles}"
                 >
-                    ${componentData.content || type}
+                    ${containerChildren || componentData.content || ''}
+                </div>
+            `;
+
+        default:
+            // Default fallback for unknown element types
+            const defaultChildren = children.length > 0
+                ? children.map(child => renderElementHTML(child, true)).join('\n')
+                : (componentData.content || componentData.text || `[${type}]`);
+            return `
+                <div
+                    ${baseAttrs}
+                    style="${inlineStyles}; ${positionStyles}"
+                >
+                    ${defaultChildren}
                 </div>
             `;
     }
@@ -1136,7 +1228,12 @@ export const renderStaticHTML = (pageData) => {
     <script>
         ${runtimeScript}
     </script>
-    
+
+    <!-- Embedded PageData for easy import -->
+    <script type="application/json" id="lpb-page-data">
+${JSON.stringify(pageData, null, 2)}
+    </script>
+
     <!-- Google Analytics (optional) -->
     ${pageData.analytics?.googleAnalyticsId ? `
     <script async src="https://www.googletagmanager.com/gtag/js?id=${pageData.analytics.googleAnalyticsId}"></script>
@@ -1585,6 +1682,7 @@ const parseComponentData = (element, type) => {
     switch (type) {
         case 'button':
             componentData.content = element.textContent.trim() || 'Button';
+            componentData.text = componentData.content;
             componentData.background = element.style.background || element.style.backgroundColor;
             componentData.color = element.style.color;
             componentData.borderRadius = element.style.borderRadius;
@@ -1595,6 +1693,7 @@ const parseComponentData = (element, type) => {
 
         case 'heading':
             componentData.content = element.textContent.trim() || 'Heading';
+            componentData.text = componentData.content;
             componentData.level = element.tagName.toLowerCase();
             componentData.fontSize = element.style.fontSize;
             componentData.color = element.style.color;
@@ -1604,6 +1703,7 @@ const parseComponentData = (element, type) => {
 
         case 'paragraph':
             componentData.content = element.textContent.trim() || 'Paragraph';
+            componentData.text = componentData.content;
             componentData.fontSize = element.style.fontSize;
             componentData.color = element.style.color;
             componentData.fontWeight = element.style.fontWeight;
@@ -1640,8 +1740,61 @@ const parseComponentData = (element, type) => {
             componentData.gap = element.style.gap || '10px';
             break;
 
+        case 'video':
+            componentData.src = element.getAttribute('src') || '';
+            componentData.videoUrl = componentData.src;
+            componentData.controls = element.hasAttribute('controls');
+            componentData.autoplay = element.hasAttribute('autoplay');
+            componentData.loop = element.hasAttribute('loop');
+            componentData.muted = element.hasAttribute('muted');
+            componentData.fallbackText = element.textContent.trim();
+            break;
+
+        case 'divider':
+        case 'hr':
+            componentData.thickness = element.style.height || '2px';
+            componentData.color = element.style.background || element.style.backgroundColor || '#e5e7eb';
+            break;
+
+        case 'link':
+        case 'anchor':
+            componentData.content = element.textContent.trim() || 'Link';
+            componentData.text = componentData.content;
+            componentData.href = element.getAttribute('href') || '#';
+            componentData.url = componentData.href;
+            componentData.target = element.getAttribute('target');
+            componentData.newTab = componentData.target === '_blank';
+            break;
+
+        case 'form':
+            componentData.action = element.getAttribute('action') || '#';
+            componentData.method = element.getAttribute('method') || 'POST';
+            break;
+
+        case 'input':
+            componentData.inputType = element.getAttribute('type') || 'text';
+            componentData.name = element.getAttribute('name') || '';
+            componentData.placeholder = element.getAttribute('placeholder') || '';
+            componentData.value = element.getAttribute('value') || '';
+            componentData.required = element.hasAttribute('required');
+            break;
+
+        case 'textarea':
+            componentData.name = element.getAttribute('name') || '';
+            componentData.placeholder = element.getAttribute('placeholder') || '';
+            componentData.value = element.textContent.trim();
+            componentData.rows = element.getAttribute('rows') || 4;
+            componentData.required = element.hasAttribute('required');
+            break;
+
+        case 'container':
+        case 'div':
+            componentData.content = element.innerHTML || '';
+            break;
+
         default:
             componentData.content = element.textContent.trim() || '';
+            componentData.text = componentData.content;
             break;
     }
 
@@ -1821,16 +1974,33 @@ const inferTypeFromElement = (element) => {
     const tagName = element.tagName.toLowerCase();
     const classList = element.classList;
 
-    if (classList.contains('lpb-button') || tagName === 'button') return 'button';
+    // Check by class first (more specific)
+    if (classList.contains('lpb-button')) return 'button';
     if (classList.contains('lpb-icon')) return 'icon';
     if (classList.contains('lpb-gallery')) return 'gallery';
     if (classList.contains('lpb-section') || classList.contains('ladi-section')) return 'section';
     if (classList.contains('lpb-popup')) return 'popup';
+    if (classList.contains('lpb-video')) return 'video';
+    if (classList.contains('lpb-divider')) return 'divider';
+    if (classList.contains('lpb-link')) return 'link';
+    if (classList.contains('lpb-container')) return 'container';
+    if (classList.contains('lpb-form')) return 'form';
+    if (classList.contains('lpb-input')) return 'input';
+    if (classList.contains('lpb-textarea')) return 'textarea';
+
+    // Then check by tag name
+    if (tagName === 'button') return 'button';
     if (tagName.match(/^h[1-6]$/)) return 'heading';
     if (tagName === 'p') return 'paragraph';
     if (tagName === 'img') return 'image';
     if (tagName === 'hr') return 'divider';
+    if (tagName === 'video') return 'video';
+    if (tagName === 'a') return 'link';
     if (tagName === 'form') return 'form';
+    if (tagName === 'input') return 'input';
+    if (tagName === 'textarea') return 'textarea';
     if (tagName === 'ul' || tagName === 'ol') return 'list';
+
+    // Default
     return 'container';
 };

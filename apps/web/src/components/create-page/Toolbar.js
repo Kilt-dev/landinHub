@@ -7,6 +7,7 @@ import {syncAllElements} from "../../utils/responsiveSync";
 const Toolbar = ({
                      onSave,
                      onPreview,
+                     onImport,
                      onGenerateCode,
                      viewMode,
                      onViewModeChange,
@@ -24,6 +25,13 @@ const Toolbar = ({
                      onDeleteElement
                  }) => {
     const [showLayers, setShowLayers] = useState(false);
+    const fileInputRef = React.useRef(null);
+
+    const handleImportClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
 
 
     const handleViewModeChange = (mode) => {
@@ -50,6 +58,16 @@ const Toolbar = ({
                     >
                         <i className="fas fa-plus"></i> Thêm Section
                     </button>
+                    <button onClick={handleImportClick} className="lpb-toolbar-action-btn" title="Import .iuhpage">
+                        <i className="fas fa-file-import"></i> Import
+                    </button>
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".iuhpage"
+                        onChange={onImport}
+                        style={{ display: 'none' }}
+                    />
                     <button onClick={onUndo} className="lpb-toolbar-action-btn" disabled={!canUndo}>
                         <i className="fas fa-undo"></i> Undo
                     </button>

@@ -120,18 +120,18 @@
 
 /* Status Badge */
 .status-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    padding: 6px 12px;
-    border-radius: 50px;
-    font-size: 12px;
-    font-weight: 600;
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    /*position: absolute;*/
+    /*top: 12px;*/
+    /*right: 12px;*/
+    /*padding: 6px 12px;*/
+    /*border-radius: 50px;*/
+    /*font-size: 12px;*/
+    /*font-weight: 600;*/
+    /*backdrop-filter: blur(10px);*/
+    /*display: flex;*/
+    /*align-items: center;*/
+    /*gap: 6px;*/
+    /*box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);*/
 }
 
 .status-dot {

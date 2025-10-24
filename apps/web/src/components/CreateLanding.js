@@ -860,6 +860,82 @@ const CreateLanding = () => {
         setShowPreview(true);
     }, [pageData]);
 
+    // Import .iuhpage file
+    const handleImportIUHPage = useCallback((event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.iuhpage')) {
+            toast.error('Vui lòng chọn file .iuhpage');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const content = e.target.result;
+                const iuhpageData = JSON.parse(content);
+
+                // Validate format
+                if (iuhpageData.format !== 'iuhpage' || !iuhpageData.pageData) {
+                    toast.error('File .iuhpage không hợp lệ');
+                    return;
+                }
+
+                // Extract pageData and embedded images
+                const importedPageData = iuhpageData.pageData;
+                const embeddedImages = iuhpageData.embeddedImages || {};
+
+                // Convert base64 images back to blob URLs if needed
+                // For now, we'll keep the base64 in the page data as it can be used directly
+                const processedPageData = JSON.parse(JSON.stringify(importedPageData));
+
+                // Update embedded images from base64 to data URLs
+                const updateImageUrls = (element) => {
+                    if (element.type === 'image' && element.componentData?.src) {
+                        const oldSrc = element.componentData.src;
+                        if (embeddedImages[oldSrc]) {
+                            element.componentData.src = embeddedImages[oldSrc];
+                        }
+                    }
+
+                    if (element.styles?.backgroundImage) {
+                        const match = element.styles.backgroundImage.match(/url\(['"]?([^'"]+)['"]?\)/);
+                        if (match && match[1] && embeddedImages[match[1]]) {
+                            element.styles.backgroundImage = `url('${embeddedImages[match[1]]}')`;
+                        }
+                    }
+
+                    if (element.children && Array.isArray(element.children)) {
+                        element.children.forEach(child => updateImageUrls(child));
+                    }
+                };
+
+                if (processedPageData.elements) {
+                    processedPageData.elements.forEach(element => updateImageUrls(element));
+                }
+
+                // Update page data
+                setPageData(processedPageData);
+                setHistory([processedPageData]);
+                setHistoryIndex(0);
+
+                toast.success(`Đã import thành công từ ${file.name}!`);
+            } catch (error) {
+                console.error('Import error:', error);
+                toast.error('Lỗi khi import file: ' + error.message);
+            }
+        };
+
+        reader.onerror = () => {
+            toast.error('Lỗi khi đọc file');
+        };
+
+        reader.readAsText(file);
+        // Reset input value to allow importing the same file again
+        event.target.value = '';
+    }, [setPageData, setHistory, setHistoryIndex]);
+
     // Generate code
     const handleGenerateCode = useCallback(async () => {
         if (!pageId) {
@@ -1050,6 +1126,7 @@ const CreateLanding = () => {
                             onSave={handleSave}
                             onAutoSave={handleAutoSave}
                             onPreview={handlePreview}
+                            onImport={handleImportIUHPage}
                             onGenerateCode={handleGenerateCode}
                             viewMode={viewMode}
                             onViewModeChange={handleViewModeChange}

@@ -42,6 +42,7 @@
 
 /* Content wrapper */
 .dashboard-content {
+    margin-left: 220px;
     flex: 1;
     padding: 24px 32px;
     background: transparent;
