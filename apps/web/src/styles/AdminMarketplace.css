@@ -374,18 +374,7 @@ body {
 .admin-page-item,
 .transaction-item,
 .refund-request-item,
-.order-item {
-    background: var(--color-light);
-    border: 1px solid var(--color-gray-200);
-    border-radius: var(--radius);
-    padding: var(--space-lg);
-    display: grid;
-    /* Dòng dưới đã được cập nhật ở phần sau */
-    gap: var(--space-lg);
-    align-items: start;
-    transition: var(--transition);
-    box-shadow: var(--shadow-soft);
-}
+
 
 .admin-page-item {
     grid-template-columns: auto 120px 1fr auto;
@@ -394,10 +383,7 @@ body {
 .admin-page-item:hover,
 .transaction-item:hover,
 .refund-request-item:hover,
-.order-item:hover {
-    border-color: var(--color-accent);
-    box-shadow: var(--shadow-medium);
-}
+
 
 .page-checkbox {
     display: flex;
@@ -469,6 +455,7 @@ body {
     font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
+    vertical-align: middle;
 }
 
 .page-seller,
@@ -684,7 +671,15 @@ body {
     flex-direction: column;
     gap: var(--space-sm);
 }
-
+.status-badge123 {
+    display: inline-block;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    vertical-align: middle; /* Giữ cho badge thẳng hàng với chữ */
+}
 .pagination {
     display: flex;
     justify-content: center;
@@ -862,64 +857,121 @@ body {
 /* ============================================
    NEW STYLES FOR ENHANCED ORDER ITEMS (NO IMAGE)
    ============================================ */
-.order-item-card {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--space-lg);
-    align-items: center;
-    padding: var(--space-lg);
-    background: var(--color-light);
-    border: 1px solid var(--color-gray-200);
-    border-radius: var(--radius);
-    transition: var(--transition);
-    box-shadow: var(--shadow-soft);
-}
 
-.order-item-card:hover {
-    border-color: var(--color-accent);
-    box-shadow: var(--shadow-medium);
-}
 
-.order-item-details {
-    display: flex;
-    flex-direction: column;
-}
 
-.order-item-meta {
-    margin-top: var(--space-md);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-}
-
-.order-item-meta p {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    font-size: 0.9rem;
-    color: var(--color-gray-500);
-    margin: 0;
-}
-
-.order-item-meta svg {
-    color: var(--color-gray-400);
-    flex-shrink: 0;
-}
-
-.order-item-meta strong {
-    color: var(--color-dark);
-    font-weight: 500;
-}
 
 @media (max-width: 1200px) {
     .admin-page-item, .transaction-item, .refund-request-item {
         grid-template-columns: 1fr;
     }
-    .order-item-card {
-        grid-template-columns: 1fr;
+
+}
+/* ============================================
+   NEW STYLES FOR ORDERS TABLE
+   ============================================ */
+
+.orders-table-container {
+    background-color: var(--color-light);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+    overflow-x: auto;
+}
+.orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+.orders-table thead tr {
+    border-bottom: 2px solid var(--color-gray-200);
+}
+.orders-table th {
+    padding: var(--space-md) var(--space-lg);
+    text-align: left;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-dark);
+}
+.orders-table tbody tr {
+    border-bottom: 1px solid var(--color-gray-100);
+    transition: background-color 0.2s ease-in-out;
+}
+.orders-table tbody tr:last-child {
+    border-bottom: none;
+}
+.orders-table tbody tr:hover {
+    background-color: var(--color-gray-50);
+}
+.orders-table td {
+    padding: var(--space-lg);
+    font-size: 0.9rem;
+    color: var(--color-gray-500);
+    vertical-align: middle;
+}
+.cell-right { text-align: right; }
+.cell-center { text-align: center; }
+.orders-table td[data-label="Mã Đơn"] strong {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    color: var(--color-dark);
+}
+.orders-table .cell-price {
+    color: var(--color-dark);
+    font-weight: 500;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 768px) {
+    .admin-marketplace-content { padding: var(--space-lg); }
+    .admin-marketplace-header h1 { font-size: 1.75rem; }
+    .admin-toolbar { flex-direction: column; align-items: stretch; }
+    .toolbar-left, .toolbar-right { flex-direction: column; }
+    .search-box { min-width: 100%; }
+
+    /* Responsive cho bảng đơn hàng */
+    .orders-table thead { display: none; }
+    .orders-table, .orders-table tbody, .orders-table tr, .orders-table td {
+        display: block;
+        width: 100%;
     }
-    .order-item-card .page-actions {
-        align-items: flex-start;
-        margin-top: var(--space-md);
+    .orders-table tr {
+        margin-bottom: var(--space-lg);
+        border: 1px solid var(--color-gray-200);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-soft);
+        overflow: hidden;
     }
+    .orders-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+        padding: var(--space-md) var(--space-lg);
+        border-bottom: 1px solid var(--color-gray-100);
+    }
+    .orders-table td:last-child { border-bottom: none; }
+    .orders-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--color-dark);
+        font-size: 0.85rem;
+        text-align: left;
+        margin-right: var(--space-lg);
+    }
+}
+@media (max-width: 480px) {
+    .admin-marketplace-header h1 { font-size: 1.5rem; }
+    .tabs { gap: var(--space-md); overflow-x: auto; }
+    .tab { font-size: 0.9rem; padding: var(--space-sm) 0; }
+    .pagination { flex-direction: column; gap: var(--space-md); }
+    .pagination button { width: 100%; }
+}
+
+@keyframes adminTitleGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
