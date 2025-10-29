@@ -2,6 +2,16 @@ import PropTypes from 'prop-types';
 import { toast } from 'react-toastify';
 import { sections } from '../../constants/sections';
 import eventController from '../../utils/EventUtils';
+import {
+    CountdownRenderer,
+    CarouselRenderer,
+    AccordionRenderer,
+    TabsRenderer,
+    ProgressRenderer,
+    RatingRenderer,
+    SocialProofRenderer,
+    SocialProofStatsRenderer
+} from './advanced';
 
 // Constants
 /**
@@ -1384,6 +1394,60 @@ export const renderComponentContent = (
                     </div>
                 </>
             );
+        }
+
+        // Advanced Components
+        case 'countdown': {
+            return <CountdownRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'carousel': {
+            return <CarouselRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'accordion': {
+            return <AccordionRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'tabs': {
+            return <TabsRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'progress': {
+            return <ProgressRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'progress-circle': {
+            return (
+                <div style={{ ...baseStyles, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{
+                        width: '150px',
+                        height: '150px',
+                        borderRadius: '50%',
+                        border: `${componentData.strokeWidth || 12}px solid ${componentData.color || '#10b981'}`,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        fontSize: '2rem',
+                        fontWeight: '700',
+                        color: componentData.color || '#10b981'
+                    }}>
+                        {componentData.value || 0}%
+                    </div>
+                </div>
+            );
+        }
+
+        case 'rating': {
+            return <RatingRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'social-proof': {
+            return <SocialProofRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'social-proof-stats': {
+            return <SocialProofStatsRenderer componentData={componentData} styles={baseStyles} />;
         }
 
         default: {

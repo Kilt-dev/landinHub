@@ -686,6 +686,44 @@ const renderElementHTML = (element, isChild = false) => {
                 </div>
             `;
 
+        // Advanced Components - HTML Export
+        case 'countdown':
+            return `
+                <div ${baseAttrs} data-countdown="${componentData.targetDate || ''}" style="${inlineStyles}; ${positionStyles}" class="lpb-countdown">
+                    <div class="countdown-timer" id="timer-${id}"></div>
+                    <script>
+                        (function() {
+                            const target = new Date('${componentData.targetDate}').getTime();
+                            const el = document.getElementById('timer-${id}');
+                            const labels = ${JSON.stringify(componentData.labels || {})};
+                            setInterval(() => {
+                                const now = new Date().getTime();
+                                const diff = target - now;
+                                if (diff < 0) { el.innerHTML = 'Đã kết thúc'; return; }
+                                const d = Math.floor(diff / (1000*60*60*24));
+                                const h = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+                                const m = Math.floor((diff % (1000*60*60)) / (1000*60));
+                                const s = Math.floor((diff % (1000*60)) / 1000);
+                                el.innerHTML = \`<div>\${d}<br><small>\${labels.days || 'Days'}</small></div><div>\${h}<br><small>\${labels.hours || 'Hours'}</small></div><div>\${m}<br><small>\${labels.minutes || 'Mins'}</small></div><div>\${s}<br><small>\${labels.seconds || 'Secs'}</small></div>\`;
+                            }, 1000);
+                        })();
+                    </script>
+                </div>
+            `;
+
+        case 'carousel':
+        case 'accordion':
+        case 'tabs':
+        case 'progress':
+        case 'rating':
+            // Simple HTML fallback - use data attributes for JS enhancement
+            return `
+                <div ${baseAttrs} data-type="${type}" data-config='${JSON.stringify(componentData).replace(/'/g, '&apos;')}' style="${inlineStyles}; ${positionStyles}" class="lpb-${type}">
+                    ${componentData.title ? `<h3>${componentData.title}</h3>` : ''}
+                    <div class="${type}-content">Loading ${type}...</div>
+                </div>
+            `;
+
         default:
             // Default fallback for unknown element types
             const defaultChildren = children.length > 0
