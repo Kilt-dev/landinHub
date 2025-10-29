@@ -3,6 +3,7 @@ import { useDrop } from 'react-dnd';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
+import { debounce, throttle } from 'lodash';
 import Guidelines from './Guidelines';
 import SelectionOverlay from './SelectionOverlay';
 import '../../styles/CreateLanding.css';
@@ -202,46 +203,56 @@ const Canvas = React.memo(({
         };
     }, [pageData.elements, onSelectElement, selectedIds, handleSelectElement]);
 
+    // Throttle hover updates for better performance
+    const throttledHover = useMemo(
+        () =>
+            throttle((item, monitor, clientOffset) => {
+                if (!clientOffset || !canvasRef.current) {
+                    setDragPreview(null);
+                    return;
+                }
+                const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
+                const snapPoints = getSnapPoints();
+                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+
+                if (monitor.getItemType() === ItemTypes.ELEMENT && item.json) {
+                    setDragPreview({
+                        id: 'preview',
+                        x: snapped.x,
+                        y: snapped.y,
+                        size: item.json.size || { width: viewMode === 'mobile' ? 375 : 1200, height: 400 },
+                        type: item.json.type,
+                        componentData: item.json.componentData || { structure: 'ladi-standard' },
+                        styles: item.json.styles || {},
+                        children: item.json.children || [],
+                    });
+                } else if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
+                    const sourceElement = pageData.elements.find((el) => el.id === item.parentId);
+                    const child = sourceElement?.children.find((c) => c.id === item.childId);
+                    if (child) {
+                        setDragPreview({
+                            id: item.childId,
+                            x: snapped.x,
+                            y: snapped.y,
+                            size: item.size || { width: 200, height: 50 },
+                            type: child.type,
+                            componentData: child.componentData || {},
+                            styles: child.styles || {},
+                            children: [],
+                        });
+                    }
+                }
+                const newGuidelines = calculateGuidelines(snapped);
+                setGuidelines(newGuidelines);
+            }, 16), // ~60fps
+        [zoomLevel, viewMode, showGrid, gridSize, pageData.elements]
+    );
+
     const [{ isOver, dragItem }, drop] = useDrop(() => ({
         accept: [ItemTypes.ELEMENT, ItemTypes.CHILD_ELEMENT],
         hover: (item, monitor) => {
             const clientOffset = monitor.getClientOffset();
-            if (!clientOffset || !canvasRef.current) {
-                setDragPreview(null);
-                return;
-            }
-            const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
-            const snapPoints = getSnapPoints();
-            const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
-            if (monitor.getItemType() === ItemTypes.ELEMENT && item.json) {
-                setDragPreview({
-                    id: 'preview',
-                    x: snapped.x,
-                    y: snapped.y,
-                    size: item.json.size || { width: viewMode === 'mobile' ? 375 : 1200, height: 400 },
-                    type: item.json.type,
-                    componentData: item.json.componentData || { structure: 'ladi-standard' },
-                    styles: item.json.styles || {},
-                    children: item.json.children || [],
-                });
-            } else if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
-                const sourceElement = pageData.elements.find((el) => el.id === item.parentId);
-                const child = sourceElement?.children.find((c) => c.id === item.childId);
-                if (child) {
-                    setDragPreview({
-                        id: item.childId,
-                        x: snapped.x,
-                        y: snapped.y,
-                        size: item.size || { width: 200, height: 50 },
-                        type: child.type,
-                        componentData: child.componentData || {},
-                        styles: child.styles || {},
-                        children: [],
-                    });
-                }
-            }
-            const newGuidelines = calculateGuidelines(snapped);
-            setGuidelines(newGuidelines);
+            throttledHover(item, monitor, clientOffset);
         },
         drop: (item, monitor) => {
             const clientOffset = monitor.getClientOffset();

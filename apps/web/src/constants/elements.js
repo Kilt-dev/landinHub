@@ -2,7 +2,7 @@ import {
     Type, FileText, Square, FormInput, Image,
     Video, Star, Minus, ShoppingCart, LayoutGrid,
     SlidersHorizontal, Folder, ChevronDown, Table,
-    BarChart, Menu
+    BarChart, Menu, Monitor, Box, Link2
 } from 'lucide-react';
 
 export const elements = {
@@ -2026,6 +2026,164 @@ export const elements = {
                         }
                     }
                 }
+            ]
+        },
+        {
+            id: 'iframe',
+            name: 'Iframe',
+            lucideIcon: Monitor,
+            templates: [
+                {
+                    id: 'iframe-basic',
+                    name: 'Iframe cơ bản',
+                    lucideIcon: Monitor,
+                    description: 'Iframe để nhúng nội dung từ trang web khác, video YouTube, Google Maps, v.v.',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/iframe_preview.jpg',
+                    json: {
+                        type: 'iframe',
+                        componentData: {
+                            title: 'Iframe',
+                            src: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                            allowFullscreen: true,
+                            frameBorder: 0,
+                            allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'fadeIn', duration: 800, delay: 0 }
+                        },
+                        size: { width: 560, height: 315 },
+                        mobileSize: { width: 340, height: 191 },
+                        tabletSize: { width: 480, height: 270 },
+                        styles: {
+                            border: 'none',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        },
+                        responsiveStyles: {
+                            mobile: {
+                                width: '100%',
+                                maxWidth: '340px',
+                                borderRadius: '4px'
+                            },
+                            tablet: {
+                                width: '100%',
+                                maxWidth: '480px',
+                                borderRadius: '6px'
+                            }
+                        }
+                    },
+                },
+                {
+                    id: 'iframe-youtube',
+                    name: 'YouTube Video',
+                    lucideIcon: Video,
+                    description: 'Iframe tối ưu để nhúng video YouTube với responsive',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/youtube_iframe.jpg',
+                    json: {
+                        type: 'iframe',
+                        componentData: {
+                            title: 'YouTube Video',
+                            src: 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&modestbranding=1',
+                            allowFullscreen: true,
+                            frameBorder: 0,
+                            allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'zoomIn', duration: 1000, delay: 0 }
+                        },
+                        size: { width: 640, height: 360 },
+                        mobileSize: { width: 340, height: 191 },
+                        tabletSize: { width: 560, height: 315 },
+                        styles: {
+                            border: 'none',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+                        },
+                        responsiveStyles: {
+                            mobile: {
+                                width: '100%',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+                            },
+                            tablet: {
+                                width: '100%',
+                                borderRadius: '10px'
+                            }
+                        }
+                    },
+                },
+                {
+                    id: 'iframe-google-maps',
+                    name: 'Google Maps',
+                    lucideIcon: Box,
+                    description: 'Iframe để nhúng Google Maps với vị trí tùy chỉnh',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/maps_iframe.jpg',
+                    json: {
+                        type: 'iframe',
+                        componentData: {
+                            title: 'Google Maps',
+                            src: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.3245676097956!2d106.68441631533464!3d10.786785792313986!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f1b7c3ed289%3A0xa06651894598e488!2sBen%20Thanh%20Market!5e0!3m2!1sen!2s!4v1234567890123!5m2!1sen!2s',
+                            allowFullscreen: true,
+                            frameBorder: 0,
+                            loading: 'lazy',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'fadeInUp', duration: 1000, delay: 200 }
+                        },
+                        size: { width: 600, height: 450 },
+                        mobileSize: { width: 340, height: 255 },
+                        tabletSize: { width: 500, height: 375 },
+                        styles: {
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                        },
+                        responsiveStyles: {
+                            mobile: {
+                                width: '100%',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '6px'
+                            },
+                            tablet: {
+                                width: '100%',
+                                borderRadius: '8px'
+                            }
+                        }
+                    },
+                },
+                {
+                    id: 'iframe-form-embed',
+                    name: 'Form Nhúng',
+                    lucideIcon: FormInput,
+                    description: 'Iframe để nhúng form từ Google Forms, Typeform, v.v.',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/form_iframe.jpg',
+                    json: {
+                        type: 'iframe',
+                        componentData: {
+                            title: 'Form Nhúng',
+                            src: 'https://docs.google.com/forms/d/e/1FAIpQLSf.../viewform?embedded=true',
+                            allowFullscreen: false,
+                            frameBorder: 0,
+                            dataSource: { type: 'static' },
+                            animation: { type: 'slideInUp', duration: 1000, delay: 0 }
+                        },
+                        size: { width: 640, height: 800 },
+                        mobileSize: { width: 340, height: 600 },
+                        tabletSize: { width: 520, height: 700 },
+                        styles: {
+                            border: 'none',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                        },
+                        responsiveStyles: {
+                            mobile: {
+                                width: '100%',
+                                height: '600px',
+                                borderRadius: '4px'
+                            },
+                            tablet: {
+                                width: '100%',
+                                height: '700px'
+                            }
+                        }
+                    },
+                },
             ]
         },
     ],

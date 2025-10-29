@@ -748,6 +748,27 @@ export const renderComponentContent = (
             );
         }
 
+        case 'iframe': {
+            return (
+                <iframe
+                    src={componentData.src || ''}
+                    title={componentData.title || 'Iframe'}
+                    width={componentData.width || '100%'}
+                    height={componentData.height || '100%'}
+                    frameBorder={componentData.frameBorder ?? 0}
+                    allow={componentData.allow || 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'}
+                    allowFullScreen={componentData.allowFullscreen ?? true}
+                    loading={componentData.loading || 'lazy'}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                        ...baseStyles,
+                    }}
+                />
+            );
+        }
+
         case 'form': {
             return (
                 <div
