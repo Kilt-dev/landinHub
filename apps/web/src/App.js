@@ -31,6 +31,8 @@ import AdminAddTemplate from './components/AdminAddTemplate'; // Thêm component
 import AdminMarketplace from './pages/AdminMarketplace';
 import CozeChat from "./components/CozeChat";
 import AdminUser from "./pages/AdminUsers";
+import UnifiedPayments from './pages/UnifiedPayments';
+
 function App() {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
     return (
@@ -62,7 +64,7 @@ function App() {
                             <Route path="/sell-page" element={<SellPage />} />
                             <Route path="/my-sales" element={<MySales />} />
                             <Route path="/setting-form" element={<FormData />} />
-                            <Route path="/payments" element={<Payments />} />
+                            <Route path="/payments" element={<UnifiedPayments />} />
                             <Route path="/my-payouts" element={<MyPayouts />} />
                             <Route path="/payment/sandbox" element={<PaymentSandbox />} />
                             <Route path="/payment/result" element={<PaymentResult />} />

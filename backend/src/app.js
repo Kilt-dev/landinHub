@@ -31,6 +31,6 @@ app.use('/api/payment', require('./routes/payment'));
 app.use('/api/payout', require('./routes/payout'));
 app.use('/api/admin/marketplace', require('./routes/adminMarketplace'));
 app.use("/api/admin/users", adminUserRoutes);
-
+app.use("/api", require('./routes/orderRoutes'));
 app.use('/api/coze', require('./routes/coze'));
 module.exports = app;
