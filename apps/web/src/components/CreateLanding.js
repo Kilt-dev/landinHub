@@ -178,64 +178,6 @@ const CreateLanding = () => {
         };
     }, []);
 
-    // Keyboard shortcuts
-    useEffect(() => {
-        const handleKeyDown = useKeyboardShortcuts({
-            onUndo: handleUndo,
-            onRedo: handleRedo,
-            onCopy: handleCopyElement,
-            onCut: handleCutElement,
-            onPaste: handlePasteElement,
-            onDuplicate: () => handleDuplicateElement(null, null),
-            onDelete: () => {
-                if (selectedIds.length > 0) {
-                    handleDeleteElement(selectedIds[0], null);
-                }
-            },
-            onDeselect: () => {
-                setSelectedIds([]);
-                setSelectedChildId(null);
-            },
-            onSave: handleSave,
-            onPreview: () => handlePreview(),
-            onToggleGrid: () => setShowGrid(prev => !prev),
-        });
-
-        document.addEventListener('keydown', handleKeyDown);
-
-        return () => {
-            document.removeEventListener('keydown', handleKeyDown);
-        };
-    }, [
-        handleUndo,
-        handleRedo,
-        handleCopyElement,
-        handleCutElement,
-        handlePasteElement,
-        handleDuplicateElement,
-        handleDeleteElement,
-        handleSave,
-        handlePreview,
-        selectedIds,
-    ]);
-
-    // Smart Auto-save with debounce (save after 30 seconds of inactivity)
-    useEffect(() => {
-        if (!pageId || isLoading || isSaving) return;
-
-        // Skip auto-save for first load
-        if (pageData.elements.length === 0) return;
-
-        const autoSaveTimer = setTimeout(() => {
-            console.log('[AutoSave] Triggering auto-save...');
-            handleAutoSave();
-        }, 30000); // 30 seconds
-
-        return () => {
-            clearTimeout(autoSaveTimer);
-        };
-    }, [pageData, pageId, isLoading, isSaving, handleAutoSave]);
-
     // Handle canvas height update
     const handleUpdateCanvasHeight = useCallback((newHeight) => {
         setPageData((prev) => ({
@@ -1269,6 +1211,64 @@ const CreateLanding = () => {
         : pageData.elements.find((el) => el.id === selectedIds[0])
             ? { json: pageData.elements.find((el) => el.id === selectedIds[0]), isChild: false }
             : null;
+
+    // Keyboard shortcuts - placed after all handlers are defined
+    useEffect(() => {
+        const handleKeyDown = useKeyboardShortcuts({
+            onUndo: handleUndo,
+            onRedo: handleRedo,
+            onCopy: handleCopyElement,
+            onCut: handleCutElement,
+            onPaste: handlePasteElement,
+            onDuplicate: () => handleDuplicateElement(null, null),
+            onDelete: () => {
+                if (selectedIds.length > 0) {
+                    handleDeleteElement(selectedIds[0], null);
+                }
+            },
+            onDeselect: () => {
+                setSelectedIds([]);
+                setSelectedChildId(null);
+            },
+            onSave: handleSave,
+            onPreview: () => handlePreview(),
+            onToggleGrid: () => setShowGrid(prev => !prev),
+        });
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [
+        handleUndo,
+        handleRedo,
+        handleCopyElement,
+        handleCutElement,
+        handlePasteElement,
+        handleDuplicateElement,
+        handleDeleteElement,
+        handleSave,
+        handlePreview,
+        selectedIds,
+    ]);
+
+    // Smart Auto-save with debounce (save after 30 seconds of inactivity)
+    useEffect(() => {
+        if (!pageId || isLoading || isSaving) return;
+
+        // Skip auto-save for first load
+        if (pageData.elements.length === 0) return;
+
+        const autoSaveTimer = setTimeout(() => {
+            console.log('[AutoSave] Triggering auto-save...');
+            handleAutoSave();
+        }, 30000); // 30 seconds
+
+        return () => {
+            clearTimeout(autoSaveTimer);
+        };
+    }, [pageData, pageId, isLoading, isSaving, handleAutoSave]);
 
     // Show DogLoader for both initial loading and save operations
     if (isLoading || isSaving) {
