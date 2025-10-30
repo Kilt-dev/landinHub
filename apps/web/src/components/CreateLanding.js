@@ -10,6 +10,7 @@ import ButtonPropertiesPanel from './create-page/properties/ButtonPropertiesPane
 import IconPropertiesPanel from './create-page/properties/IconPropertiesPanel';
 import ImagePropertiesPanel from './create-page/properties/ImagePropertiesPanel';
 import IframePropertiesPanel from './create-page/properties/IframePropertiesPanel';
+import AdvancedPropertiesPanel from './create-page/properties/AdvancedPropertiesPanel';
 import Toolbar from './create-page/Toolbar';
 import ResponsiveToolbar from './create-page/ResponsiveToolbar';
 import SectionPopup from '../components/create-page/SectionPopup';
@@ -21,6 +22,7 @@ import { parseHTMLToPageData, renderStaticHTML } from '../utils/pageUtils';
 import { syncElementBetweenModes } from '../utils/responsiveSync';
 import { ErrorBoundary } from './create-page/ErrorBoundary';
 import DogLoader from './Loader'; // Import the DogLoader component
+import eventController from '../utils/EventUtils'; // Import eventController for popup events
 import '../styles/CreateLanding.css';
 import PreviewModal from '../components/PreviewModal'; // Import PreviewModal
 
@@ -127,6 +129,44 @@ const CreateLanding = () => {
     const [previewHtml, setPreviewHtml] = useState(''); // State for preview HTML
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
+
+    // Subscribe to popup events
+    useEffect(() => {
+        const handlePopupOpen = ({ popupId }) => {
+            console.log('[CreateLanding] Opening popup:', popupId);
+            setPageData(prev => ({
+                ...prev,
+                elements: prev.elements.map(el =>
+                    el.id === popupId
+                        ? { ...el, visible: true }
+                        : el
+                )
+            }));
+            toast.info(`Popup "${popupId}" đã mở`);
+        };
+
+        const handlePopupClose = ({ popupId }) => {
+            console.log('[CreateLanding] Closing popup:', popupId);
+            setPageData(prev => ({
+                ...prev,
+                elements: prev.elements.map(el =>
+                    el.id === popupId
+                        ? { ...el, visible: false }
+                        : el
+                )
+            }));
+        };
+
+        // Subscribe to events
+        const unsubscribeOpen = eventController.subscribe('popup-open', handlePopupOpen);
+        const unsubscribeClose = eventController.subscribe('popup-close', handlePopupClose);
+
+        // Cleanup on unmount
+        return () => {
+            unsubscribeOpen();
+            unsubscribeClose();
+        };
+    }, []);
 
     // Handle canvas height update
     const handleUpdateCanvasHeight = useCallback((newHeight) => {
@@ -237,22 +277,55 @@ const CreateLanding = () => {
         const lastSectionY = pageData.elements
             .filter((el) => el.type === 'section')
             .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0);
-        const newElement = {
+
+        // Initialize children with responsive data
+        const childrenWithResponsive = (section.json.children || []).map(child => {
+            const childElement = {
+                ...child,
+                position: child.position || {
+                    desktop: { x: 0, y: 0, z: 1 },
+                    tablet: { x: 0, y: 0, z: 1 },
+                    mobile: { x: 0, y: 0, z: 1 },
+                },
+                size: child.size || { width: 200, height: 50 },
+                visible: child.visible !== false,
+                locked: child.locked || false,
+            };
+            // Sync responsive data for child if missing
+            return (!childElement.mobileSize || !childElement.tabletSize)
+                ? syncElementBetweenModes(childElement, 'desktop')
+                : childElement;
+        });
+
+        const baseElement = {
             id: `${section.id}-${Date.now()}`,
             type: section.json.type,
             componentData: JSON.parse(JSON.stringify(section.json.componentData || {})),
             position: {
-                [viewMode]: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                desktop: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                tablet: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                mobile: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
+                [viewMode]: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
+                desktop: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
+                tablet: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
+                mobile: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
             },
-            size: { ...section.json.size, width: viewMode === 'mobile' ? 375 : section.json.type === 'popup' ? 600 : 1200 },
+            size: section.json.size || {
+                width: viewMode === 'mobile' ? 375 : section.json.type === 'popup' ? 600 : 1200,
+                height: section.json.size?.height || 400
+            },
+            mobileSize: section.json.mobileSize,
+            tabletSize: section.json.tabletSize,
             styles: JSON.parse(JSON.stringify(section.json.styles || {})),
-            children: JSON.parse(JSON.stringify(section.json.children || [])),
+            responsiveStyles: section.json.responsiveStyles || {},
+            children: childrenWithResponsive,
             visible: true,
             locked: false
         };
+
+        // Initialize full responsive data if not present
+        const newElement = (!baseElement.mobileSize || !baseElement.tabletSize ||
+                           !baseElement.responsiveStyles?.mobile || !baseElement.responsiveStyles?.tablet)
+            ? syncElementBetweenModes(baseElement, 'desktop')
+            : baseElement;
+
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
             const newCanvasHeight = section.json.type === 'section' ? lastSectionY + (section.json.size?.height || 400) : prev.canvas.height;
@@ -276,30 +349,71 @@ const CreateLanding = () => {
     // Add element
     const handleAddElement = useCallback((element) => {
         const newId = element.id || `${element.type}-${Date.now()}`;
-        const lastElement = pageData.elements
-            .filter((el) => el.type === 'section')
-            .sort((a, b) => (b.position?.[viewMode]?.y || 0) - (a.position?.[viewMode]?.y || 0))[0];
-        const lastY = lastElement?.position?.[viewMode]?.y || 0;
-        const lastHeight = lastElement?.size?.height || 0;
-        const lastMarginBottom = parseFloat(lastElement?.styles?.marginBottom || '0') || 0;
-        const newY = lastY + lastHeight + lastMarginBottom;
-        const newElement = {
+
+        // Calculate position based on element type
+        let newY = 0;
+        let newX = 0;
+
+        if (element.type === 'section') {
+            // Sections stack vertically
+            const lastElement = pageData.elements
+                .filter((el) => el.type === 'section')
+                .sort((a, b) => (b.position?.[viewMode]?.y || 0) - (a.position?.[viewMode]?.y || 0))[0];
+            const lastY = lastElement?.position?.[viewMode]?.y || 0;
+            const lastHeight = lastElement?.size?.height || 0;
+            const lastMarginBottom = parseFloat(lastElement?.styles?.marginBottom || '0') || 0;
+            newY = lastY + lastHeight + lastMarginBottom;
+            newX = 0; // Sections always start at x=0
+        } else {
+            // Other elements (countdown, carousel, etc.) - place in center
+            const canvasWidth = viewMode === 'mobile' ? 375 : viewMode === 'tablet' ? 768 : 1200;
+            const elementWidth = element.size?.width || 600;
+            newX = Math.max(0, (canvasWidth - elementWidth) / 2);
+
+            // Find last element position
+            const allElements = pageData.elements;
+            if (allElements.length > 0) {
+                const lastEl = allElements[allElements.length - 1];
+                const lastElY = lastEl.position?.[viewMode]?.y || 0;
+                const lastElHeight = lastEl.size?.height || 0;
+                newY = lastElY + lastElHeight + 40; // Add 40px gap
+            } else {
+                newY = 40; // Start with 40px from top
+            }
+        }
+
+        const baseElement = {
             ...element,
             id: newId,
             position: {
-                desktop: { x: 0, y: newY },
-                tablet: { x: 0, y: newY },
-                mobile: { x: 0, y: newY },
+                desktop: element.position?.desktop || { x: newX, y: newY, z: element.position?.desktop?.z || 1 },
+                tablet: element.position?.tablet || { x: newX, y: newY, z: element.position?.tablet?.z || 1 },
+                mobile: element.position?.mobile || { x: newX, y: newY, z: element.position?.mobile?.z || 1 },
             },
+            size: element.size || { width: 600, height: 400 },
+            mobileSize: element.mobileSize,
+            tabletSize: element.tabletSize,
             styles: {
                 ...element.styles,
-                margin: '0',
-                padding: '0',
             },
+            responsiveStyles: element.responsiveStyles || {},
+            componentData: element.componentData || {},
+            mobileComponentData: element.mobileComponentData,
+            tabletComponentData: element.tabletComponentData,
+            children: element.children || [],
+            visible: element.visible !== false,
+            locked: element.locked || false,
         };
+
+        // Initialize full responsive data if not present
+        const newElement = (!baseElement.mobileSize || !baseElement.tabletSize ||
+                           !baseElement.responsiveStyles?.mobile || !baseElement.responsiveStyles?.tablet)
+            ? syncElementBetweenModes(baseElement, 'desktop')
+            : baseElement;
+
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
-            const newCanvasHeight = newY + (newElement.size?.height || 400);
+            const newCanvasHeight = newY + (newElement.size?.height || 400) + 100;
             const newPageData = {
                 ...prev,
                 elements: newElements,
@@ -310,7 +424,7 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã thêm phần tử!');
+        toast.success(`Đã thêm ${element.type}!`);
     }, [pageData, viewMode, history, historyIndex]);
 
     // Add child
@@ -1092,6 +1206,18 @@ const CreateLanding = () => {
         if (type === 'iframe') {
             return (
                 <IframePropertiesPanel
+                    selectedElement={selectedElement}
+                    onUpdateElement={handleEditElement}
+                    isCollapsed={isPropertiesCollapsed}
+                    onToggle={() => setIsPropertiesCollapsed(!isPropertiesCollapsed)}
+                    className="w-80 bg-white shadow-lg p-4"
+                />
+            );
+        }
+        // Advanced Components
+        if (['countdown', 'carousel', 'accordion', 'tabs', 'progress', 'rating', 'social-proof', 'social-proof-stats'].includes(type)) {
+            return (
+                <AdvancedPropertiesPanel
                     selectedElement={selectedElement}
                     onUpdateElement={handleEditElement}
                     isCollapsed={isPropertiesCollapsed}

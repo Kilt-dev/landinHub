@@ -712,15 +712,229 @@ const renderElementHTML = (element, isChild = false) => {
             `;
 
         case 'carousel':
-        case 'accordion':
-        case 'tabs':
-        case 'progress':
-        case 'rating':
-            // Simple HTML fallback - use data attributes for JS enhancement
+            const carouselId = `carousel-${id}`;
+            const items = componentData.items || [];
             return `
-                <div ${baseAttrs} data-type="${type}" data-config='${JSON.stringify(componentData).replace(/'/g, '&apos;')}' style="${inlineStyles}; ${positionStyles}" class="lpb-${type}">
-                    ${componentData.title ? `<h3>${componentData.title}</h3>` : ''}
-                    <div class="${type}-content">Loading ${type}...</div>
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}; position: relative; overflow: hidden;" class="lpb-carousel">
+                    ${componentData.title ? `<h3 style="text-align: center; margin-bottom: 20px;">${componentData.title}</h3>` : ''}
+                    <div id="${carouselId}" class="carousel-container" style="display: flex; width: 100%; overflow: hidden;">
+                        ${items.map((item, idx) => `
+                            <div class="carousel-item" style="min-width: 100%; display: ${idx === 0 ? 'block' : 'none'}; padding: 20px; text-align: center;">
+                                ${item.image ? `<img src="${item.image}" style="max-width: 100%; border-radius: 8px; margin-bottom: 12px;" alt="${item.name || ''}" />` : ''}
+                                ${item.name ? `<h4 style="margin: 8px 0; font-size: 1.25rem;">${item.name}</h4>` : ''}
+                                ${item.role ? `<p style="color: #6b7280; margin: 4px 0;">${item.role}</p>` : ''}
+                                ${item.text || item.content ? `<p style="margin-top: 12px;">${item.text || item.content}</p>` : ''}
+                                ${item.rating ? `<div style="color: #fbbf24; margin-top: 8px;">${'★'.repeat(Math.floor(item.rating))}${'☆'.repeat(5 - Math.floor(item.rating))}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${items.length > 1 ? `
+                        <button onclick="carouselPrev('${carouselId}')" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 50%; z-index: 10;">‹</button>
+                        <button onclick="carouselNext('${carouselId}')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 50%; z-index: 10;">›</button>
+                    ` : ''}
+                    <script>
+                        if (!window.carouselIndexes) window.carouselIndexes = {};
+                        window.carouselIndexes['${carouselId}'] = 0;
+                        window.carouselPrev = function(id) {
+                            const items = document.querySelectorAll('#' + id + ' .carousel-item');
+                            items[window.carouselIndexes[id]].style.display = 'none';
+                            window.carouselIndexes[id] = (window.carouselIndexes[id] - 1 + items.length) % items.length;
+                            items[window.carouselIndexes[id]].style.display = 'block';
+                        };
+                        window.carouselNext = function(id) {
+                            const items = document.querySelectorAll('#' + id + ' .carousel-item');
+                            items[window.carouselIndexes[id]].style.display = 'none';
+                            window.carouselIndexes[id] = (window.carouselIndexes[id] + 1) % items.length;
+                            items[window.carouselIndexes[id]].style.display = 'block';
+                        };
+                    </script>
+                </div>
+            `;
+
+        case 'accordion':
+            const accordionItems = componentData.items || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}" class="lpb-accordion">
+                    ${componentData.title ? `<h3 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: 700;">${componentData.title}</h3>` : ''}
+                    ${accordionItems.map((item, idx) => `
+                        <div style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                            <button onclick="toggleAccordion('${id}-${idx}')" style="width: 100%; padding: 16px; background: #ffffff; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; font-weight: 600;">
+                                <span>${item.question || item.title}</span>
+                                <span id="${id}-${idx}-icon">▼</span>
+                            </button>
+                            <div id="${id}-${idx}" style="display: ${idx === 0 ? 'block' : 'none'}; padding: 16px; background: #f9fafb; color: #6b7280;">
+                                ${item.answer || item.content}
+                            </div>
+                        </div>
+                    `).join('')}
+                    <script>
+                        window.toggleAccordion = function(id) {
+                            const content = document.getElementById(id);
+                            const icon = document.getElementById(id + '-icon');
+                            if (content.style.display === 'none') {
+                                content.style.display = 'block';
+                                icon.innerText = '▲';
+                            } else {
+                                content.style.display = 'none';
+                                icon.innerText = '▼';
+                            }
+                        };
+                    </script>
+                </div>
+            `;
+
+        case 'tabs':
+            const tabs = componentData.tabs || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}" class="lpb-tabs">
+                    ${componentData.title ? `<h3 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: 700; text-align: center;">${componentData.title}</h3>` : ''}
+                    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb;">
+                        ${tabs.map((tab, idx) => `
+                            <button onclick="switchTab('${id}', ${idx})" id="${id}-tab-${idx}" style="padding: 12px 24px; background: transparent; border: none; border-bottom: 2px solid ${idx === 0 ? '#3b82f6' : 'transparent'}; color: ${idx === 0 ? '#3b82f6' : '#6b7280'}; font-weight: ${idx === 0 ? '600' : '400'}; cursor: pointer; margin-bottom: -2px;">
+                                ${tab.label}
+                            </button>
+                        `).join('')}
+                    </div>
+                    ${tabs.map((tab, idx) => `
+                        <div id="${id}-content-${idx}" style="display: ${idx === 0 ? 'block' : 'none'}; text-align: center;">
+                            ${tab.content ? `
+                                <div style="font-size: 2.5rem; font-weight: 700; color: #1f2937; margin-bottom: 8px;">
+                                    ${tab.content.price || ''}
+                                    ${tab.content.period ? `<span style="font-size: 1rem; font-weight: 400; color: #6b7280;">/${tab.content.period}</span>` : ''}
+                                </div>
+                                ${tab.content.features ? `<ul style="list-style: none; padding: 0; margin-top: 20px;">
+                                    ${tab.content.features.map(f => `<li style="padding: 8px 0; color: #374151;">✓ ${f}</li>`).join('')}
+                                </ul>` : ''}
+                            ` : tab.text || ''}
+                        </div>
+                    `).join('')}
+                    <script>
+                        window.switchTab = function(id, index) {
+                            const tabs = document.querySelectorAll('[id^="' + id + '-tab-"]');
+                            const contents = document.querySelectorAll('[id^="' + id + '-content-"]');
+                            tabs.forEach((tab, i) => {
+                                tab.style.borderBottomColor = i === index ? '#3b82f6' : 'transparent';
+                                tab.style.color = i === index ? '#3b82f6' : '#6b7280';
+                                tab.style.fontWeight = i === index ? '600' : '400';
+                            });
+                            contents.forEach((content, i) => {
+                                content.style.display = i === index ? 'block' : 'none';
+                            });
+                        };
+                    </script>
+                </div>
+            `;
+
+        case 'progress':
+            const progressItems = componentData.items || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}" class="lpb-progress">
+                    ${componentData.title ? `<h3 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: 700;">${componentData.title}</h3>` : ''}
+                    ${progressItems.map(item => `
+                        <div style="margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="font-weight: 600; color: #374151;">${item.label}</span>
+                                ${componentData.showPercentage !== false ? `<span style="color: #6b7280;">${item.value}%</span>` : ''}
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${item.value}%; height: 100%; background: ${item.color || '#3b82f6'}; border-radius: 4px; transition: width 1s ease-out;"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+        case 'rating':
+            const rating = componentData.rating || 0;
+            const maxRating = componentData.maxRating || 5;
+            const reviews = componentData.reviews || 0;
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}; display: flex; align-items: center; gap: 8px;" class="lpb-rating">
+                    <div style="display: flex; gap: 4px;">
+                        ${Array.from({length: maxRating}, (_, i) => {
+                            const filled = i < Math.floor(rating);
+                            return `<span style="color: ${filled ? (componentData.color || '#fbbf24') : '#d1d5db'}; font-size: 24px;">${filled ? '★' : '☆'}</span>`;
+                        }).join('')}
+                    </div>
+                    <span style="font-weight: 600; font-size: 1.125rem;">${rating.toFixed(1)}</span>
+                    ${componentData.showReviews !== false ? `<span style="color: #6b7280;">(${reviews} đánh giá)</span>` : ''}
+                </div>
+            `;
+
+        case 'social-proof':
+            const notifications = componentData.notifications || [];
+            const notificationId = `notification-${id}`;
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles};" class="lpb-social-proof">
+                    <div id="${notificationId}" style="background: #ffffff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img id="${notificationId}-avatar" src="" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;" alt="Avatar" />
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">
+                                    <span id="${notificationId}-name"></span> <span id="${notificationId}-action"></span>
+                                </div>
+                                <div style="font-size: 0.875rem; color: #6b7280;">
+                                    <span id="${notificationId}-product"></span> • <span id="${notificationId}-time"></span>
+                                </div>
+                            </div>
+                            <button onclick="closeSocialProof('${notificationId}')" style="background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 1.25rem; padding: 0; width: 24px; height: 24px;">×</button>
+                        </div>
+                    </div>
+                    <script>
+                        (function() {
+                            const notifications = ${JSON.stringify(notifications)};
+                            const interval = ${componentData.interval || 5000};
+                            let currentIndex = 0;
+                            const el = document.getElementById('${notificationId}');
+
+                            function showNotification() {
+                                if (notifications.length === 0) return;
+                                const notif = notifications[currentIndex];
+                                document.getElementById('${notificationId}-avatar').src = notif.avatar || 'https://i.pravatar.cc/50';
+                                document.getElementById('${notificationId}-name').innerText = notif.name || 'Khách hàng';
+                                document.getElementById('${notificationId}-action').innerText = notif.action || 'vừa mua';
+                                document.getElementById('${notificationId}-product').innerText = notif.product || 'Sản phẩm';
+                                document.getElementById('${notificationId}-time').innerText = notif.time || '1 phút trước';
+                                el.style.display = 'block';
+
+                                setTimeout(() => {
+                                    el.style.display = 'none';
+                                }, 4000);
+
+                                currentIndex = (currentIndex + 1) % notifications.length;
+                            }
+
+                            window.closeSocialProof = function(id) {
+                                document.getElementById(id).style.display = 'none';
+                            };
+
+                            // Show first notification after 2s
+                            setTimeout(showNotification, 2000);
+                            // Then show every interval
+                            setInterval(showNotification, interval);
+                        })();
+                    </script>
+                </div>
+            `;
+
+        case 'social-proof-stats':
+            const stats = componentData.stats || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}; display: grid; grid-template-columns: repeat(${Math.min(stats.length, 4)}, 1fr); gap: 20px;" class="lpb-social-proof-stats">
+                    ${stats.map(stat => `
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-size: 2.5rem; margin-bottom: 8px;">${stat.icon || '📊'}</div>
+                            <div style="font-size: 2rem; font-weight: 700; color: #1f2937; margin-bottom: 4px;">${stat.value}</div>
+                            <div style="font-size: 0.875rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${stat.label}</div>
+                        </div>
+                    `).join('')}
+                    <style>
+                        @media (max-width: 768px) {
+                            .lpb-social-proof-stats {
+                                grid-template-columns: repeat(2, 1fr) !important;
+                            }
+                        }
+                    </style>
                 </div>
             `;
 

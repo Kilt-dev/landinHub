@@ -83,6 +83,7 @@ const ComponentLibrary = ({ isCollapsed, onToggle, onAddElement, onAddChild, pag
     const validTabs = [
         'sections',
         'elements',
+        'advancedElements',
         'popups',
         'templates',
         'utilities',
@@ -104,6 +105,7 @@ const ComponentLibrary = ({ isCollapsed, onToggle, onAddElement, onAddChild, pag
         return {
             sections: EXTENDED_LIBRARY.sections?.subCategories || [],
             elements: EXTENDED_LIBRARY.elements?.subCategories || [],
+            advancedElements: EXTENDED_LIBRARY.advancedElements?.subCategories || [],
             popups: EXTENDED_LIBRARY.popups?.subCategories || [],
             templates: EXTENDED_LIBRARY.templates?.subCategories || [],
             utilities: EXTENDED_LIBRARY.utilities?.subCategories || [],
