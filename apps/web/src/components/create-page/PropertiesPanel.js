@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import ImageManagerModal from './ImageManagerModal'; // Adjust path as needed
+import FormPropertiesPanel from './properties/FormPropertiesPanel';
 import '../../styles/PropertiesPanel.css';
 
 // Định nghĩa các hằng số (tương tự ElementPropertiesPanel để nhất quán)
@@ -94,6 +95,47 @@ const PropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, onTogg
     }
 
     const { type, componentData = {}, styles = {}, size = {}, position = {} } = selectedElement.json;
+
+    // Special handling for Form elements - use dedicated Form Properties Panel
+    if (type === 'form') {
+        return (
+            <div className="properties-panel">
+                <div className="panel-header">
+                    <input
+                        type="text"
+                        value={componentData.title || 'Form'}
+                        onChange={(e) => {
+                            const updated = {
+                                ...selectedElement,
+                                json: {
+                                    ...selectedElement.json,
+                                    componentData: {
+                                        ...selectedElement.json.componentData,
+                                        title: e.target.value,
+                                    },
+                                },
+                            };
+                            onUpdateElement(updated);
+                        }}
+                        className="panel-title-input"
+                        placeholder="Tên Form"
+                    />
+                    <button onClick={onToggle} className="toggle-button" title="Đóng">
+                        <ChevronRight size={18} />
+                    </button>
+                </div>
+                <FormPropertiesPanel
+                    element={selectedElement.json}
+                    onUpdate={(updatedJson) => {
+                        onUpdateElement({
+                            ...selectedElement,
+                            json: updatedJson
+                        });
+                    }}
+                />
+            </div>
+        );
+    }
 
     const handleStyleChange = (property, value) => {
         const updated = {

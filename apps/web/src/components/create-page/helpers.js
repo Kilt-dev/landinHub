@@ -796,21 +796,34 @@ export const renderComponentContent = (
         }
 
         case 'form': {
+            const fields = componentData.fields || [];
+            const showLabels = componentData.showLabels !== false;
+            const labelPosition = componentData.labelPosition || 'top';
+
             return (
-                <div
+                <form
+                    id={parentId}
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        if (isCanvas) {
+                            // In canvas mode, don't actually submit
+                            return false;
+                        }
+                    }}
                     style={{
                         display: 'flex',
                         flexDirection: componentData.direction || 'column',
-                        gap: componentData.gap || '10px',
+                        gap: componentData.gap || '16px',
+                        width: '100%',
                         ...baseStyles,
                     }}
                 >
-                    {componentData.title && !children.some((child) => child?.type === 'heading') && (
+                    {componentData.title && (
                         <h3
                             style={{
                                 ...getCleanTextStyles(baseStyles),
-                                margin: componentData.titleMargin || '0',
-                                fontSize: componentData.titleFontSize || '1.2rem',
+                                margin: componentData.titleMargin || '0 0 8px 0',
+                                fontSize: componentData.titleFontSize || '24px',
                                 color: componentData.titleColor || '#1f2937',
                                 fontWeight: componentData.titleFontWeight || '600',
                             }}
@@ -818,51 +831,169 @@ export const renderComponentContent = (
                             {componentData.title}
                         </h3>
                     )}
-                    {Array.isArray(componentData.fields) && componentData.fields.length > 0 ? (
-                        componentData.fields.map((field, index) => (
-                            <input
-                                key={index}
-                                type={field.type || 'text'}
-                                placeholder={field.placeholder || field.label || 'Nhập...'}
-                                style={{
-                                    padding: field.padding || '8px',
-                                    borderRadius: field.borderRadius || '8px',
-                                    border: field.border || '1px solid #ccc',
-                                    fontSize: field.fontSize || '1rem',
-                                }}
-                            />
-                        ))
-                    ) : (
-                        !children.some((child) => child?.type === 'input') && (
-                            <input
-                                type={componentData.inputType || 'text'}
-                                placeholder={componentData.placeholder || 'Nhập...'}
-                                style={{
-                                    padding: componentData.inputPadding || '8px',
-                                    borderRadius: componentData.inputBorderRadius || '8px',
-                                    border: componentData.inputBorder || '1px solid #ccc',
-                                    fontSize: componentData.inputFontSize || '1rem',
-                                }}
-                            />
-                        )
-                    )}
-                    {!children.some((child) => child?.type === 'button') && (
-                        <button
-                            type="submit"
-                            style={{
-                                background: componentData.buttonBackground || '#2563eb',
-                                color: componentData.buttonColor || '#fff',
-                                padding: componentData.buttonPadding || '8px 16px',
-                                borderRadius: componentData.buttonBorderRadius || '8px',
-                                border: componentData.buttonBorder || 'none',
-                                cursor: 'pointer',
-                                fontSize: componentData.buttonFontSize || '1rem',
-                                fontWeight: componentData.buttonFontWeight || '600',
-                            }}
-                        >
-                            {componentData.buttonText || 'Gửi'}
-                        </button>
-                    )}
+
+                    {fields.map((field, index) => {
+                        const fieldId = `${parentId}-${field.name || `field-${index}`}`;
+
+                        return (
+                            <div key={index} style={{ marginBottom: componentData.gap || '16px' }}>
+                                {/* Label */}
+                                {showLabels && labelPosition === 'top' && field.label && (
+                                    <label
+                                        htmlFor={fieldId}
+                                        style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '600',
+                                            color: '#374151',
+                                        }}
+                                    >
+                                        {field.label}
+                                        {field.required && <span style={{ color: '#ef4444' }}> *</span>}
+                                    </label>
+                                )}
+
+                                {/* Field Input */}
+                                {field.type === 'textarea' ? (
+                                    <textarea
+                                        id={fieldId}
+                                        name={field.name}
+                                        placeholder={field.placeholder || ''}
+                                        required={field.required || false}
+                                        rows={field.rows || 4}
+                                        disabled={isCanvas}
+                                        style={{
+                                            width: '100%',
+                                            padding: field.padding || '12px',
+                                            borderRadius: field.borderRadius || '8px',
+                                            border: field.border || '1px solid #e5e7eb',
+                                            fontSize: field.fontSize || '14px',
+                                            fontFamily: 'inherit',
+                                            resize: 'vertical',
+                                            boxSizing: 'border-box',
+                                        }}
+                                    />
+                                ) : field.type === 'select' ? (
+                                    <select
+                                        id={fieldId}
+                                        name={field.name}
+                                        required={field.required || false}
+                                        disabled={isCanvas}
+                                        style={{
+                                            width: '100%',
+                                            padding: field.padding || '12px',
+                                            borderRadius: field.borderRadius || '8px',
+                                            border: field.border || '1px solid #e5e7eb',
+                                            fontSize: field.fontSize || '14px',
+                                            boxSizing: 'border-box',
+                                        }}
+                                    >
+                                        <option value="">Chọn...</option>
+                                        {(field.options || []).map((option, i) => (
+                                            <option key={i} value={option}>
+                                                {option}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : field.type === 'checkbox' ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <input
+                                            type="checkbox"
+                                            id={fieldId}
+                                            name={field.name}
+                                            required={field.required || false}
+                                            disabled={isCanvas}
+                                            style={{
+                                                width: '18px',
+                                                height: '18px',
+                                                cursor: isCanvas ? 'default' : 'pointer',
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor={fieldId}
+                                            style={{
+                                                fontSize: field.fontSize || '14px',
+                                                color: '#374151',
+                                                cursor: isCanvas ? 'default' : 'pointer',
+                                            }}
+                                        >
+                                            {field.label || field.placeholder}
+                                        </label>
+                                    </div>
+                                ) : field.type === 'radio' ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {(field.options || []).map((option, i) => (
+                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input
+                                                    type="radio"
+                                                    id={`${fieldId}-${i}`}
+                                                    name={field.name}
+                                                    value={option}
+                                                    required={field.required && i === 0}
+                                                    disabled={isCanvas}
+                                                    style={{
+                                                        width: '18px',
+                                                        height: '18px',
+                                                        cursor: isCanvas ? 'default' : 'pointer',
+                                                    }}
+                                                />
+                                                <label
+                                                    htmlFor={`${fieldId}-${i}`}
+                                                    style={{
+                                                        fontSize: field.fontSize || '14px',
+                                                        color: '#374151',
+                                                        cursor: isCanvas ? 'default' : 'pointer',
+                                                    }}
+                                                >
+                                                    {option}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <input
+                                        type={field.type || 'text'}
+                                        id={fieldId}
+                                        name={field.name}
+                                        placeholder={field.placeholder || ''}
+                                        required={field.required || false}
+                                        disabled={isCanvas}
+                                        style={{
+                                            width: '100%',
+                                            padding: field.padding || '12px',
+                                            borderRadius: field.borderRadius || '8px',
+                                            border: field.border || '1px solid #e5e7eb',
+                                            fontSize: field.fontSize || '14px',
+                                            boxSizing: 'border-box',
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {/* Submit Button */}
+                    <button
+                        type="submit"
+                        disabled={isCanvas}
+                        style={{
+                            background: componentData.buttonBackground || '#667eea',
+                            color: componentData.buttonColor || '#ffffff',
+                            padding: componentData.buttonPadding || '12px 32px',
+                            borderRadius: componentData.buttonBorderRadius || '8px',
+                            border: componentData.buttonBorder || 'none',
+                            cursor: isCanvas ? 'default' : 'pointer',
+                            fontSize: componentData.buttonFontSize || '16px',
+                            fontWeight: componentData.buttonFontWeight || '600',
+                            transition: 'all 0.2s',
+                            alignSelf: componentData.direction === 'row' ? 'flex-start' : 'stretch',
+                        }}
+                    >
+                        {componentData.buttonText || 'Gửi ngay'}
+                    </button>
+
+                    {/* Render children if any */}
                     {children.map((child, index) =>
                         React.cloneElement(
                             renderComponentContent(
@@ -880,7 +1011,7 @@ export const renderComponentContent = (
                             { key: child.id || index }
                         )
                     )}
-                </div>
+                </form>
             );
         }
 

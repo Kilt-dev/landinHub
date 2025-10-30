@@ -1,3 +1,5 @@
+import { generateAllFormScripts } from './formSubmissionHandler';
+
 // ==================== EVENT RUNTIME GENERATOR ====================
 
 /**
@@ -1312,6 +1314,9 @@ export const renderStaticHTML = (pageData) => {
     const popupsHTML = renderPopupsHTML(popups);
     const runtimeScript = generateEventRuntime(events, popups);
 
+    // Generate form submission scripts
+    const formScripts = generateAllFormScripts(pageData);
+
     // Generate CSS
     const cssContent = generateCSS(pageData);
 
@@ -1587,6 +1592,9 @@ export const renderStaticHTML = (pageData) => {
     <script>
         ${runtimeScript}
     </script>
+
+    <!-- Form Submission Scripts -->
+    ${formScripts.join('\n')}
 
     <!-- Embedded PageData for easy import -->
     <script type="application/json" id="lpb-page-data">
