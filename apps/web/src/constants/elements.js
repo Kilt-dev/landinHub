@@ -2186,5 +2186,185 @@ export const elements = {
                 },
             ]
         },
+        {
+            id: 'shapes',
+            name: 'Hình dạng / Frames',
+            lucideIcon: Square,
+            templates: [
+                {
+                    id: 'shape-square',
+                    name: 'Hình vuông',
+                    lucideIcon: Square,
+                    description: 'Hình vuông cơ bản với màu tùy chỉnh',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/square_shape.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Hình vuông',
+                            fill: '#3b82f6',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'zoomIn', duration: 600, delay: 0 }
+                        },
+                        size: { width: 100, height: 100 },
+                        mobileSize: { width: 60, height: 60 },
+                        tabletSize: { width: 80, height: 80 },
+                        styles: {
+                            fill: '#3b82f6',
+                            borderRadius: '0',
+                        },
+                        responsiveStyles: {
+                            mobile: { width: '60px', height: '60px' },
+                            tablet: { width: '80px', height: '80px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-rectangle',
+                    name: 'Hình chữ nhật',
+                    lucideIcon: Box,
+                    description: 'Hình chữ nhật ngang hoặc dọc',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/rectangle_shape.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Hình chữ nhật',
+                            fill: '#8b5cf6',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'fadeIn', duration: 800, delay: 0 }
+                        },
+                        size: { width: 200, height: 100 },
+                        mobileSize: { width: 160, height: 80 },
+                        tabletSize: { width: 180, height: 90 },
+                        styles: {
+                            fill: '#8b5cf6',
+                            borderRadius: '0',
+                        },
+                        responsiveStyles: {
+                            mobile: { width: '160px', height: '80px' },
+                            tablet: { width: '180px', height: '90px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-rounded-square',
+                    name: 'Hình vuông bo góc',
+                    lucideIcon: Square,
+                    description: 'Hình vuông với góc bo tròn',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/rounded_square.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Hình vuông bo góc',
+                            fill: '#ec4899',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'bounceIn', duration: 1000, delay: 0 }
+                        },
+                        size: { width: 120, height: 120 },
+                        mobileSize: { width: 80, height: 80 },
+                        tabletSize: { width: 100, height: 100 },
+                        styles: {
+                            fill: '#ec4899',
+                            borderRadius: '16px',
+                        },
+                        responsiveStyles: {
+                            mobile: { borderRadius: '12px' },
+                            tablet: { borderRadius: '14px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-circle',
+                    name: 'Hình tròn',
+                    lucideIcon: Star,
+                    description: 'Hình tròn hoàn hảo',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/circle_shape.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Hình tròn',
+                            fill: '#10b981',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'pulse', duration: 1500, delay: 0, repeat: true }
+                        },
+                        size: { width: 100, height: 100 },
+                        mobileSize: { width: 60, height: 60 },
+                        tabletSize: { width: 80, height: 80 },
+                        styles: {
+                            fill: '#10b981',
+                            borderRadius: '50%',
+                        },
+                        responsiveStyles: {
+                            mobile: { width: '60px', height: '60px' },
+                            tablet: { width: '80px', height: '80px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-line-horizontal',
+                    name: 'Đường kẻ ngang',
+                    lucideIcon: Minus,
+                    description: 'Đường kẻ ngang để chia section',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/line_horizontal.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Đường kẻ ngang',
+                            fill: '#6366f1',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'slideInLeft', duration: 1000, delay: 0 }
+                        },
+                        size: { width: 300, height: 4 },
+                        mobileSize: { width: 200, height: 3 },
+                        tabletSize: { width: 250, height: 3 },
+                        styles: {
+                            fill: '#6366f1',
+                            borderRadius: '2px',
+                        },
+                        responsiveStyles: {
+                            mobile: { width: '200px', height: '3px' },
+                            tablet: { width: '250px', height: '3px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-gradient-rect',
+                    name: 'Hình gradient',
+                    lucideIcon: Box,
+                    description: 'Hình chữ nhật với gradient màu',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/gradient_rect.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Gradient Rectangle',
+                            fill: 'url(#gradient1)',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'fadeInUp', duration: 1000, delay: 0 },
+                            gradient: {
+                                id: 'gradient1',
+                                type: 'linear',
+                                x1: '0%',
+                                y1: '0%',
+                                x2: '100%',
+                                y2: '100%',
+                                stops: [
+                                    { offset: '0%', color: '#667eea' },
+                                    { offset: '100%', color: '#764ba2' }
+                                ]
+                            }
+                        },
+                        size: { width: 250, height: 150 },
+                        mobileSize: { width: 200, height: 120 },
+                        tabletSize: { width: 225, height: 135 },
+                        styles: {
+                            borderRadius: '12px',
+                        },
+                        responsiveStyles: {
+                            mobile: { borderRadius: '8px' },
+                            tablet: { borderRadius: '10px' }
+                        }
+                    },
+                },
+            ]
+        },
     ],
 };
