@@ -322,8 +322,8 @@ const CreateLanding = () => {
                 width: isPopup ? 600 : 1200,
                 height: section.json.size?.height || 400
             },
-            mobileSize: section.json.mobileSize,
-            tabletSize: section.json.tabletSize,
+            mobileSize: section.json.mobileSize || (isPopup ? { width: 340, height: section.json.size?.height || 400 } : { width: 375, height: section.json.size?.height || 400 }),
+            tabletSize: section.json.tabletSize || (isPopup ? { width: 600, height: section.json.size?.height || 400 } : { width: 768, height: section.json.size?.height || 400 }),
             styles: JSON.parse(JSON.stringify(section.json.styles || {})),
             responsiveStyles: section.json.responsiveStyles || {},
             children: childrenWithResponsive,
@@ -331,11 +331,8 @@ const CreateLanding = () => {
             locked: false
         };
 
-        // Initialize full responsive data if not present
-        const newElement = (!baseElement.mobileSize || !baseElement.tabletSize ||
-                           !baseElement.responsiveStyles?.mobile || !baseElement.responsiveStyles?.tablet)
-            ? syncElementBetweenModes(baseElement, 'desktop')
-            : baseElement;
+        // ALWAYS sync to ensure all responsive data is complete and consistent
+        const newElement = syncElementBetweenModes(baseElement, 'desktop');
 
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
