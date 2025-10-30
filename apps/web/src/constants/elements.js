@@ -2366,5 +2366,251 @@ export const elements = {
                 },
             ]
         },
+        {
+            id: 'form',
+            name: 'Form',
+            lucideIcon: FormInput,
+            templates: [
+                {
+                    id: 'form-contact-basic',
+                    name: 'Form liên hệ cơ bản',
+                    lucideIcon: FormInput,
+                    description: 'Form liên hệ với các trường cơ bản: tên, email, tin nhắn',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/form_contact.png',
+                    json: {
+                        type: 'form',
+                        componentData: {
+                            title: 'Liên hệ với chúng tôi',
+                            fields: [
+                                {
+                                    name: 'name',
+                                    type: 'text',
+                                    placeholder: 'Họ và tên của bạn',
+                                    label: 'Họ và tên',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'email',
+                                    type: 'email',
+                                    placeholder: 'email@example.com',
+                                    label: 'Email',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'phone',
+                                    type: 'tel',
+                                    placeholder: '0123 456 789',
+                                    label: 'Số điện thoại',
+                                    required: false,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'message',
+                                    type: 'textarea',
+                                    placeholder: 'Nhập tin nhắn của bạn...',
+                                    label: 'Tin nhắn',
+                                    required: false,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px',
+                                    rows: 4
+                                }
+                            ],
+                            buttonText: 'Gửi ngay',
+                            buttonBackground: '#667eea',
+                            buttonColor: '#ffffff',
+                            buttonPadding: '12px 32px',
+                            buttonBorderRadius: '8px',
+                            buttonBorder: 'none',
+                            buttonFontSize: '16px',
+                            buttonFontWeight: '600',
+                            direction: 'column',
+                            gap: '16px',
+                            successMessage: 'Cảm ơn bạn đã gửi thông tin! Chúng tôi sẽ liên hệ lại sớm nhất.',
+                            errorMessage: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
+                            redirectUrl: '',
+                            showLabels: true,
+                            labelPosition: 'top'
+                        },
+                        size: { width: 500, height: 480 },
+                        mobileSize: { width: 340, height: 520 },
+                        tabletSize: { width: 450, height: 500 },
+                        styles: {
+                            backgroundColor: '#ffffff',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        },
+                        responsiveStyles: {
+                            mobile: { padding: '16px' },
+                            tablet: { padding: '20px' }
+                        }
+                    },
+                },
+                {
+                    id: 'form-newsletter',
+                    name: 'Form đăng ký nhận tin',
+                    lucideIcon: FormInput,
+                    description: 'Form đăng ký newsletter đơn giản với email',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/form_newsletter.png',
+                    json: {
+                        type: 'form',
+                        componentData: {
+                            title: 'Đăng ký nhận tin tức',
+                            fields: [
+                                {
+                                    name: 'email',
+                                    type: 'email',
+                                    placeholder: 'Nhập email của bạn',
+                                    label: 'Email',
+                                    required: true,
+                                    padding: '14px 16px',
+                                    borderRadius: '8px',
+                                    border: '2px solid #e5e7eb',
+                                    fontSize: '15px'
+                                }
+                            ],
+                            buttonText: 'Đăng ký',
+                            buttonBackground: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            buttonColor: '#ffffff',
+                            buttonPadding: '14px 40px',
+                            buttonBorderRadius: '8px',
+                            buttonBorder: 'none',
+                            buttonFontSize: '15px',
+                            buttonFontWeight: '600',
+                            direction: 'row',
+                            gap: '12px',
+                            successMessage: 'Cảm ơn bạn đã đăng ký! Hãy kiểm tra email để xác nhận.',
+                            errorMessage: 'Không thể đăng ký. Vui lòng thử lại.',
+                            showLabels: false,
+                            labelPosition: 'top'
+                        },
+                        size: { width: 500, height: 80 },
+                        mobileSize: { width: 340, height: 120 },
+                        tabletSize: { width: 450, height: 90 },
+                        styles: {
+                            backgroundColor: 'transparent',
+                            padding: '0',
+                        }
+                    },
+                },
+                {
+                    id: 'form-registration',
+                    name: 'Form đăng ký đầy đủ',
+                    lucideIcon: FormInput,
+                    description: 'Form đăng ký với nhiều trường thông tin',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/form_registration.png',
+                    json: {
+                        type: 'form',
+                        componentData: {
+                            title: 'Đăng ký tài khoản',
+                            fields: [
+                                {
+                                    name: 'fullname',
+                                    type: 'text',
+                                    placeholder: 'Họ và tên',
+                                    label: 'Họ và tên',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'email',
+                                    type: 'email',
+                                    placeholder: 'Email',
+                                    label: 'Email',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'phone',
+                                    type: 'tel',
+                                    placeholder: 'Số điện thoại',
+                                    label: 'Số điện thoại',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'company',
+                                    type: 'text',
+                                    placeholder: 'Tên công ty',
+                                    label: 'Công ty',
+                                    required: false,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'interest',
+                                    type: 'select',
+                                    label: 'Bạn quan tâm đến',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px',
+                                    options: ['Sản phẩm', 'Dịch vụ', 'Hợp tác', 'Khác']
+                                },
+                                {
+                                    name: 'terms',
+                                    type: 'checkbox',
+                                    label: 'Tôi đồng ý với điều khoản sử dụng',
+                                    required: true,
+                                    fontSize: '13px'
+                                }
+                            ],
+                            buttonText: 'Đăng ký ngay',
+                            buttonBackground: '#10b981',
+                            buttonColor: '#ffffff',
+                            buttonPadding: '12px 32px',
+                            buttonBorderRadius: '8px',
+                            buttonBorder: 'none',
+                            buttonFontSize: '16px',
+                            buttonFontWeight: '600',
+                            direction: 'column',
+                            gap: '16px',
+                            successMessage: 'Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm.',
+                            errorMessage: 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.',
+                            showLabels: true,
+                            labelPosition: 'top'
+                        },
+                        size: { width: 500, height: 600 },
+                        mobileSize: { width: 340, height: 680 },
+                        tabletSize: { width: 450, height: 640 },
+                        styles: {
+                            backgroundColor: '#f9fafb',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            border: '1px solid #e5e7eb',
+                        },
+                        responsiveStyles: {
+                            mobile: { padding: '16px' },
+                            tablet: { padding: '20px' }
+                        }
+                    },
+                },
+            ]
+        },
     ],
 };
