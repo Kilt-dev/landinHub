@@ -1,12 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const cozeRoutes = require('./routes/coze');
 const app = express();
 const authMiddleware = require('./middleware/authMiddleware');
 require('dotenv').config();
 const templateRoutes = require('./routes/templateRoutes');
-const adminUserRoutes = require("./routes/adminUserRoutes");
 
 
 mongoose.connect(process.env.MONGO_URI)
@@ -30,7 +28,6 @@ app.use('/api/marketplace', require('./routes/marketplace'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/payout', require('./routes/payout'));
 app.use('/api/admin/marketplace', require('./routes/adminMarketplace'));
-app.use("/api/admin/users", adminUserRoutes);
-app.use("/api", require('./routes/orderRoutes'));
-app.use('/api/coze', require('./routes/coze'));
+app.use('/api/forms', require('./routes/formSubmissions'));
+
 module.exports = app;
