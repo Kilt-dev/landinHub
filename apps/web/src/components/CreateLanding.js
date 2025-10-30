@@ -973,6 +973,33 @@ const CreateLanding = () => {
         toast.success('Đã cập nhật vị trí thành phần con!');
     }, [historyIndex, viewMode]);
 
+    // Update child size
+    const handleUpdateChildSize = useCallback((parentId, childId, newSize, e) => {
+        if (e) e.stopPropagation();
+        setPageData((prev) => {
+            const newPageData = {
+                ...prev,
+                elements: prev.elements.map((el) => {
+                    if (el.id === parentId) {
+                        return {
+                            ...el,
+                            children: el.children.map((child) =>
+                                child.id === childId
+                                    ? { ...child, size: { ...child.size, [viewMode]: newSize } }
+                                    : child
+                            ),
+                        };
+                    }
+                    return el;
+                }),
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+    }, [historyIndex, viewMode]);
+
     // Move child
     const handleMoveChild = useCallback((sourceParentId, childId, targetParentId, newElementOrPosition, e) => {
         if (e) e.stopPropagation();
@@ -1551,6 +1578,7 @@ const CreateLanding = () => {
                             onUpdateChildren={handleUpdateChildren}
                             onAddChild={handleAddChild}
                             onUpdateChildPosition={handleUpdateChildPosition}
+                            onUpdateChildSize={handleUpdateChildSize}
                             onMoveChild={handleMoveChild}
                             guideLine={guideLine}
                             onUpdateCanvasHeight={handleUpdateCanvasHeight}

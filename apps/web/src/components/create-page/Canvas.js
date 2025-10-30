@@ -34,6 +34,7 @@ const Canvas = React.memo(({
                                selectedChildId,
                                onAddChild,
                                onUpdateChildPosition,
+                               onUpdateChildSize,
                                onMoveChild,
                                guideLine,
                                onShowAddSectionPopup,
@@ -603,6 +604,7 @@ const Canvas = React.memo(({
                         selectedChildId={selectedChildId}
                         onAddChild={onAddChild}
                         onUpdateChildPosition={onUpdateChildPosition}
+                        onUpdateChildSize={onUpdateChildSize}
                         onMoveChild={onMoveChild}
                         showGrid={showGrid}
                         setDragPreview={setDragPreview}
@@ -723,6 +725,7 @@ Canvas.propTypes = {
     selectedChildId: PropTypes.string,
     onAddChild: PropTypes.func.isRequired,
     onUpdateChildPosition: PropTypes.func.isRequired,
+    onUpdateChildSize: PropTypes.func.isRequired,
     onMoveChild: PropTypes.func.isRequired,
     guideLine: PropTypes.shape({
         show: PropTypes.bool,
