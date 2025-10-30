@@ -10,6 +10,7 @@ import ButtonPropertiesPanel from './create-page/properties/ButtonPropertiesPane
 import IconPropertiesPanel from './create-page/properties/IconPropertiesPanel';
 import ImagePropertiesPanel from './create-page/properties/ImagePropertiesPanel';
 import IframePropertiesPanel from './create-page/properties/IframePropertiesPanel';
+import AdvancedPropertiesPanel from './create-page/properties/AdvancedPropertiesPanel';
 import Toolbar from './create-page/Toolbar';
 import ResponsiveToolbar from './create-page/ResponsiveToolbar';
 import SectionPopup from '../components/create-page/SectionPopup';
@@ -1205,6 +1206,18 @@ const CreateLanding = () => {
         if (type === 'iframe') {
             return (
                 <IframePropertiesPanel
+                    selectedElement={selectedElement}
+                    onUpdateElement={handleEditElement}
+                    isCollapsed={isPropertiesCollapsed}
+                    onToggle={() => setIsPropertiesCollapsed(!isPropertiesCollapsed)}
+                    className="w-80 bg-white shadow-lg p-4"
+                />
+            );
+        }
+        // Advanced Components
+        if (['countdown', 'carousel', 'accordion', 'tabs', 'progress', 'rating', 'social-proof', 'social-proof-stats'].includes(type)) {
+            return (
+                <AdvancedPropertiesPanel
                     selectedElement={selectedElement}
                     onUpdateElement={handleEditElement}
                     isCollapsed={isPropertiesCollapsed}
