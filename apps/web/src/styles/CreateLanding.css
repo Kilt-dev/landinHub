@@ -1002,3 +1002,154 @@
 [data-animation="fadeIn"] { animation: fadeIn 1s; }
 [data-animation="zoomIn"] { animation: zoomIn 1s; }
 [data-animation="slideInUp"] { animation: slideInUp 1s; }
+/* ===================================
+   MOBILE RESPONSIVE IMPROVEMENTS
+   =================================== */
+
+/* Mobile Canvas Container */
+.lpb-canvas-mobile .lpb-canvas-section,
+.lpb-canvas-mobile .lpb-element {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+}
+
+/* Mobile Child Elements - Ensure Visibility */
+.lpb-canvas-mobile .lpb-child-element {
+    max-width: calc(100% - 32px) !important;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
+}
+
+/* Mobile Text Elements - Full Content Visibility */
+.lpb-canvas-mobile .lpb-child-element[data-type="heading"],
+.lpb-canvas-mobile .lpb-child-element[data-type="paragraph"] {
+    white-space: normal !important;
+    word-break: break-word;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: fit-content !important;
+}
+
+/* Mobile Images - Responsive Sizing */
+.lpb-canvas-mobile img {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Mobile Buttons - Stack Vertically if Needed */
+.lpb-canvas-mobile .lpb-child-element[data-type="button"] {
+    max-width: 100% !important;
+    width: auto !important;
+    min-width: 120px;
+}
+
+/* Mobile Forms - Full Width */
+.lpb-canvas-mobile form,
+.lpb-canvas-mobile .lpb-form-container {
+    width: 100% !important;
+    max-width: calc(100% - 32px) !important;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.lpb-canvas-mobile input,
+.lpb-canvas-mobile textarea,
+.lpb-canvas-mobile select {
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 16px !important; /* Prevent iOS zoom */
+    box-sizing: border-box;
+}
+
+/* Mobile Sections - Proper Stacking */
+.lpb-canvas-mobile .lpb-canvas-section {
+    width: 375px !important;
+    padding: 16px !important;
+    margin-bottom: 0 !important;
+    box-sizing: border-box;
+}
+
+/* Mobile Section Children - Stack Vertically */
+.lpb-canvas-mobile .lpb-canvas-section .lpb-child-element {
+    position: relative !important;
+    display: block;
+    margin-bottom: 16px !important;
+    left: auto !important;
+    transform: none !important;
+}
+
+/* Mobile Galleries - Responsive Grid */
+.lpb-canvas-mobile .lpb-gallery {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+}
+
+/* Mobile Popups - Full Width */
+.lpb-canvas-mobile .lpb-popup,
+.lpb-canvas-mobile .lpb-modal {
+    width: 340px !important;
+    max-width: calc(100% - 32px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 16px;
+}
+
+/* Prevent Horizontal Scroll */
+.lpb-canvas-mobile {
+    overflow-x: hidden !important;
+}
+
+/* Mobile Padding Fix - Remove Parent Interference */
+.lpb-canvas-mobile * {
+    box-sizing: border-box;
+}
+
+/* Mobile Content Overflow - Show All Content */
+.lpb-canvas-mobile .lpb-content-wrapper {
+    overflow: visible !important;
+    max-height: none !important;
+}
+
+/* Mobile Typography - Readable Sizes */
+.lpb-canvas-mobile h1 { font-size: clamp(24px, 5vw, 32px) !important; }
+.lpb-canvas-mobile h2 { font-size: clamp(20px, 4vw, 28px) !important; }
+.lpb-canvas-mobile h3 { font-size: clamp(18px, 3.5vw, 24px) !important; }
+.lpb-canvas-mobile p { font-size: clamp(14px, 3vw, 16px) !important; line-height: 1.6 !important; }
+.lpb-canvas-mobile button { font-size: clamp(14px, 3vw, 16px) !important; }
+
+/* Mobile Icon Sizing */
+.lpb-canvas-mobile .lpb-icon {
+    font-size: clamp(20px, 5vw, 32px) !important;
+}
+
+/* Mobile Line Height and Spacing */
+.lpb-canvas-mobile * {
+    line-height: 1.5 !important;
+}
+
+/* Force Vertical Stacking for Mobile */
+@media (max-width: 375px) {
+    .lpb-canvas-mobile .lpb-child-element {
+        position: static !important;
+        display: block !important;
+        margin: 16px auto !important;
+        float: none !important;
+    }
+}
+
+/* Mobile Animation Performance */
+.lpb-canvas-mobile * {
+    will-change: auto !important;
+}
+
+/* Mobile Touch Targets - Minimum Size */
+.lpb-canvas-mobile button,
+.lpb-canvas-mobile a,
+.lpb-canvas-mobile input,
+.lpb-canvas-mobile [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+}
