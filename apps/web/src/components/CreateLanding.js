@@ -21,6 +21,7 @@ import { parseHTMLToPageData, renderStaticHTML } from '../utils/pageUtils';
 import { syncElementBetweenModes } from '../utils/responsiveSync';
 import { ErrorBoundary } from './create-page/ErrorBoundary';
 import DogLoader from './Loader'; // Import the DogLoader component
+import eventController from '../utils/EventUtils'; // Import eventController for popup events
 import '../styles/CreateLanding.css';
 import PreviewModal from '../components/PreviewModal'; // Import PreviewModal
 
@@ -127,6 +128,44 @@ const CreateLanding = () => {
     const [previewHtml, setPreviewHtml] = useState(''); // State for preview HTML
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
+
+    // Subscribe to popup events
+    useEffect(() => {
+        const handlePopupOpen = ({ popupId }) => {
+            console.log('[CreateLanding] Opening popup:', popupId);
+            setPageData(prev => ({
+                ...prev,
+                elements: prev.elements.map(el =>
+                    el.id === popupId
+                        ? { ...el, visible: true }
+                        : el
+                )
+            }));
+            toast.info(`Popup "${popupId}" đã mở`);
+        };
+
+        const handlePopupClose = ({ popupId }) => {
+            console.log('[CreateLanding] Closing popup:', popupId);
+            setPageData(prev => ({
+                ...prev,
+                elements: prev.elements.map(el =>
+                    el.id === popupId
+                        ? { ...el, visible: false }
+                        : el
+                )
+            }));
+        };
+
+        // Subscribe to events
+        const unsubscribeOpen = eventController.subscribe('popup-open', handlePopupOpen);
+        const unsubscribeClose = eventController.subscribe('popup-close', handlePopupClose);
+
+        // Cleanup on unmount
+        return () => {
+            unsubscribeOpen();
+            unsubscribeClose();
+        };
+    }, []);
 
     // Handle canvas height update
     const handleUpdateCanvasHeight = useCallback((newHeight) => {
