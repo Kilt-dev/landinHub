@@ -30,7 +30,7 @@ const TAB_ICONS = {
     fonts: Type,
 };
 
-// Hàm tạo section chuẩn với cấu trúc ladi-section
+// Hàm tạo section chuẩn với cấu trúc ladi-section và responsive sizing
 const createStandardSection = (sectionData, yPosition = 0) => {
     return {
         id: `SECTION${Date.now()}`,
@@ -42,17 +42,25 @@ const createStandardSection = (sectionData, yPosition = 0) => {
             title: sectionData.json.componentData?.title || sectionData.name,
         },
         position: {
-            desktop: { x: 0, y: yPosition },
-            tablet: { x: 0, y: yPosition },
-            mobile: { x: 0, y: yPosition },
+            desktop: { x: 0, y: yPosition, z: 1 },
+            tablet: { x: 0, y: yPosition, z: 1 },
+            mobile: { x: 0, y: yPosition, z: 1 },
         },
         size: {
-            width: 420,
+            width: 1200, // Desktop width
+            height: sectionData.json.size?.height || 574,
+        },
+        mobileSize: {
+            width: 375,
+            height: sectionData.json.size?.height || 574,
+        },
+        tabletSize: {
+            width: 768,
             height: sectionData.json.size?.height || 574,
         },
         styles: {
-            width: '420px',
-            minWidth: '420px',
+            width: '100%',
+            maxWidth: '1200px',
             height: `${sectionData.json.size?.height || 574}px`,
             margin: '0 auto',
             position: 'relative',

@@ -84,7 +84,7 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                                                 title="Mobile Preview"
                                                 sandbox="allow-scripts allow-same-origin allow-popups"
                                                 style={{
-                                                    width: "475px", // Chuẩn kích thước mobile
+                                                    width: "375px", // Chuẩn kích thước mobile (iPhone standard)
                                                     height: "667px", // Chuẩn chiều cao iPhone
                                                     border: "none",
                                                     transformOrigin: "top center",
