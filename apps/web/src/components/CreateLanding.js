@@ -135,6 +135,7 @@ const CreateLanding = () => {
     const [showPreview, setShowPreview] = useState(false);
     const [guideLine, setGuideLine] = useState({ show: true, y: 0 });
     const [previewHtml, setPreviewHtml] = useState(''); // State for preview HTML
+    const [clipboard, setClipboard] = useState(null); // Clipboard for copy/paste
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
 
@@ -694,33 +695,134 @@ const CreateLanding = () => {
         toast.success('Đã cập nhật phần tử!');
     }, [historyIndex, selectedIds, selectedChildId]);
 
-    // Duplicate element
+    // Copy element to clipboard
+    const handleCopyElement = useCallback(() => {
+        if (selectedIds.length === 0) {
+            toast.warning('Chọn một element để copy');
+            return;
+        }
+        const element = pageData.elements.find((el) => el.id === selectedIds[0]);
+        if (element) {
+            setClipboard({ ...element });
+            toast.success(`Đã copy ${element.type}! (Ctrl+V để paste)`);
+        }
+    }, [selectedIds, pageData.elements]);
+
+    // Cut element to clipboard
+    const handleCutElement = useCallback(() => {
+        if (selectedIds.length === 0) {
+            toast.warning('Chọn một element để cut');
+            return;
+        }
+        const element = pageData.elements.find((el) => el.id === selectedIds[0]);
+        if (element) {
+            setClipboard({ ...element });
+            // Delete the original element
+            handleDeleteElement(selectedIds[0], null);
+            toast.success(`Đã cut ${element.type}! (Ctrl+V để paste)`);
+        }
+    }, [selectedIds, pageData.elements, handleDeleteElement]);
+
+    // Paste element from clipboard
+    const handlePasteElement = useCallback(() => {
+        if (!clipboard) {
+            toast.warning('Clipboard trống! Copy một element trước (Ctrl+C)');
+            return;
+        }
+
+        const newElement = {
+            ...clipboard,
+            id: `${clipboard.type}-${Date.now()}`,
+            position: {
+                // Paste với offset +20px để thấy rõ element mới
+                desktop: {
+                    x: (clipboard.position?.desktop?.x || 0) + 20,
+                    y: (clipboard.position?.desktop?.y || 0) + 20,
+                    z: clipboard.position?.desktop?.z || 1
+                },
+                tablet: {
+                    x: (clipboard.position?.tablet?.x || 0) + 20,
+                    y: (clipboard.position?.tablet?.y || 0) + 20,
+                    z: clipboard.position?.tablet?.z || 1
+                },
+                mobile: {
+                    x: (clipboard.position?.mobile?.x || 0) + 20,
+                    y: (clipboard.position?.mobile?.y || 0) + 20,
+                    z: clipboard.position?.mobile?.z || 1
+                },
+            },
+        };
+
+        setPageData((prev) => {
+            const newElements = [...prev.elements, newElement];
+            const newPageData = {
+                ...prev,
+                elements: newElements,
+                canvas: { ...prev.canvas, height: calculateCanvasHeight(newElements) },
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+
+        // Select the newly pasted element
+        setSelectedIds([newElement.id]);
+        toast.success(`Đã paste ${clipboard.type}!`);
+    }, [clipboard, history, historyIndex]);
+
+    // Duplicate element (Ctrl+D)
     const handleDuplicateElement = useCallback((id, e) => {
         if (e) e.stopPropagation();
-        const element = pageData.elements.find((el) => el.id === id);
+
+        // If no ID provided, use selected element
+        const elementId = id || selectedIds[0];
+        if (!elementId) {
+            toast.warning('Chọn một element để duplicate');
+            return;
+        }
+
+        const element = pageData.elements.find((el) => el.id === elementId);
         if (element) {
             const newElement = {
                 ...element,
-                id: `${element.id}-${Date.now()}`,
+                id: `${element.type}-${Date.now()}`,
                 position: {
-                    desktop: { x: (element.position.desktop?.x || 0) + 10, y: (element.position.desktop?.y || 0) + 10 },
-                    tablet: { x: (element.position.tablet?.x || 0) + 10, y: (element.position.tablet?.y || 0) + 10 },
-                    mobile: { x: (element.position.mobile?.x || 0) + 10, y: (element.position.mobile?.y || 0) + 10 },
+                    desktop: {
+                        x: (element.position?.desktop?.x || 0) + 20,
+                        y: (element.position?.desktop?.y || 0) + 20,
+                        z: element.position?.desktop?.z || 1
+                    },
+                    tablet: {
+                        x: (element.position?.tablet?.x || 0) + 20,
+                        y: (element.position?.tablet?.y || 0) + 20,
+                        z: element.position?.tablet?.z || 1
+                    },
+                    mobile: {
+                        x: (element.position?.mobile?.x || 0) + 20,
+                        y: (element.position?.mobile?.y || 0) + 20,
+                        z: element.position?.mobile?.z || 1
+                    },
                 },
             };
             setPageData((prev) => {
+                const newElements = [...prev.elements, newElement];
                 const newPageData = {
                     ...prev,
-                    elements: [...prev.elements, newElement],
+                    elements: newElements,
+                    canvas: { ...prev.canvas, height: calculateCanvasHeight(newElements) },
                     meta: { ...prev.meta, updated_at: new Date().toISOString() }
                 };
                 setHistory([...history.slice(0, historyIndex + 1), newPageData]);
                 setHistoryIndex(historyIndex + 1);
                 return newPageData;
             });
-            toast.success('Đã sao chép phần tử!');
+
+            // Select the duplicated element
+            setSelectedIds([newElement.id]);
+            toast.success(`Đã duplicate ${element.type}!`);
         }
-    }, [historyIndex, pageData.elements]);
+    }, [historyIndex, pageData.elements, selectedIds]);
 
     // Group elements
     const handleGroupElements = useCallback((ids, e) => {
