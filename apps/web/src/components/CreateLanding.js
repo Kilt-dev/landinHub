@@ -276,22 +276,55 @@ const CreateLanding = () => {
         const lastSectionY = pageData.elements
             .filter((el) => el.type === 'section')
             .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0);
-        const newElement = {
+
+        // Initialize children with responsive data
+        const childrenWithResponsive = (section.json.children || []).map(child => {
+            const childElement = {
+                ...child,
+                position: child.position || {
+                    desktop: { x: 0, y: 0, z: 1 },
+                    tablet: { x: 0, y: 0, z: 1 },
+                    mobile: { x: 0, y: 0, z: 1 },
+                },
+                size: child.size || { width: 200, height: 50 },
+                visible: child.visible !== false,
+                locked: child.locked || false,
+            };
+            // Sync responsive data for child if missing
+            return (!childElement.mobileSize || !childElement.tabletSize)
+                ? syncElementBetweenModes(childElement, 'desktop')
+                : childElement;
+        });
+
+        const baseElement = {
             id: `${section.id}-${Date.now()}`,
             type: section.json.type,
             componentData: JSON.parse(JSON.stringify(section.json.componentData || {})),
             position: {
-                [viewMode]: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                desktop: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                tablet: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                mobile: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
+                [viewMode]: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
+                desktop: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
+                tablet: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
+                mobile: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
             },
-            size: { ...section.json.size, width: viewMode === 'mobile' ? 375 : section.json.type === 'popup' ? 600 : 1200 },
+            size: section.json.size || {
+                width: viewMode === 'mobile' ? 375 : section.json.type === 'popup' ? 600 : 1200,
+                height: section.json.size?.height || 400
+            },
+            mobileSize: section.json.mobileSize,
+            tabletSize: section.json.tabletSize,
             styles: JSON.parse(JSON.stringify(section.json.styles || {})),
-            children: JSON.parse(JSON.stringify(section.json.children || [])),
+            responsiveStyles: section.json.responsiveStyles || {},
+            children: childrenWithResponsive,
             visible: true,
             locked: false
         };
+
+        // Initialize full responsive data if not present
+        const newElement = (!baseElement.mobileSize || !baseElement.tabletSize ||
+                           !baseElement.responsiveStyles?.mobile || !baseElement.responsiveStyles?.tablet)
+            ? syncElementBetweenModes(baseElement, 'desktop')
+            : baseElement;
+
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
             const newCanvasHeight = section.json.type === 'section' ? lastSectionY + (section.json.size?.height || 400) : prev.canvas.height;
