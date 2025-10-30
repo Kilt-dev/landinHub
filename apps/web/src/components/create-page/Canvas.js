@@ -225,7 +225,8 @@ const Canvas = React.memo(({
                 }
                 const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
                 const snapPoints = getSnapPoints();
-                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+                // FREE MODE: Use showGrid to enable/disable snapping for smooth positioning
+                const snapped = snapToGrid(pos.x, pos.y, gridSize, snapPoints, showGrid);
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT && item.json) {
                     const defaultWidth = item.json.type === 'section' ? getCanvasWidth(viewMode) : 600;
@@ -277,7 +278,8 @@ const Canvas = React.memo(({
             }
             const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
             const snapPoints = getSnapPoints();
-            const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+            // FREE MODE: Use showGrid to enable/disable snapping for smooth positioning
+            const snapped = snapToGrid(pos.x, pos.y, gridSize, snapPoints, showGrid);
             if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
                 const sourceSection = pageData.elements.find((el) => el.id === item.parentId);
                 if (!sourceSection) {

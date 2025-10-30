@@ -59,16 +59,25 @@ export const getCanvasPosition = (mouseX, mouseY, containerElement, zoomLevel) =
 
 /**
  * Snaps coordinates to grid or nearby snap points
+ * FREE MODE: Pass enableSnap = false for pixel-perfect free positioning
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
  * @param {number} gridSize - Size of the grid
  * @param {Array<Object>} snapPoints - Array of snap points { x, y }
- * @returns {Object} Snapped coordinates { x, y }
+ * @param {boolean} enableSnap - Enable/disable snapping (default: true)
+ * @returns {Object} Snapped or free coordinates { x, y }
  */
-export const snapToGrid = (x, y, gridSize, snapPoints = []) => {
+export const snapToGrid = (x, y, gridSize, snapPoints = [], enableSnap = true) => {
+    // Free positioning mode - return exact coordinates
+    if (!enableSnap || gridSize <= 1) {
+        return { x: Math.round(x), y: Math.round(y) };
+    }
+
+    // Snap to grid
     let snappedX = Math.round(x / gridSize) * gridSize;
     let snappedY = Math.round(y / gridSize) * gridSize;
 
+    // Snap to nearby points (guidelines)
     snapPoints.forEach((point) => {
         if (Math.abs(x - point.x) < 15) snappedX = point.x;
         if (Math.abs(y - point.y) < 15) snappedY = point.y;

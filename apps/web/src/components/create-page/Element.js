@@ -339,8 +339,9 @@ const Element = React.memo(
         const [{ isOverContainer, canDropContainer }, dropSection] = useDrop({
             accept: [ItemTypes.ELEMENT, ItemTypes.CHILD_ELEMENT],
             canDrop: (item, monitor) => {
-                if (type !== 'section' || componentData?.structure !== 'ladi-standard') return false;
-                if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT && item.parentId && item.parentId !== id) return false;
+                // FREE MODE: Allow drop in sections and popups
+                if (type !== 'section' && type !== 'popup') return false;
+                // Allow moving between parents (LadiPage-style free drag)
                 return true;
             },
             drop: (item, monitor) => {
@@ -348,7 +349,8 @@ const Element = React.memo(
                 const clientOffset = monitor.getClientOffset();
                 if (!clientOffset) return { moved: false };
                 const pos = getCanvasPosition(clientOffset.x, clientOffset.y, containerRef.current, zoomLevel);
-                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+                // FREE MODE: Disable snapping for smooth positioning
+                const snapped = snapToGrid(pos.x, pos.y, gridSize, snapPoints, showGrid);
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT) {
                     const newId = `${item.id}-${Date.now()}`;
@@ -400,7 +402,8 @@ const Element = React.memo(
                 const clientOffset = monitor.getClientOffset();
                 if (!clientOffset) return { moved: false };
                 const pos = getCanvasPosition(clientOffset.x, clientOffset.y, containerRef.current, zoomLevel);
-                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+                // FREE MODE: Smooth positioning without grid constraints
+                const snapped = snapToGrid(pos.x, pos.y, gridSize, snapPoints, showGrid);
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT) {
                     const newId = `${item.id}-${Date.now()}`;
