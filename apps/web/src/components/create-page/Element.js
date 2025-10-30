@@ -7,6 +7,7 @@ import SectionToolkit from './toolkitqick/SectionToolkit';
 import { ItemTypes, getCanvasPosition, snapToGrid } from './helpers';
 import eventController from '../../utils/EventUtils';
 import { getResponsiveValues } from '../../utils/responsiveSync';
+import ResizeHandles from './ResizeHandles';
 
 /**
  * Utility to check if URL is valid
@@ -59,7 +60,9 @@ const ChildElement = React.memo(
          visible = true,
          locked = false,
          onDeleteChild,
+         onUpdateChildSize,
          element,
+         zoomLevel = 1,
      }) => {
         const dragRef = useRef(null);
 
@@ -114,6 +117,22 @@ const ChildElement = React.memo(
                 }
             },
             [parentId, id, onDeleteChild, locked, componentData.locked]
+        );
+
+        const handleResize = useCallback(
+            ({ width, height, x, y }) => {
+                if (typeof onUpdateChildSize === 'function' && !locked && !componentData.locked) {
+                    // Update both size and position if position changed (for resize from left/top)
+                    if (x !== responsivePosition.x || y !== responsivePosition.y) {
+                        // We need to update position too, but we don't have onUpdateChildPosition here
+                        // For now, just update the size
+                        onUpdateChildSize(parentId, id, { width, height });
+                    } else {
+                        onUpdateChildSize(parentId, id, { width, height });
+                    }
+                }
+            },
+            [parentId, id, onUpdateChildSize, locked, componentData.locked, responsivePosition]
         );
 
         useEffect(() => {
@@ -212,29 +231,42 @@ const ChildElement = React.memo(
                     </div>
                 )}
                 {isSelected && (
-                    <button
-                        onClick={handleDelete}
-                        style={{
-                            position: 'absolute',
-                            top: '2px',
-                            left: '2px',
-                            zIndex: 10002,
-                            borderRadius: '50%',
-                            background: '#ff7b7b',
-                            border: 'none',
-                            color: '#ffffff',
-                            fontSize: '16px',
-                            cursor: 'pointer',
-                            padding: '6px',
-                            width: '30px',
-                            height: '30px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <i className="fas fa-trash-alt" />
-                    </button>
+                    <>
+                        <button
+                            onClick={handleDelete}
+                            style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: '2px',
+                                zIndex: 10002,
+                                borderRadius: '50%',
+                                background: '#ff7b7b',
+                                border: 'none',
+                                color: '#ffffff',
+                                fontSize: '16px',
+                                cursor: 'pointer',
+                                padding: '6px',
+                                width: '30px',
+                                height: '30px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <i className="fas fa-trash-alt" />
+                        </button>
+                        {!locked && !componentData.locked && (
+                            <ResizeHandles
+                                elementId={id}
+                                currentSize={responsiveSize}
+                                currentPosition={responsivePosition}
+                                onResize={handleResize}
+                                zoomLevel={zoomLevel}
+                                minWidth={type === 'icon' ? 30 : 50}
+                                minHeight={type === 'icon' ? 30 : 30}
+                            />
+                        )}
+                    </>
                 )}
             </div>
         );
@@ -250,6 +282,7 @@ const Element = React.memo(
          isSelected,
          onSelectElement,
          onUpdatePosition,
+         onUpdateSize,
          viewMode,
          zoomLevel,
          gridSize,
@@ -260,6 +293,7 @@ const Element = React.memo(
          selectedChildId,
          onAddChild,
          onUpdateChildPosition,
+         onUpdateChildSize,
          onMoveChild,
          showGrid,
          setDragPreview,
@@ -339,8 +373,9 @@ const Element = React.memo(
         const [{ isOverContainer, canDropContainer }, dropSection] = useDrop({
             accept: [ItemTypes.ELEMENT, ItemTypes.CHILD_ELEMENT],
             canDrop: (item, monitor) => {
-                if (type !== 'section' || componentData?.structure !== 'ladi-standard') return false;
-                if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT && item.parentId && item.parentId !== id) return false;
+                // FREE MODE: Allow drop in sections and popups
+                if (type !== 'section' && type !== 'popup') return false;
+                // Allow moving between parents (LadiPage-style free drag)
                 return true;
             },
             drop: (item, monitor) => {
@@ -348,7 +383,8 @@ const Element = React.memo(
                 const clientOffset = monitor.getClientOffset();
                 if (!clientOffset) return { moved: false };
                 const pos = getCanvasPosition(clientOffset.x, clientOffset.y, containerRef.current, zoomLevel);
-                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+                // FREE MODE: Disable snapping for smooth positioning
+                const snapped = snapToGrid(pos.x, pos.y, gridSize, snapPoints, showGrid);
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT) {
                     const newId = `${item.id}-${Date.now()}`;
@@ -400,7 +436,8 @@ const Element = React.memo(
                 const clientOffset = monitor.getClientOffset();
                 if (!clientOffset) return { moved: false };
                 const pos = getCanvasPosition(clientOffset.x, clientOffset.y, containerRef.current, zoomLevel);
-                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+                // FREE MODE: Smooth positioning without grid constraints
+                const snapped = snapToGrid(pos.x, pos.y, gridSize, snapPoints, showGrid);
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT) {
                     const newId = `${item.id}-${Date.now()}`;
@@ -574,6 +611,19 @@ const Element = React.memo(
             [id, onContextMenu]
         );
 
+        const handleParentResize = useCallback(
+            ({ width, height, x, y }) => {
+                if (typeof onUpdateSize === 'function' && !locked) {
+                    // For parent elements, just update the size
+                    onUpdateSize(id, { width, height });
+
+                    // Note: Position updates for sections/popups are typically not needed
+                    // as they're positioned relative to the canvas
+                }
+            },
+            [id, onUpdateSize, locked]
+        );
+
         if (!visible) {
             return null;
         }
@@ -674,6 +724,7 @@ const Element = React.memo(
                                     gridSize={gridSize}
                                     showGrid={showGrid}
                                     onUpdateChildPosition={onUpdateChildPosition}
+                                    onUpdateChildSize={onUpdateChildSize}
                                     onMoveChild={onMoveChild}
                                     viewMode={viewMode}
                                     onDeleteChild={onDeleteChild}
@@ -683,16 +734,30 @@ const Element = React.memo(
                     </div>
 
                     {isSelected && (
-                        <SectionToolkit
-                            element={element}
-                            position={{ x: 0, y: 0 }}
-                            onEdit={() => onEditElement(id)}
-                            onSaveTemplate={onSaveTemplate}
-                            onMoveUp={() => onMoveElementUp(id)}
-                            onMoveDown={() => onMoveElementDown(id)}
-                            onToggleVisibility={() => onToggleVisibility(id)}
-                            onDelete={() => onDeleteElement(id)}
-                        />
+                        <>
+                            <SectionToolkit
+                                element={element}
+                                position={{ x: 0, y: 0 }}
+                                onEdit={() => onEditElement(id)}
+                                onSaveTemplate={onSaveTemplate}
+                                onMoveUp={() => onMoveElementUp(id)}
+                                onMoveDown={() => onMoveElementDown(id)}
+                                onToggleVisibility={() => onToggleVisibility(id)}
+                                onDelete={() => onDeleteElement(id)}
+                            />
+                            {!locked && (
+                                <ResizeHandles
+                                    elementId={id}
+                                    currentSize={responsiveSize}
+                                    currentPosition={responsivePosition}
+                                    onResize={handleParentResize}
+                                    zoomLevel={zoomLevel}
+                                    minWidth={300}
+                                    minHeight={200}
+                                    maxWidth={getCanvasWidth(viewMode)}
+                                />
+                            )}
+                        </>
                     )}
                 </div>
             );
@@ -837,6 +902,7 @@ const Element = React.memo(
                                     gridSize={gridSize}
                                     showGrid={showGrid}
                                     onUpdateChildPosition={onUpdateChildPosition}
+                                    onUpdateChildSize={onUpdateChildSize}
                                     onMoveChild={onMoveChild}
                                     viewMode={viewMode}
                                     onDeleteChild={onDeleteChild}
@@ -860,6 +926,18 @@ const Element = React.memo(
                             >
                                 <i className="fas fa-lock" /> Locked
                             </div>
+                        )}
+                        {isSelected && !locked && (
+                            <ResizeHandles
+                                elementId={id}
+                                currentSize={responsiveSize}
+                                currentPosition={responsivePosition}
+                                onResize={handleParentResize}
+                                zoomLevel={zoomLevel}
+                                minWidth={300}
+                                minHeight={200}
+                                maxWidth={getCanvasWidth(viewMode)}
+                            />
                         )}
                     </div>
                 </>
@@ -986,6 +1064,7 @@ Element.propTypes = {
     isSelected: PropTypes.bool.isRequired,
     onSelectElement: PropTypes.func.isRequired,
     onUpdatePosition: PropTypes.func.isRequired,
+    onUpdateSize: PropTypes.func.isRequired,
     viewMode: PropTypes.oneOf(['desktop', 'tablet', 'mobile']).isRequired,
     zoomLevel: PropTypes.number.isRequired,
     gridSize: PropTypes.number.isRequired,
@@ -999,6 +1078,7 @@ Element.propTypes = {
     selectedChildId: PropTypes.string,
     onAddChild: PropTypes.func.isRequired,
     onUpdateChildPosition: PropTypes.func.isRequired,
+    onUpdateChildSize: PropTypes.func.isRequired,
     onMoveChild: PropTypes.func.isRequired,
     showGrid: PropTypes.bool.isRequired,
     setDragPreview: PropTypes.func.isRequired,

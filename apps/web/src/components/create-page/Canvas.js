@@ -34,6 +34,7 @@ const Canvas = React.memo(({
                                selectedChildId,
                                onAddChild,
                                onUpdateChildPosition,
+                               onUpdateChildSize,
                                onMoveChild,
                                guideLine,
                                onShowAddSectionPopup,
@@ -225,7 +226,8 @@ const Canvas = React.memo(({
                 }
                 const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
                 const snapPoints = getSnapPoints();
-                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+                // FREE MODE: Use showGrid to enable/disable snapping for smooth positioning
+                const snapped = snapToGrid(pos.x, pos.y, gridSize, snapPoints, showGrid);
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT && item.json) {
                     const defaultWidth = item.json.type === 'section' ? getCanvasWidth(viewMode) : 600;
@@ -277,7 +279,8 @@ const Canvas = React.memo(({
             }
             const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
             const snapPoints = getSnapPoints();
-            const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+            // FREE MODE: Use showGrid to enable/disable snapping for smooth positioning
+            const snapped = snapToGrid(pos.x, pos.y, gridSize, snapPoints, showGrid);
             if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
                 const sourceSection = pageData.elements.find((el) => el.id === item.parentId);
                 if (!sourceSection) {
@@ -601,6 +604,7 @@ const Canvas = React.memo(({
                         selectedChildId={selectedChildId}
                         onAddChild={onAddChild}
                         onUpdateChildPosition={onUpdateChildPosition}
+                        onUpdateChildSize={onUpdateChildSize}
                         onMoveChild={onMoveChild}
                         showGrid={showGrid}
                         setDragPreview={setDragPreview}
@@ -721,6 +725,7 @@ Canvas.propTypes = {
     selectedChildId: PropTypes.string,
     onAddChild: PropTypes.func.isRequired,
     onUpdateChildPosition: PropTypes.func.isRequired,
+    onUpdateChildSize: PropTypes.func.isRequired,
     onMoveChild: PropTypes.func.isRequired,
     guideLine: PropTypes.shape({
         show: PropTypes.bool,

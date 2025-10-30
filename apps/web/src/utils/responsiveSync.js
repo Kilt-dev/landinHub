@@ -70,9 +70,9 @@ export const autoScaleSize = (element, fromMode, toMode) => {
 
 /**
  * Tự động scale position cho element
- * Với anti-overlap detection cho mobile
+ * Với anti-overlap detection cho mobile và vertical stacking
  */
-export const autoScalePosition = (element, fromMode, toMode, newSize, siblings = []) => {
+export const autoScalePosition = (element, fromMode, toMode, newSize, siblings = [], verticalIndex = 0) => {
     const fromPos = element.position?.[fromMode] || { x: 0, y: 0, z: 1 };
     const scaleFactor = getScaleFactor(fromMode, toMode);
 
@@ -107,15 +107,24 @@ export const autoScalePosition = (element, fromMode, toMode, newSize, siblings =
         scaledX = Math.max(0, canvasWidth - elementWidth - 10);
     }
 
-    // MOBILE: Prevent overlap với siblings
+    // MOBILE: Force vertical stacking with smart positioning
     if (toMode === 'mobile' && siblings && siblings.length > 0) {
         const hasOverlap = (x1, y1, w1, h1, x2, y2, w2, h2) => {
             return !(x1 + w1 <= x2 || x2 + w2 <= x1 || y1 + h1 <= y2 || y2 + h2 <= y1);
         };
 
-        // Check overlap với từng sibling
-        let adjusted = false;
-        for (const sibling of siblings) {
+        // Sort siblings by Y position (top to bottom)
+        const sortedSiblings = [...siblings].sort((a, b) => {
+            const aPos = a.position?.[toMode] || a.position?.desktop || { x: 0, y: 0 };
+            const bPos = b.position?.[toMode] || b.position?.desktop || { x: 0, y: 0 };
+            return aPos.y - bPos.y;
+        });
+
+        // Check overlap with all positioned siblings
+        let maxBottomY = 0;
+        let hasAnyOverlap = false;
+
+        for (const sibling of sortedSiblings) {
             if (sibling.id === element.id) continue;
 
             const siblingPos = sibling.position?.[toMode] || sibling.position?.desktop || { x: 0, y: 0 };
@@ -123,17 +132,34 @@ export const autoScalePosition = (element, fromMode, toMode, newSize, siblings =
                 ? sibling.mobileSize
                 : sibling.size || { width: 200, height: 50 };
 
+            // Track the lowest point of all siblings
+            const siblingBottom = siblingPos.y + siblingSize.height;
+            if (siblingBottom > maxBottomY) {
+                maxBottomY = siblingBottom;
+            }
+
             if (hasOverlap(scaledX, scaledY, elementWidth, elementHeight,
                           siblingPos.x, siblingPos.y, siblingSize.width, siblingSize.height)) {
-                // Move below sibling với 10px gap
-                scaledY = siblingPos.y + siblingSize.height + 10;
-                adjusted = true;
+                hasAnyOverlap = true;
             }
         }
 
-        // Nếu bị push xuống quá xa, stack vertically
-        if (adjusted && scaledY > fromPos.y * 2) {
-            scaledX = 10; // Căn trái với margin
+        // If overlap detected, position below all siblings with gap
+        if (hasAnyOverlap) {
+            scaledY = maxBottomY + 16; // 16px gap between elements
+
+            // Center horizontally on mobile with some padding
+            const padding = 16;
+            if (elementWidth < canvasWidth - (padding * 2)) {
+                scaledX = Math.round((canvasWidth - elementWidth) / 2);
+            } else {
+                scaledX = padding;
+            }
+        }
+
+        // Ensure elements don't go off-screen horizontally
+        if (scaledX + elementWidth > canvasWidth - 16) {
+            scaledX = Math.max(16, canvasWidth - elementWidth - 16);
         }
     }
 
