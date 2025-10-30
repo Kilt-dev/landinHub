@@ -22,6 +22,7 @@ const TAB_ICONS = {
     elements: Box,
     popups: Square,
     templates: FileText,
+    advancedElements: Star,
     utilities: Wrench,
     content: FileEdit,
     media: Image,
@@ -317,6 +318,7 @@ const ComponentLibrary = ({ isCollapsed, onToggle, onAddElement, onAddChild, pag
 
     const ComponentItem = ({ item }) => {
         const isClickOnly = activeTab === 'sections' || activeTab === 'popups' || activeTab === 'documents' || activeTab === 'templates';
+        // Advanced elements can be draggable
         return isClickOnly ? <ClickableComponentItem item={item} /> : <DraggableComponentItem item={item} />;
     };
 
@@ -367,6 +369,7 @@ const ComponentLibrary = ({ isCollapsed, onToggle, onAddElement, onAddChild, pag
                             elements: 'Thành phần',
                             popups: 'Popup',
                             templates: 'Mẫu',
+                            advancedElements: 'Nâng cao',
                             utilities: 'Tiện ích',
                             content: 'Nội dung',
                             media: 'Media',

@@ -515,9 +515,14 @@ const renderElementHTML = (element, isChild = false) => {
             return renderSectionHTML(element);
 
         case 'button':
+            // Generate onclick handler if events exist
+            const onClickAttr = componentData.events?.onClick
+                ? `onclick="LPB.handleEvent(${JSON.stringify(componentData.events.onClick).replace(/"/g, '&quot;')})"`
+                : '';
             return `
                 <button
                     ${baseAttrs}
+                    ${onClickAttr}
                     style="${inlineStyles}; ${positionStyles}"
                 >
                     ${componentData.content || componentData.text || 'Button'}
@@ -592,6 +597,22 @@ const renderElementHTML = (element, isChild = false) => {
                 </video>
             `;
 
+        case 'iframe':
+            return `
+                <iframe
+                    ${baseAttrs}
+                    src="${componentData.src || ''}"
+                    title="${componentData.title || 'Iframe'}"
+                    width="${componentData.width || size.width || '100%'}"
+                    height="${componentData.height || size.height || '100%'}"
+                    frameborder="${componentData.frameBorder ?? 0}"
+                    allow="${componentData.allow || 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'}"
+                    allowfullscreen="${componentData.allowFullscreen !== false}"
+                    loading="${componentData.loading || 'lazy'}"
+                    style="${inlineStyles}; ${positionStyles}"
+                ></iframe>
+            `;
+
         case 'divider':
         case 'hr':
             return `
@@ -662,6 +683,44 @@ const renderElementHTML = (element, isChild = false) => {
                     style="${inlineStyles}; ${positionStyles}"
                 >
                     ${containerChildren || componentData.content || ''}
+                </div>
+            `;
+
+        // Advanced Components - HTML Export
+        case 'countdown':
+            return `
+                <div ${baseAttrs} data-countdown="${componentData.targetDate || ''}" style="${inlineStyles}; ${positionStyles}" class="lpb-countdown">
+                    <div class="countdown-timer" id="timer-${id}"></div>
+                    <script>
+                        (function() {
+                            const target = new Date('${componentData.targetDate}').getTime();
+                            const el = document.getElementById('timer-${id}');
+                            const labels = ${JSON.stringify(componentData.labels || {})};
+                            setInterval(() => {
+                                const now = new Date().getTime();
+                                const diff = target - now;
+                                if (diff < 0) { el.innerHTML = 'Đã kết thúc'; return; }
+                                const d = Math.floor(diff / (1000*60*60*24));
+                                const h = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+                                const m = Math.floor((diff % (1000*60*60)) / (1000*60));
+                                const s = Math.floor((diff % (1000*60)) / 1000);
+                                el.innerHTML = \`<div>\${d}<br><small>\${labels.days || 'Days'}</small></div><div>\${h}<br><small>\${labels.hours || 'Hours'}</small></div><div>\${m}<br><small>\${labels.minutes || 'Mins'}</small></div><div>\${s}<br><small>\${labels.seconds || 'Secs'}</small></div>\`;
+                            }, 1000);
+                        })();
+                    </script>
+                </div>
+            `;
+
+        case 'carousel':
+        case 'accordion':
+        case 'tabs':
+        case 'progress':
+        case 'rating':
+            // Simple HTML fallback - use data attributes for JS enhancement
+            return `
+                <div ${baseAttrs} data-type="${type}" data-config='${JSON.stringify(componentData).replace(/'/g, '&apos;')}' style="${inlineStyles}; ${positionStyles}" class="lpb-${type}">
+                    ${componentData.title ? `<h3>${componentData.title}</h3>` : ''}
+                    <div class="${type}-content">Loading ${type}...</div>
                 </div>
             `;
 
@@ -887,6 +946,21 @@ const generateCSS = (pageData) => {
     css += `\n@media (max-width: 768px) {`;
 
     pageData.elements.forEach(element => {
+        // Apply responsive styles for all element types
+        if (element.responsiveStyles?.tablet) {
+            css += `\n    #${element.id} {`;
+            Object.entries(element.responsiveStyles.tablet).forEach(([key, value]) => {
+                const kebabKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+                css += `${kebabKey}:${value};`;
+            });
+            css += `}`;
+        }
+
+        // Apply responsive sizing for tablet
+        if (element.tabletSize) {
+            css += `\n    #${element.id} { width: ${element.tabletSize.width}px; height: ${element.tabletSize.height}px; }`;
+        }
+
         if (element.type === 'section') {
             css += `\n    #${element.id} { top: var(--tablet-y-${element.id}, ${element.position?.tablet?.y || element.position?.desktop?.y || 0}px); }`;
 
@@ -896,6 +970,16 @@ const generateCSS = (pageData) => {
                     const tabletX = child.position?.tablet?.x || child.position?.desktop?.x || 0;
                     const tabletY = child.position?.tablet?.y || child.position?.desktop?.y || 0;
                     css += `\n    #${child.id} { left: ${tabletX}px; top: ${tabletY}px; }`;
+
+                    // Apply child responsive styles
+                    if (child.responsiveStyles?.tablet) {
+                        css += `\n    #${child.id} {`;
+                        Object.entries(child.responsiveStyles.tablet).forEach(([key, value]) => {
+                            const kebabKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+                            css += `${kebabKey}:${value};`;
+                        });
+                        css += `}`;
+                    }
                 });
             }
         }
@@ -908,6 +992,21 @@ const generateCSS = (pageData) => {
     css += `\n@media (max-width: 480px) {`;
 
     pageData.elements.forEach(element => {
+        // Apply responsive styles for all element types
+        if (element.responsiveStyles?.mobile) {
+            css += `\n    #${element.id} {`;
+            Object.entries(element.responsiveStyles.mobile).forEach(([key, value]) => {
+                const kebabKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+                css += `${kebabKey}:${value};`;
+            });
+            css += `}`;
+        }
+
+        // Apply responsive sizing for mobile
+        if (element.mobileSize) {
+            css += `\n    #${element.id} { width: ${element.mobileSize.width}px; height: ${element.mobileSize.height}px; }`;
+        }
+
         if (element.type === 'section') {
             css += `\n    #${element.id} { top: var(--mobile-y-${element.id}, ${element.position?.mobile?.y || element.position?.desktop?.y || 0}px); }`;
 
@@ -917,6 +1016,16 @@ const generateCSS = (pageData) => {
                     const mobileX = child.position?.mobile?.x || child.position?.desktop?.x || 0;
                     const mobileY = child.position?.mobile?.y || child.position?.desktop?.y || 0;
                     css += `\n    #${child.id} { left: ${mobileX}px; top: ${mobileY}px; }`;
+
+                    // Apply child responsive styles
+                    if (child.responsiveStyles?.mobile) {
+                        css += `\n    #${child.id} {`;
+                        Object.entries(child.responsiveStyles.mobile).forEach(([key, value]) => {
+                            const kebabKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+                            css += `${kebabKey}:${value};`;
+                        });
+                        css += `}`;
+                    }
                 });
             }
         }
@@ -1748,6 +1857,17 @@ const parseComponentData = (element, type) => {
             componentData.loop = element.hasAttribute('loop');
             componentData.muted = element.hasAttribute('muted');
             componentData.fallbackText = element.textContent.trim();
+            break;
+
+        case 'iframe':
+            componentData.src = element.getAttribute('src') || '';
+            componentData.title = element.getAttribute('title') || 'Iframe';
+            componentData.width = element.getAttribute('width') || '100%';
+            componentData.height = element.getAttribute('height') || '100%';
+            componentData.frameBorder = parseInt(element.getAttribute('frameborder')) || 0;
+            componentData.allow = element.getAttribute('allow') || 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            componentData.allowFullscreen = element.hasAttribute('allowfullscreen');
+            componentData.loading = element.getAttribute('loading') || 'lazy';
             break;
 
         case 'divider':
