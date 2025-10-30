@@ -35,6 +35,8 @@ import DogLoader from './Loader'; // Import the DogLoader component
 import eventController from '../utils/EventUtils'; // Import eventController for popup events
 import '../styles/CreateLanding.css';
 import PreviewModal from '../components/PreviewModal'; // Import PreviewModal
+import AIContentModal from './create-page/AIContentModal'; // AI Content Generator
+import AIPageAnalyzer from './create-page/AIPageAnalyzer'; // AI Page Analyzer
 
 
 // Constants
@@ -139,6 +141,12 @@ const CreateLanding = () => {
     const [previewHtml, setPreviewHtml] = useState(''); // State for preview HTML
     const [clipboard, setClipboard] = useState(null); // Clipboard for copy/paste
     const [isPopupLayerCollapsed, setIsPopupLayerCollapsed] = useState(true); // Popup layer manager state
+
+    // AI Features State
+    const [showAIContentModal, setShowAIContentModal] = useState(false);
+    const [showAIAnalyzer, setShowAIAnalyzer] = useState(false);
+    const [aiElementType, setAIElementType] = useState('paragraph'); // Type for AI content generation
+
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
 
@@ -1171,6 +1179,86 @@ const CreateLanding = () => {
         setShowPreview(true);
     }, [pageData]);
 
+    // AI Content Generator
+    const handleAIContentGenerator = useCallback(() => {
+        // Determine element type from selected element
+        const selected = selectedIds.length > 0 && pageData.elements.find(el => el.id === selectedIds[0]);
+        const elementType = selected ? selected.type : 'paragraph';
+        setAIElementType(elementType);
+        setShowAIContentModal(true);
+    }, [selectedIds, pageData.elements]);
+
+    // AI Page Analyzer
+    const handleAIPageAnalyzer = useCallback(() => {
+        setShowAIAnalyzer(true);
+    }, []);
+
+    // AI Content Insert Handler
+    const handleAIContentInsert = useCallback((content) => {
+        if (selectedChildId && selectedIds.length > 0) {
+            // Update child element content
+            const parentId = selectedIds[0];
+            setPageData((prev) => {
+                const newPageData = {
+                    ...prev,
+                    elements: prev.elements.map((el) => {
+                        if (el.id === parentId) {
+                            return {
+                                ...el,
+                                children: el.children.map((child) =>
+                                    child.id === selectedChildId
+                                        ? {
+                                            ...child,
+                                            componentData: {
+                                                ...child.componentData,
+                                                text: content,
+                                                content: content
+                                            }
+                                        }
+                                        : child
+                                ),
+                            };
+                        }
+                        return el;
+                    }),
+                    meta: { ...prev.meta, updated_at: new Date().toISOString() }
+                };
+                setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+                setHistoryIndex(historyIndex + 1);
+                return newPageData;
+            });
+            toast.success('Đã chèn nội dung AI!');
+        } else if (selectedIds.length > 0) {
+            // Update parent element content
+            const elementId = selectedIds[0];
+            setPageData((prev) => {
+                const newPageData = {
+                    ...prev,
+                    elements: prev.elements.map((el) =>
+                        el.id === elementId
+                            ? {
+                                ...el,
+                                componentData: {
+                                    ...el.componentData,
+                                    text: content,
+                                    content: content
+                                }
+                            }
+                            : el
+                    ),
+                    meta: { ...prev.meta, updated_at: new Date().toISOString() }
+                };
+                setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+                setHistoryIndex(historyIndex + 1);
+                return newPageData;
+            });
+            toast.success('Đã chèn nội dung AI!');
+        } else {
+            toast.warning('Vui lòng chọn một element trước!');
+        }
+        setShowAIContentModal(false);
+    }, [selectedIds, selectedChildId, historyIndex, history, pageData]);
+
     // Import .iuhpage file
     const handleImportIUHPage = useCallback((event) => {
         const file = event.target.files[0];
@@ -1540,6 +1628,8 @@ const CreateLanding = () => {
                             onToggleLock={handleToggleLock}
                             onDeleteElement={handleDeleteElement}
                             onShowAddSectionGuide={handleShowAddSectionPopup}
+                            onAIContentGenerator={handleAIContentGenerator}
+                            onAIPageAnalyzer={handleAIPageAnalyzer}
                             className="bg-white p-4 shadow-sm"
                         />
                     </ErrorBoundary>
@@ -1597,6 +1687,25 @@ const CreateLanding = () => {
                             setPreviewHtml={setPreviewHtml}
                             previewHtml={previewHtml}
                             fullScreen={false}
+                        />
+                    )}
+
+                    {/* AI Content Generator Modal */}
+                    {showAIContentModal && (
+                        <AIContentModal
+                            isOpen={showAIContentModal}
+                            onClose={() => setShowAIContentModal(false)}
+                            onInsert={handleAIContentInsert}
+                            elementType={aiElementType}
+                        />
+                    )}
+
+                    {/* AI Page Analyzer Modal */}
+                    {showAIAnalyzer && (
+                        <AIPageAnalyzer
+                            isOpen={showAIAnalyzer}
+                            onClose={() => setShowAIAnalyzer(false)}
+                            pageData={pageData}
                         />
                     )}
                 </div>
