@@ -15,6 +15,7 @@ import Toolbar from './create-page/Toolbar';
 import ResponsiveToolbar from './create-page/ResponsiveToolbar';
 import SectionPopup from '../components/create-page/SectionPopup';
 import LayerManager from './create-page/LayerManager';
+import PopupLayerManager from './create-page/PopupLayerManager';
 import api from '@landinghub/api';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
@@ -137,6 +138,7 @@ const CreateLanding = () => {
     const [guideLine, setGuideLine] = useState({ show: true, y: 0 });
     const [previewHtml, setPreviewHtml] = useState(''); // State for preview HTML
     const [clipboard, setClipboard] = useState(null); // Clipboard for copy/paste
+    const [isPopupLayerCollapsed, setIsPopupLayerCollapsed] = useState(true); // Popup layer manager state
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
 
@@ -821,6 +823,81 @@ const CreateLanding = () => {
             toast.success(`Đã duplicate ${element.type}!`);
         }
     }, [historyIndex, pageData.elements, selectedIds]);
+
+    // Popup Layer Manager handlers
+    const handleTogglePopupVisibility = useCallback((popupId) => {
+        setPageData((prev) => {
+            const newPageData = {
+                ...prev,
+                elements: prev.elements.map((el) =>
+                    el.id === popupId ? { ...el, visible: !el.visible } : el
+                ),
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+    }, [history, historyIndex]);
+
+    const handleReorderPopups = useCallback((reorderedPopups) => {
+        setPageData((prev) => {
+            const nonPopups = prev.elements.filter((el) => el.type !== 'popup');
+            const newPageData = {
+                ...prev,
+                elements: [...nonPopups, ...reorderedPopups],
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+    }, [history, historyIndex]);
+
+    const handleAddNewPopup = useCallback(() => {
+        const nextZ = pageData.elements.filter((el) => el.type === 'popup').length + 1001;
+        const newPopup = {
+            id: `POPUP-${Date.now()}`,
+            type: 'popup',
+            componentData: {
+                title: `Popup ${nextZ - 1000}`,
+                trigger: 'manual',
+                structure: 'ladi-standard',
+            },
+            position: {
+                desktop: { x: 100, y: 100, z: nextZ },
+                tablet: { x: 100, y: 100, z: nextZ },
+                mobile: { x: 50, y: 50, z: nextZ },
+            },
+            size: { width: 600, height: 400 },
+            mobileSize: { width: 340, height: 400 },
+            tabletSize: { width: 600, height: 400 },
+            styles: {
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
+                padding: '24px',
+            },
+            children: [],
+            visible: true,
+            locked: false,
+            isPopup: true,
+        };
+
+        setPageData((prev) => {
+            const newElements = [...prev.elements, newPopup];
+            const newPageData = {
+                ...prev,
+                elements: newElements,
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+
+        setSelectedIds([newPopup.id]);
+    }, [pageData.elements, history, historyIndex]);
 
     // Group elements
     const handleGroupElements = useCallback((ids, e) => {
@@ -1515,6 +1592,20 @@ const CreateLanding = () => {
                     viewMode={viewMode}
                     onToggleVisibility={handleToggleVisibility}
                     className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg"
+                />
+                <PopupLayerManager
+                    popups={pageData.elements.filter((el) => el.type === 'popup')}
+                    selectedPopupId={selectedIds.find((id) => {
+                        const el = pageData.elements.find((e) => e.id === id);
+                        return el && el.type === 'popup';
+                    })}
+                    onSelectPopup={(popupId) => handleSelectElement([popupId])}
+                    onTogglePopupVisibility={handleTogglePopupVisibility}
+                    onDeletePopup={handleDeleteElement}
+                    onReorderPopups={handleReorderPopups}
+                    onAddPopup={handleAddNewPopup}
+                    isCollapsed={isPopupLayerCollapsed}
+                    onToggleCollapse={() => setIsPopupLayerCollapsed(!isPopupLayerCollapsed)}
                 />
             </div>
         </DndProvider>
