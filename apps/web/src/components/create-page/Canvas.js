@@ -48,8 +48,18 @@ const Canvas = React.memo(({
     const [showPopup, setShowPopup] = useState(false);
     const [guideLinePosition, setGuideLinePosition] = useState(guideLine?.y || 0);
     const [visiblePopups, setVisiblePopups] = useState([]);
+    // Helper function to get canvas width based on viewMode
+    const getCanvasWidth = useCallback((mode) => {
+        switch (mode) {
+            case 'mobile': return 375;
+            case 'tablet': return 768;
+            case 'desktop':
+            default: return 1200;
+        }
+    }, []);
+
     const [canvasBounds, setCanvasBounds] = useState({
-        width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : (viewMode === 'mobile' ? 375 : 1200),
+        width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : getCanvasWidth(viewMode),
         height: canvasRef.current ? canvasRef.current.offsetHeight / (zoomLevel / 100) : 1000,
     });
     useEffect(() => {
@@ -76,19 +86,20 @@ const Canvas = React.memo(({
     useEffect(() => {
         const handleResize = () => {
             setCanvasBounds({
-                width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : (viewMode === 'mobile' ? 375 : 1200),
+                width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : getCanvasWidth(viewMode),
                 height: canvasRef.current ? canvasRef.current.offsetHeight / (zoomLevel / 100) : 1000,
             });
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
-    }, [viewMode, zoomLevel]);
+    }, [viewMode, zoomLevel, getCanvasWidth]);
 
     const getSnapPoints = useCallback(() => {
+        const canvasWidth = getCanvasWidth(viewMode);
         const points = [
             { x: 0, y: 0 },
-            { x: viewMode === 'mobile' ? 375 : 1200, y: canvasBounds.height },
-            { x: (viewMode === 'mobile' ? 375 : 1200) / 2, y: canvasBounds.height / 2 },
+            { x: canvasWidth, y: canvasBounds.height },
+            { x: canvasWidth / 2, y: canvasBounds.height / 2 },
         ];
         pageData.elements.forEach((el) => {
             const bounds = getElementBounds(el);
@@ -137,17 +148,18 @@ const Canvas = React.memo(({
                 if (Math.abs(snapped.y - childBounds.centerY) < 15) newGuidelines.push({ vertical: false, position: childBounds.centerY });
             });
         });
+        const canvasWidth = getCanvasWidth(viewMode);
         if (Math.abs(snapped.x) < 15) newGuidelines.push({ vertical: true, position: 0 });
-        if (Math.abs(snapped.x - (viewMode === 'mobile' ? 375 : 1200)) < 15)
-            newGuidelines.push({ vertical: true, position: viewMode === 'mobile' ? 375 : 1200 });
-        if (Math.abs(snapped.x - (viewMode === 'mobile' ? 375 : 1200) / 2) < 15)
-            newGuidelines.push({ vertical: true, position: (viewMode === 'mobile' ? 375 : 1200) / 2 });
+        if (Math.abs(snapped.x - canvasWidth) < 15)
+            newGuidelines.push({ vertical: true, position: canvasWidth });
+        if (Math.abs(snapped.x - canvasWidth / 2) < 15)
+            newGuidelines.push({ vertical: true, position: canvasWidth / 2 });
         if (Math.abs(snapped.y) < 15) newGuidelines.push({ vertical: false, position: 0 });
         if (Math.abs(snapped.y - canvasBounds.height) < 15) newGuidelines.push({ vertical: false, position: canvasBounds.height });
         if (Math.abs(snapped.y - canvasBounds.height / 2) < 15)
             newGuidelines.push({ vertical: false, position: canvasBounds.height / 2 });
         return newGuidelines;
-    }, [pageData.elements, viewMode, canvasBounds]);
+    }, [pageData.elements, viewMode, canvasBounds, getCanvasWidth]);
 
     const handleSelectElement = useCallback((ids, ctrlKey) => {
         if (typeof onSelectElement === 'function') {
@@ -216,11 +228,12 @@ const Canvas = React.memo(({
                 const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT && item.json) {
+                    const defaultWidth = item.json.type === 'section' ? getCanvasWidth(viewMode) : 600;
                     setDragPreview({
                         id: 'preview',
                         x: snapped.x,
                         y: snapped.y,
-                        size: item.json.size || { width: viewMode === 'mobile' ? 375 : 1200, height: 400 },
+                        size: item.json.size || { width: defaultWidth, height: 400 },
                         type: item.json.type,
                         componentData: item.json.componentData || { structure: 'ladi-standard' },
                         styles: item.json.styles || {},
@@ -245,7 +258,7 @@ const Canvas = React.memo(({
                 const newGuidelines = calculateGuidelines(snapped);
                 setGuidelines(newGuidelines);
             }, 16), // ~60fps
-        [zoomLevel, viewMode, showGrid, gridSize, pageData.elements]
+        [zoomLevel, viewMode, showGrid, gridSize, pageData.elements, getCanvasWidth, getSnapPoints, calculateGuidelines]
     );
 
     const [{ isOver, dragItem }, drop] = useDrop(() => ({
@@ -316,7 +329,7 @@ const Canvas = React.memo(({
                     },
                     size: {
                         ...item.json.size,
-                        width: viewMode === 'mobile' ? 375 : item.json.type === 'section' ? 1200 : 600,
+                        width: item.json.type === 'section' ? getCanvasWidth(viewMode) : 600,
                     },
                     styles: JSON.parse(JSON.stringify(item.json.styles || {})),
                     children: JSON.parse(JSON.stringify(item.json.children || [])),
@@ -613,7 +626,7 @@ const Canvas = React.memo(({
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 top: guideLinePosition,
-                                width: viewMode === 'mobile' ? '375px' : '1200px',
+                                width: `${getCanvasWidth(viewMode)}px`,
                                 height: '1px',
                                 backgroundColor: '#2563eb',
                                 opacity: 0.5,
@@ -626,7 +639,7 @@ const Canvas = React.memo(({
                         <div
                             style={{
                                 position: 'absolute',
-                                left: viewMode === 'mobile' ? 'calc(50% - 187.5px)' : 'calc(50% - 600px)',
+                                left: `calc(50% - ${getCanvasWidth(viewMode) / 2}px)`,
                                 top: 0,
                                 width: '1px',
                                 height: pageData.canvas.height ? `${pageData.canvas.height}px` : '100%',
@@ -638,7 +651,7 @@ const Canvas = React.memo(({
                         <div
                             style={{
                                 position: 'absolute',
-                                left: viewMode === 'mobile' ? 'calc(50% + 187.5px)' : 'calc(50% + 600px)',
+                                left: `calc(50% + ${getCanvasWidth(viewMode) / 2}px)`,
                                 top: 0,
                                 width: '1px',
                                 height: pageData.canvas.height ? `${pageData.canvas.height}px` : '100%',
