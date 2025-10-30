@@ -348,7 +348,7 @@ const CreateLanding = () => {
             }
         }
 
-        const newElement = {
+        const baseElement = {
             ...element,
             id: newId,
             position: {
@@ -357,12 +357,25 @@ const CreateLanding = () => {
                 mobile: element.position?.mobile || { x: newX, y: newY, z: element.position?.mobile?.z || 1 },
             },
             size: element.size || { width: 600, height: 400 },
+            mobileSize: element.mobileSize,
+            tabletSize: element.tabletSize,
             styles: {
                 ...element.styles,
             },
+            responsiveStyles: element.responsiveStyles || {},
             componentData: element.componentData || {},
+            mobileComponentData: element.mobileComponentData,
+            tabletComponentData: element.tabletComponentData,
             children: element.children || [],
+            visible: element.visible !== false,
+            locked: element.locked || false,
         };
+
+        // Initialize full responsive data if not present
+        const newElement = (!baseElement.mobileSize || !baseElement.tabletSize ||
+                           !baseElement.responsiveStyles?.mobile || !baseElement.responsiveStyles?.tablet)
+            ? syncElementBetweenModes(baseElement, 'desktop')
+            : baseElement;
 
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
