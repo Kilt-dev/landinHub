@@ -20,6 +20,14 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { parseHTMLToPageData, renderStaticHTML } from '../utils/pageUtils';
 import { syncElementBetweenModes } from '../utils/responsiveSync';
+import {
+    calculateNextSectionY,
+    reorderSections,
+    calculateCanvasHeight,
+    moveSectionUp,
+    moveSectionDown,
+    deleteSection
+} from '../utils/sectionUtils';
 import { ErrorBoundary } from './create-page/ErrorBoundary';
 import DogLoader from './Loader'; // Import the DogLoader component
 import eventController from '../utils/EventUtils'; // Import eventController for popup events
@@ -274,9 +282,8 @@ const CreateLanding = () => {
 
     // Add section
     const handleAddSection = useCallback((section) => {
-        const lastSectionY = pageData.elements
-            .filter((el) => el.type === 'section')
-            .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0);
+        // LUÔN tính Y position từ desktop mode để đảm bảo consistency
+        const nextY = calculateNextSectionY(pageData.elements);
 
         // Initialize children with responsive data
         const childrenWithResponsive = (section.json.children || []).map(child => {
@@ -297,18 +304,20 @@ const CreateLanding = () => {
                 : childElement;
         });
 
+        const isPopup = section.json.type === 'popup';
         const baseElement = {
             id: `${section.id}-${Date.now()}`,
             type: section.json.type,
             componentData: JSON.parse(JSON.stringify(section.json.componentData || {})),
             position: {
-                [viewMode]: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
-                desktop: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
-                tablet: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
-                mobile: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY, z: section.json.type === 'popup' ? 1001 : 1 },
+                // Sections: x=0, y=nextY (stacked vertically)
+                // Popups: centered x=100, y=100, high z-index
+                desktop: { x: isPopup ? 100 : 0, y: isPopup ? 100 : nextY, z: isPopup ? 1001 : 1 },
+                tablet: { x: isPopup ? 100 : 0, y: isPopup ? 100 : nextY, z: isPopup ? 1001 : 1 },
+                mobile: { x: isPopup ? 100 : 0, y: isPopup ? 100 : nextY, z: isPopup ? 1001 : 1 },
             },
             size: section.json.size || {
-                width: viewMode === 'mobile' ? 375 : section.json.type === 'popup' ? 600 : 1200,
+                width: isPopup ? 600 : 1200,
                 height: section.json.size?.height || 400
             },
             mobileSize: section.json.mobileSize,
@@ -328,53 +337,50 @@ const CreateLanding = () => {
 
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
-            const newCanvasHeight = section.json.type === 'section' ? lastSectionY + (section.json.size?.height || 400) : prev.canvas.height;
+            const newCanvasHeight = calculateCanvasHeight(newElements);
             const newPageData = {
                 ...prev,
                 elements: newElements,
-                canvas: { ...prev.canvas, height: Math.max(prev.canvas.height || 0, newCanvasHeight) },
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        if (section.json.type === 'section') {
-            setGuideLine({ show: true, y: lastSectionY + (section.json.size?.height || 400) });
+
+        if (!isPopup) {
+            const newHeight = section.json.size?.height || 400;
+            setGuideLine({ show: true, y: nextY + newHeight });
         }
         toast.success(`Đã thêm ${section.json.type} mới!`);
         setShowPopup(false);
-    }, [pageData.elements, viewMode, history, historyIndex]);
+    }, [pageData.elements, history, historyIndex]);
 
     // Add element
     const handleAddElement = useCallback((element) => {
         const newId = element.id || `${element.type}-${Date.now()}`;
 
         // Calculate position based on element type
+        // LUÔN dùng desktop mode làm base để đảm bảo consistency
         let newY = 0;
         let newX = 0;
 
         if (element.type === 'section') {
-            // Sections stack vertically
-            const lastElement = pageData.elements
-                .filter((el) => el.type === 'section')
-                .sort((a, b) => (b.position?.[viewMode]?.y || 0) - (a.position?.[viewMode]?.y || 0))[0];
-            const lastY = lastElement?.position?.[viewMode]?.y || 0;
-            const lastHeight = lastElement?.size?.height || 0;
-            const lastMarginBottom = parseFloat(lastElement?.styles?.marginBottom || '0') || 0;
-            newY = lastY + lastHeight + lastMarginBottom;
+            // Sections stack vertically - use calculateNextSectionY
+            newY = calculateNextSectionY(pageData.elements);
             newX = 0; // Sections always start at x=0
         } else {
             // Other elements (countdown, carousel, etc.) - place in center
-            const canvasWidth = viewMode === 'mobile' ? 375 : viewMode === 'tablet' ? 768 : 1200;
+            const canvasWidth = 1200; // Always use desktop width for calculation
             const elementWidth = element.size?.width || 600;
             newX = Math.max(0, (canvasWidth - elementWidth) / 2);
 
-            // Find last element position
+            // Find last element position (from desktop mode)
             const allElements = pageData.elements;
             if (allElements.length > 0) {
                 const lastEl = allElements[allElements.length - 1];
-                const lastElY = lastEl.position?.[viewMode]?.y || 0;
+                const lastElY = lastEl.position?.desktop?.y || 0;
                 const lastElHeight = lastEl.size?.height || 0;
                 newY = lastElY + lastElHeight + 40; // Add 40px gap
             } else {
@@ -386,9 +392,9 @@ const CreateLanding = () => {
             ...element,
             id: newId,
             position: {
-                desktop: element.position?.desktop || { x: newX, y: newY, z: element.position?.desktop?.z || 1 },
-                tablet: element.position?.tablet || { x: newX, y: newY, z: element.position?.tablet?.z || 1 },
-                mobile: element.position?.mobile || { x: newX, y: newY, z: element.position?.mobile?.z || 1 },
+                desktop: { x: newX, y: newY, z: element.position?.desktop?.z || 1 },
+                tablet: { x: newX, y: newY, z: element.position?.tablet?.z || 1 },
+                mobile: { x: newX, y: newY, z: element.position?.mobile?.z || 1 },
             },
             size: element.size || { width: 600, height: 400 },
             mobileSize: element.mobileSize,
@@ -413,11 +419,11 @@ const CreateLanding = () => {
 
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
-            const newCanvasHeight = newY + (newElement.size?.height || 400) + 100;
+            const newCanvasHeight = calculateCanvasHeight(newElements);
             const newPageData = {
                 ...prev,
                 elements: newElements,
-                canvas: { ...prev.canvas, height: Math.max(prev.canvas.height || 0, newCanvasHeight) },
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
@@ -425,7 +431,7 @@ const CreateLanding = () => {
             return newPageData;
         });
         toast.success(`Đã thêm ${element.type}!`);
-    }, [pageData, viewMode, history, historyIndex]);
+    }, [pageData, history, historyIndex]);
 
     // Add child
     const handleAddChild = useCallback((parentId, newChild) => {
@@ -464,38 +470,40 @@ const CreateLanding = () => {
     // Delete element with confirmation
     const handleDeleteElement = useCallback((id, e) => {
         if (e) e.stopPropagation();
-        if (!window.confirm('Bạn có chắc muốn xóa section này?')) return;
+        const element = pageData.elements.find((el) => el.id === id);
+        if (!element) return;
+
+        const confirmMessage = element.type === 'section'
+            ? 'Bạn có chắc muốn xóa section này?'
+            : 'Bạn có chắc muốn xóa element này?';
+
+        if (!window.confirm(confirmMessage)) return;
+
         setPageData((prev) => {
-            const newElements = prev.elements.filter((el) => el.id !== id);
-            let currentY = 0;
-            const updatedElements = newElements.map((el) => {
-                if (el.type === 'section') {
-                    const updatedElement = { ...el, position: { ...el.position, [viewMode]: { ...el.position[viewMode], y: currentY } } };
-                    currentY += el.size?.height || 400;
-                    return updatedElement;
-                }
-                return el;
-            });
+            // Use deleteSection utility để reorder sections properly
+            const reorderedElements = deleteSection(prev.elements, id);
+            const newCanvasHeight = calculateCanvasHeight(reorderedElements);
+
             const newPageData = {
                 ...prev,
-                elements: updatedElements,
-                canvas: { ...prev.canvas, height: Math.max(currentY + 100, 100) },
+                elements: reorderedElements,
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
+
         setSelectedIds((prev) => prev.filter((selId) => selId !== id));
         setSelectedChildId(null);
-        setGuideLine((prev) => ({
-            ...prev,
-            y: pageData.elements
-                .filter((el) => el.type === 'section')
-                .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0),
-        }));
-        toast.success('Đã xóa section!');
-    }, [historyIndex, pageData.elements, viewMode]);
+
+        // Update guideline to next section position
+        const nextY = calculateNextSectionY(pageData.elements.filter(el => el.id !== id));
+        setGuideLine({ show: true, y: nextY });
+
+        toast.success(`Đã xóa ${element.type}!`);
+    }, [historyIndex, pageData.elements]);
 
     // Delete child
     const handleDeleteChild = useCallback((parentId, childId, e) => {
@@ -527,81 +535,65 @@ const CreateLanding = () => {
     const handleMoveElementUp = useCallback((id, e) => {
         if (e) e.stopPropagation();
         setPageData((prev) => {
-            const index = prev.elements.findIndex((el) => el.id === id);
-            if (index <= 0) return prev;
-            const newElements = [...prev.elements];
-            [newElements[index - 1], newElements[index]] = [newElements[index], newElements[index - 1]];
-            let currentY = 0;
-            const updatedElements = newElements.map((el) => {
-                if (el.type === 'section') {
-                    const height = el.size?.height || 400;
-                    const updatedElement = {
-                        ...el,
-                        position: { ...el.position, [viewMode]: { x: 0, y: currentY } },
-                    };
-                    currentY += height;
-                    return updatedElement;
-                }
-                return el;
-            });
+            // Use moveSectionUp utility để reorder sections properly
+            const reorderedElements = moveSectionUp(prev.elements, id);
+
+            // Check if actually moved
+            if (reorderedElements === prev.elements) {
+                toast.info('Section đã ở vị trí đầu tiên');
+                return prev;
+            }
+
+            const newCanvasHeight = calculateCanvasHeight(reorderedElements);
             const newPageData = {
                 ...prev,
-                elements: updatedElements,
-                canvas: { ...prev.canvas, height: currentY + 100 },
+                elements: reorderedElements,
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        setGuideLine((prev) => ({
-            ...prev,
-            y: pageData.elements
-                .filter((el) => el.type === 'section')
-                .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0),
-        }));
+
+        // Update guideline
+        const nextY = calculateNextSectionY(pageData.elements);
+        setGuideLine({ show: true, y: nextY });
+
         toast.success('Đã di chuyển section lên!');
-    }, [historyIndex, viewMode, pageData.elements]);
+    }, [historyIndex, pageData.elements]);
 
     // Move element down
     const handleMoveElementDown = useCallback((id, e) => {
         if (e) e.stopPropagation();
         setPageData((prev) => {
-            const index = prev.elements.findIndex((el) => el.id === id);
-            if (index >= prev.elements.length - 1) return prev;
-            const newElements = [...prev.elements];
-            [newElements[index], newElements[index + 1]] = [newElements[index + 1], newElements[index]];
-            let currentY = 0;
-            const updatedElements = newElements.map((el) => {
-                if (el.type === 'section') {
-                    const height = el.size?.height || 400;
-                    const updatedElement = {
-                        ...el,
-                        position: { ...el.position, [viewMode]: { x: 0, y: currentY } },
-                    };
-                    currentY += height;
-                    return updatedElement;
-                }
-                return el;
-            });
+            // Use moveSectionDown utility để reorder sections properly
+            const reorderedElements = moveSectionDown(prev.elements, id);
+
+            // Check if actually moved
+            if (reorderedElements === prev.elements) {
+                toast.info('Section đã ở vị trí cuối cùng');
+                return prev;
+            }
+
+            const newCanvasHeight = calculateCanvasHeight(reorderedElements);
             const newPageData = {
                 ...prev,
-                elements: updatedElements,
-                canvas: { ...prev.canvas, height: currentY + 100 },
+                elements: reorderedElements,
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        setGuideLine((prev) => ({
-            ...prev,
-            y: pageData.elements
-                .filter((el) => el.type === 'section')
-                .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0),
-        }));
+
+        // Update guideline
+        const nextY = calculateNextSectionY(pageData.elements);
+        setGuideLine({ show: true, y: nextY });
+
         toast.success('Đã di chuyển section xuống!');
-    }, [historyIndex, viewMode, pageData.elements]);
+    }, [historyIndex, pageData.elements]);
 
     // Select element
     const handleSelectElement = useCallback((ids, append = false) => {
