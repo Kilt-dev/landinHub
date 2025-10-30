@@ -28,5 +28,6 @@ app.use('/api/marketplace', require('./routes/marketplace'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/payout', require('./routes/payout'));
 app.use('/api/admin/marketplace', require('./routes/adminMarketplace'));
+app.use('/api/forms', require('./routes/formSubmissions'));
 
 module.exports = app;
