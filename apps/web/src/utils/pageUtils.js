@@ -861,6 +861,83 @@ const renderElementHTML = (element, isChild = false) => {
                 </div>
             `;
 
+        case 'social-proof':
+            const notifications = componentData.notifications || [];
+            const notificationId = `notification-${id}`;
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles};" class="lpb-social-proof">
+                    <div id="${notificationId}" style="background: #ffffff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img id="${notificationId}-avatar" src="" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;" alt="Avatar" />
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">
+                                    <span id="${notificationId}-name"></span> <span id="${notificationId}-action"></span>
+                                </div>
+                                <div style="font-size: 0.875rem; color: #6b7280;">
+                                    <span id="${notificationId}-product"></span> • <span id="${notificationId}-time"></span>
+                                </div>
+                            </div>
+                            <button onclick="closeSocialProof('${notificationId}')" style="background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 1.25rem; padding: 0; width: 24px; height: 24px;">×</button>
+                        </div>
+                    </div>
+                    <script>
+                        (function() {
+                            const notifications = ${JSON.stringify(notifications)};
+                            const interval = ${componentData.interval || 5000};
+                            let currentIndex = 0;
+                            const el = document.getElementById('${notificationId}');
+
+                            function showNotification() {
+                                if (notifications.length === 0) return;
+                                const notif = notifications[currentIndex];
+                                document.getElementById('${notificationId}-avatar').src = notif.avatar || 'https://i.pravatar.cc/50';
+                                document.getElementById('${notificationId}-name').innerText = notif.name || 'Khách hàng';
+                                document.getElementById('${notificationId}-action').innerText = notif.action || 'vừa mua';
+                                document.getElementById('${notificationId}-product').innerText = notif.product || 'Sản phẩm';
+                                document.getElementById('${notificationId}-time').innerText = notif.time || '1 phút trước';
+                                el.style.display = 'block';
+
+                                setTimeout(() => {
+                                    el.style.display = 'none';
+                                }, 4000);
+
+                                currentIndex = (currentIndex + 1) % notifications.length;
+                            }
+
+                            window.closeSocialProof = function(id) {
+                                document.getElementById(id).style.display = 'none';
+                            };
+
+                            // Show first notification after 2s
+                            setTimeout(showNotification, 2000);
+                            // Then show every interval
+                            setInterval(showNotification, interval);
+                        })();
+                    </script>
+                </div>
+            `;
+
+        case 'social-proof-stats':
+            const stats = componentData.stats || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}; display: grid; grid-template-columns: repeat(${Math.min(stats.length, 4)}, 1fr); gap: 20px;" class="lpb-social-proof-stats">
+                    ${stats.map(stat => `
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-size: 2.5rem; margin-bottom: 8px;">${stat.icon || '📊'}</div>
+                            <div style="font-size: 2rem; font-weight: 700; color: #1f2937; margin-bottom: 4px;">${stat.value}</div>
+                            <div style="font-size: 0.875rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${stat.label}</div>
+                        </div>
+                    `).join('')}
+                    <style>
+                        @media (max-width: 768px) {
+                            .lpb-social-proof-stats {
+                                grid-template-columns: repeat(2, 1fr) !important;
+                            }
+                        }
+                    </style>
+                </div>
+            `;
+
         default:
             // Default fallback for unknown element types
             const defaultChildren = children.length > 0
