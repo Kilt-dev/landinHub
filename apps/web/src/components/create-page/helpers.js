@@ -416,18 +416,34 @@ export const renderComponentContent = (
                     }}
                 >
                     {children.map((child, index) => {
+                        // Get responsive values for child
+                        const childPosition = child.position?.[viewMode] || child.position?.desktop || { x: 0, y: 0 };
+                        const childSize = viewMode === 'mobile' && child.mobileSize
+                            ? child.mobileSize
+                            : viewMode === 'tablet' && child.tabletSize
+                                ? child.tabletSize
+                                : child.size || {};
+
                         // Determine if child should use absolute positioning
                         const childNeedsAbsolute = child.styles?.position === 'absolute' ||
                             ['icon', 'square', 'star'].includes(child.type?.toLowerCase());
+
+                        // Merge child styles with position
+                        const childStyles = {
+                            ...child.styles,
+                            position: childNeedsAbsolute ? 'absolute' : (child.styles?.position || 'absolute'), // Children in sections are absolute by default
+                            left: childPosition.x !== undefined ? `${childPosition.x}px` : undefined,
+                            top: childPosition.y !== undefined ? `${childPosition.y}px` : undefined,
+                            width: childSize.width ? `${childSize.width}px` : child.styles?.width,
+                            height: childSize.height ? `${childSize.height}px` : child.styles?.height,
+                            zIndex: childPosition.z || child.styles?.zIndex || 1,
+                        };
 
                         return React.cloneElement(
                             renderComponentContent(
                                 child.type,
                                 child.componentData || {},
-                                {
-                                    ...child.styles,
-                                    position: childNeedsAbsolute ? 'absolute' : (child.styles?.position || 'relative'),
-                                },
+                                childStyles,
                                 child.children || [],
                                 isCanvas,
                                 onSelectChild,
