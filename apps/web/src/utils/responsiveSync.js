@@ -70,8 +70,9 @@ export const autoScaleSize = (element, fromMode, toMode) => {
 
 /**
  * Tự động scale position cho element
+ * Với anti-overlap detection cho mobile
  */
-export const autoScalePosition = (element, fromMode, toMode, newSize) => {
+export const autoScalePosition = (element, fromMode, toMode, newSize, siblings = []) => {
     const fromPos = element.position?.[fromMode] || { x: 0, y: 0, z: 1 };
     const scaleFactor = getScaleFactor(fromMode, toMode);
 
@@ -97,12 +98,43 @@ export const autoScalePosition = (element, fromMode, toMode, newSize) => {
     let scaledX = Math.round(fromPos.x * scaleFactor);
     let scaledY = Math.round(fromPos.y * scaleFactor);
 
-    // Đảm bảo không overflow
+    // Đảm bảo không overflow canvas
     const canvasWidth = toMode === 'mobile' ? 375 : toMode === 'tablet' ? 768 : 1200;
     const elementWidth = newSize?.width || element.size?.width || 200;
+    const elementHeight = newSize?.height || element.size?.height || 50;
 
     if (scaledX + elementWidth > canvasWidth) {
         scaledX = Math.max(0, canvasWidth - elementWidth - 10);
+    }
+
+    // MOBILE: Prevent overlap với siblings
+    if (toMode === 'mobile' && siblings && siblings.length > 0) {
+        const hasOverlap = (x1, y1, w1, h1, x2, y2, w2, h2) => {
+            return !(x1 + w1 <= x2 || x2 + w2 <= x1 || y1 + h1 <= y2 || y2 + h2 <= y1);
+        };
+
+        // Check overlap với từng sibling
+        let adjusted = false;
+        for (const sibling of siblings) {
+            if (sibling.id === element.id) continue;
+
+            const siblingPos = sibling.position?.[toMode] || sibling.position?.desktop || { x: 0, y: 0 };
+            const siblingSize = toMode === 'mobile' && sibling.mobileSize
+                ? sibling.mobileSize
+                : sibling.size || { width: 200, height: 50 };
+
+            if (hasOverlap(scaledX, scaledY, elementWidth, elementHeight,
+                          siblingPos.x, siblingPos.y, siblingSize.width, siblingSize.height)) {
+                // Move below sibling với 10px gap
+                scaledY = siblingPos.y + siblingSize.height + 10;
+                adjusted = true;
+            }
+        }
+
+        // Nếu bị push xuống quá xa, stack vertically
+        if (adjusted && scaledY > fromPos.y * 2) {
+            scaledX = 10; // Căn trái với margin
+        }
     }
 
     return {
@@ -282,11 +314,41 @@ export const syncElementBetweenModes = (element, changedMode) => {
         'tablet'
     );
 
-    // Sync children nếu có
+    // Sync children nếu có - pass siblings để detect overlap
     if (updatedElement.children && updatedElement.children.length > 0) {
-        updatedElement.children = updatedElement.children.map(child =>
-            syncElementBetweenModes(child, changedMode)
-        );
+        updatedElement.children = updatedElement.children.map((child, index, allChildren) => {
+            const syncedChild = { ...child };
+
+            // Get siblings (other children)
+            const siblings = allChildren.filter((_, i) => i !== index);
+
+            // Sync with siblings awareness
+            const childModes = ['desktop', 'tablet', 'mobile'];
+            childModes.forEach(targetMode => {
+                if (targetMode !== changedMode) {
+                    const scaledSize = autoScaleSize(syncedChild, changedMode, targetMode);
+                    const scaledPosition = autoScalePosition(syncedChild, changedMode, targetMode, scaledSize, siblings);
+
+                    syncedChild.position = syncedChild.position || {};
+                    syncedChild.position[targetMode] = scaledPosition;
+
+                    if (targetMode === 'mobile') {
+                        syncedChild.mobileSize = scaledSize;
+                    } else if (targetMode === 'tablet') {
+                        syncedChild.tabletSize = scaledSize;
+                    }
+                }
+            });
+
+            // Scale styles
+            if (!syncedChild.responsiveStyles) {
+                syncedChild.responsiveStyles = {};
+            }
+            syncedChild.responsiveStyles.mobile = autoScaleStyles(syncedChild.styles, 'desktop', 'mobile');
+            syncedChild.responsiveStyles.tablet = autoScaleStyles(syncedChild.styles, 'desktop', 'tablet');
+
+            return syncedChild;
+        });
     }
 
     return updatedElement;
