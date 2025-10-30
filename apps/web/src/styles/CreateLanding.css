@@ -1153,3 +1153,182 @@
     min-width: 44px;
     touch-action: manipulation;
 }
+
+/* ===================================
+   COMPONENT INDEPENDENCE FIXES
+   =================================== */
+
+/* Child Elements - Independent from Parent Styles */
+.lpb-child-element {
+    /* Reset parent inheritance */
+    all: initial;
+    
+    /* Restore necessary properties */
+    position: absolute !important;
+    display: block !important;
+    box-sizing: border-box !important;
+    
+    /* Prevent parent padding/margin interference */
+    margin: 0 !important;
+    
+    /* Independent positioning context */
+    transform-origin: top left !important;
+    
+    /* Prevent text inheritance issues */
+    font-family: inherit;
+    color: inherit;
+    line-height: normal;
+    
+    /* Ensure proper layering */
+    z-index: auto;
+}
+
+/* Child Element Content - Restore Normal Behavior */
+.lpb-child-element * {
+    all: revert;
+    box-sizing: border-box;
+}
+
+/* Section Children - No Parent Padding Interference */
+.lpb-canvas-section {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Section Content Container - This holds the actual padding */
+.lpb-section-content {
+    position: relative;
+    width: 100%;
+    min-height: 100px;
+    padding: 0; /* No padding to interfere with absolute positioning */
+}
+
+/* Child Elements inside Sections - Absolute Positioning */
+.lpb-canvas-section .lpb-child-element {
+    position: absolute !important;
+    /* Position is set via inline styles, not affected by parent */
+}
+
+/* Popup Children - Independent Positioning */
+.lpb-popup .lpb-child-element,
+.lpb-modal .lpb-child-element {
+    position: absolute !important;
+    margin: 0 !important;
+}
+
+/* Text Elements - Independent Typography */
+.lpb-child-element[data-type="heading"] h1,
+.lpb-child-element[data-type="heading"] h2,
+.lpb-child-element[data-type="heading"] h3,
+.lpb-child-element[data-type="heading"] h4,
+.lpb-child-element[data-type="heading"] h5,
+.lpb-child-element[data-type="heading"] h6 {
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Font styles come from element's own styles */
+}
+
+.lpb-child-element[data-type="paragraph"] p {
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Text styles come from element's own styles */
+}
+
+/* Button Elements - Independent Styling */
+.lpb-child-element[data-type="button"] button,
+.lpb-child-element[data-type="button"] a {
+    /* No parent inheritance */
+    all: revert;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    /* Styles come from element's own componentData */
+}
+
+/* Image Elements - Independent Sizing */
+.lpb-child-element[data-type="image"] img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: none;
+    /* Size comes from element's own styles */
+}
+
+/* Form Elements - Independent Styles */
+.lpb-child-element[data-type="form"] form {
+    margin: 0 !important;
+    padding: 0 !important;
+    /* Form styles come from element's own styles */
+}
+
+.lpb-child-element[data-type="form"] input,
+.lpb-child-element[data-type="form"] textarea,
+.lpb-child-element[data-type="form"] select {
+    /* Reset parent styles */
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    color: inherit;
+    /* Input styles come from element's own styles */
+}
+
+/* Gallery Elements - Independent Grid */
+.lpb-child-element[data-type="gallery"] {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.lpb-child-element[data-type="gallery"] .lpb-gallery-grid {
+    display: grid;
+    gap: 8px;
+    /* Grid layout comes from element's own componentData */
+}
+
+/* Icon Elements - Independent Sizing */
+.lpb-child-element[data-type="icon"] i,
+.lpb-child-element[data-type="icon"] svg {
+    display: block;
+    margin: 0;
+    padding: 0;
+    /* Icon size comes from element's own styles */
+}
+
+/* Prevent Global Resets from Affecting Elements */
+.lpb-child-element.lpb-child-element-selected {
+    /* Selected state should not change positioning */
+    position: absolute !important;
+}
+
+/* Dragging State - Maintain Independence */
+.lpb-child-element.lpb-child-element-dragging {
+    position: absolute !important;
+    /* Dragging doesn't affect other elements */
+}
+
+/* Editor-Only: Prevent Canvas Padding from Affecting Children */
+.lpb-canvas {
+    padding: 0 !important;
+}
+
+.lpb-canvas-wrapper {
+    padding: 20px; /* Padding here, not on canvas itself */
+    background: #f3f4f6;
+}
+
+/* Isolation for Each Element */
+.lpb-child-element {
+    isolation: isolate; /* Create new stacking context */
+    contain: layout style; /* Contain layout and style recalculations */
+}
+
+/* Prevent Flex/Grid Parent from Affecting Absolute Children */
+.lpb-canvas-section[style*="display: flex"] .lpb-child-element,
+.lpb-canvas-section[style*="display: grid"] .lpb-child-element {
+    position: absolute !important;
+    /* Absolute positioning overrides flex/grid */
+}
