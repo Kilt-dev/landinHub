@@ -1093,20 +1093,56 @@ const generateCSS = (pageData) => {
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
         body {
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
         }
 
         .lpb-element {
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* Base responsive images */
         .lpb-element img {
             max-width: 100%;
             height: auto;
+            display: block;
+        }
+
+        /* Smooth scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5568d3, #6a3e8f);
+        }
+
+        /* Section smooth rendering */
+        .ladi-section {
+            transition: background-color 0.3s ease, background-image 0.3s ease;
+        }
+
+        .ladi-container {
+            transition: padding 0.2s ease;
         }
     `;
 

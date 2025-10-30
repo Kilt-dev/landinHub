@@ -1,0 +1,584 @@
+/**
+ * Global Smooth Transitions & Animations
+ * Mượt mà, mảnh mai, chuyên nghiệp
+ */
+
+/* ===========================
+   SMOOTH SCROLLING
+   =========================== */
+html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* ===========================
+   GLOBAL TRANSITIONS
+   =========================== */
+*,
+*::before,
+*::after {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+}
+
+/* Smooth transitions for common properties */
+button,
+a,
+input,
+textarea,
+select,
+.card,
+.panel,
+.modal,
+.popup,
+.section {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Faster transitions for hover states */
+button:hover,
+a:hover,
+.hover-item:hover {
+    transition-duration: 150ms;
+}
+
+/* ===========================
+   BUTTON SMOOTH EFFECTS
+   =========================== */
+button {
+    position: relative;
+    overflow: hidden;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition-duration: 100ms;
+}
+
+/* Ripple effect on click */
+button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+}
+
+button:active::after {
+    width: 300px;
+    height: 300px;
+}
+
+/* ===========================
+   INPUT SMOOTH EFFECTS
+   =========================== */
+input,
+textarea,
+select {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background-color: #ffffff;
+}
+
+/* ===========================
+   CARD & PANEL EFFECTS
+   =========================== */
+.card,
+.panel,
+.properties-panel,
+.component-library {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s ease;
+}
+
+.card:hover,
+.panel:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ===========================
+   FADE ANIMATIONS
+   =========================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.fade-out {
+    animation: fadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ===========================
+   SLIDE ANIMATIONS
+   =========================== */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.slide-in-right {
+    animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.slide-in-left {
+    animation: slideInLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.slide-in-up {
+    animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.slide-in-down {
+    animation: slideInDown 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ===========================
+   SCALE ANIMATIONS
+   =========================== */
+@keyframes scaleIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes scaleOut {
+    from {
+        transform: scale(1);
+        opacity: 1;
+    }
+    to {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+}
+
+.scale-in {
+    animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.scale-out {
+    animation: scaleOut 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ===========================
+   BOUNCE ANIMATIONS
+   =========================== */
+@keyframes bounceIn {
+    0% {
+        transform: scale(0.3);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 1;
+    }
+    70% {
+        transform: scale(0.9);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.bounce-in {
+    animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* ===========================
+   ROTATE ANIMATIONS
+   =========================== */
+@keyframes rotate360 {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.rotate-animate {
+    animation: rotate360 1s linear infinite;
+}
+
+/* ===========================
+   PULSE ANIMATIONS
+   =========================== */
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+.pulse-animate {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* ===========================
+   SHIMMER LOADING EFFECT
+   =========================== */
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(
+        to right,
+        #f6f7f8 0%,
+        #edeef1 20%,
+        #f6f7f8 40%,
+        #f6f7f8 100%
+    );
+    background-size: 1000px 100%;
+}
+
+/* ===========================
+   MODAL & OVERLAY EFFECTS
+   =========================== */
+.modal-overlay {
+    background: rgba(0, 0, 0, 0);
+    transition: background 0.3s ease;
+}
+
+.modal-overlay.active {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s ease;
+}
+
+.modal-content.active {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* ===========================
+   DRAGGABLE ELEMENTS
+   =========================== */
+.draggable {
+    cursor: grab;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.draggable:active {
+    cursor: grabbing;
+    transform: scale(1.05) rotate(2deg);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+.dragging {
+    opacity: 0.6;
+    transform: scale(0.98);
+}
+
+/* ===========================
+   HOVER LIFT EFFECT
+   =========================== */
+.hover-lift {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* ===========================
+   GRADIENT ANIMATIONS
+   =========================== */
+@keyframes gradientShift {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.gradient-animate {
+    background-size: 200% 200%;
+    animation: gradientShift 3s ease infinite;
+}
+
+/* ===========================
+   SCROLLBAR STYLING
+   =========================== */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 10px;
+    transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5568d3, #6a3e8f);
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #667eea #f1f5f9;
+}
+
+/* ===========================
+   LOADING SPINNER
+   =========================== */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+/* ===========================
+   TEXT GRADIENT EFFECT
+   =========================== */
+.text-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ===========================
+   FOCUS VISIBLE (Accessibility)
+   =========================== */
+*:focus-visible {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ===========================
+   GLASS MORPHISM EFFECT
+   =========================== */
+.glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+/* ===========================
+   RESPONSIVE TRANSITIONS
+   =========================== */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ===========================
+   PERFORMANCE OPTIMIZATIONS
+   =========================== */
+.hardware-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+    will-change: transform, opacity;
+}
+
+/* Prevent layout shift */
+img,
+video,
+iframe {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ===========================
+   UTILITY CLASSES
+   =========================== */
+.smooth-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fast-transition {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slow-transition {
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.no-transition {
+    transition: none !important;
+}
+
+/* ===========================
+   SECTION & ELEMENT SMOOTH
+   =========================== */
+.lpb-canvas-element {
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease;
+}
+
+.lpb-canvas-element-selected {
+    box-shadow: 0 0 0 2px #3b82f6, 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.ladi-section {
+    transition: background-color 0.3s ease,
+                background-image 0.3s ease;
+}
+
+/* ===========================
+   TOAST NOTIFICATIONS
+   =========================== */
+.Toastify__toast {
+    border-radius: 12px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    backdrop-filter: blur(10px);
+}
+
+.Toastify__toast--success {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+}
+
+.Toastify__toast--error {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+}
+
+.Toastify__toast--warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+}
+
+.Toastify__toast--info {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+}
