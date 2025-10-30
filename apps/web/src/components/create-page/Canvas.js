@@ -287,21 +287,20 @@ const Canvas = React.memo(({
                     return { moved: false };
                 }
                 onMoveChild(item.parentId, item.childId, null, snapped);
-                toast.success('Đã di chuyển thành phần con ra canvas!');
                 setDragPreview(null);
                 setGuidelines([]);
                 return { moved: true, newPosition: snapped };
             } else if (monitor.getItemType() === ItemTypes.ELEMENT) {
                 if (item.json.type !== 'section' && item.json.type !== 'popup' && item.json.type !== 'modal') {
-                    toast.error('Chỉ có thể thả section, popup hoặc modal lên canvas!');
                     setDragPreview(null);
                     setGuidelines([]);
                     return { moved: false };
                 }
+                // LUÔN dùng desktop mode để tính Y position
                 const lastSectionY = pageData.elements
                     .filter((el) => el.type === 'section')
                     .reduce((maxY, el) => {
-                        const y = el.position?.[viewMode]?.y || 0;
+                        const y = el.position?.desktop?.y || 0;
                         const height = el.size?.height || 400;
                         return Math.max(maxY, y + height);
                     }, 0);
@@ -310,27 +309,28 @@ const Canvas = React.memo(({
                     type: item.json.type,
                     componentData: JSON.parse(JSON.stringify(item.json.componentData || { structure: item.json.type === 'section' ? 'ladi-standard' : undefined })),
                     position: {
-                        [viewMode]: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
                         desktop: {
                             x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
+                            y: item.json.type === 'section' ? lastSectionY : snapped.y,
+                            z: item.json.type === 'section' ? 1 : 10,
                         },
                         tablet: {
                             x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
+                            y: item.json.type === 'section' ? lastSectionY : snapped.y,
+                            z: item.json.type === 'section' ? 1 : 10,
                         },
                         mobile: {
                             x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
+                            y: item.json.type === 'section' ? lastSectionY : snapped.y,
+                            z: item.json.type === 'section' ? 1 : 10,
                         },
                     },
                     size: {
                         ...item.json.size,
-                        width: item.json.type === 'section' ? getCanvasWidth(viewMode) : 600,
+                        width: item.json.type === 'section' ? 1200 : 600,
                     },
+                    mobileSize: item.json.mobileSize || (item.json.type === 'section' ? { width: 375, height: item.json.size?.height || 400 } : null),
+                    tabletSize: item.json.tabletSize || (item.json.type === 'section' ? { width: 768, height: item.json.size?.height || 400 } : null),
                     styles: JSON.parse(JSON.stringify(item.json.styles || {})),
                     children: JSON.parse(JSON.stringify(item.json.children || [])),
                     visible: true,
@@ -339,17 +339,16 @@ const Canvas = React.memo(({
                 };
                 onAddElement(newElement);
                 if (item.json.type === 'section') {
-                    setGuideLinePosition(lastSectionY + 10 + (item.json.size?.height || 400));
+                    setGuideLinePosition(lastSectionY + (item.json.size?.height || 400));
                     updateCanvasHeight();
                 }
-                toast.success(`Đã thêm ${item.json.type} mới!`);
                 setDragPreview(null);
                 setGuidelines([]);
                 return {
                     moved: true,
                     newPosition: {
                         x: item.json.type === 'section' ? 0 : snapped.x,
-                        y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
+                        y: item.json.type === 'section' ? lastSectionY : snapped.y,
                     },
                 };
             }

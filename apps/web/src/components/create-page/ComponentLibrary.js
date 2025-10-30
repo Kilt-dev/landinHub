@@ -175,12 +175,7 @@ const ComponentLibrary = ({ isCollapsed, onToggle, onAddElement, onAddChild, pag
             },
             end: (draggedItem, monitor) => {
                 const dropResult = monitor.getDropResult();
-                if (dropResult && dropResult.moved) {
-                    toast.success(`Đã thêm "${item.name}" vào ${dropResult.parentId ? 'section' : 'trang'}!`, {
-                        position: 'bottom-right',
-                        autoClose: 2000,
-                    });
-                }
+                // Removed toast notification for cleaner UX
             },
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
@@ -242,10 +237,6 @@ const ComponentLibrary = ({ isCollapsed, onToggle, onAddElement, onAddChild, pag
                     const nextYPosition = calculateNextSectionPosition(pageData?.elements || []);
                     const newSection = createStandardSection(item, nextYPosition);
                     await onAddElement(newSection);
-                    toast.success(`✨ Đã thêm section "${item.name}" vào cuối trang!`, {
-                        position: 'bottom-right',
-                        autoClose: 2000,
-                    });
                 } else if (activeTab === 'popups' || item.json.type === 'popup') {
                     const newPopup = {
                         id: `POPUP-${Date.now()}`,
@@ -255,11 +246,13 @@ const ComponentLibrary = ({ isCollapsed, onToggle, onAddElement, onAddChild, pag
                             title: item.json.componentData?.title || item.name,
                         },
                         position: {
-                            desktop: { x: 0, y: 0 },
-                            tablet: { x: 0, y: 0 },
-                            mobile: { x: 0, y: 0 },
+                            desktop: { x: 100, y: 100, z: 1001 },
+                            tablet: { x: 100, y: 100, z: 1001 },
+                            mobile: { x: 50, y: 50, z: 1001 },
                         },
                         size: item.json.size || { width: 600, height: 400 },
+                        mobileSize: { width: 340, height: 400 },
+                        tabletSize: { width: 600, height: 400 },
                         styles: {
                             backgroundColor: item.json.styles?.backgroundColor || 'rgba(255, 255, 255, 0.95)',
                             borderRadius: item.json.styles?.borderRadius || '12px',
@@ -275,31 +268,23 @@ const ComponentLibrary = ({ isCollapsed, onToggle, onAddElement, onAddChild, pag
                     };
                     await onAddElement(newPopup);
                     onSelectElement([newPopup.id]);
-                    toast.success(`🎯 Đã thêm popup "${item.name}"!`, {
-                        position: 'bottom-right',
-                        autoClose: 2000,
-                    });
                 } else {
                     await onAddChild(null, {
                         id: `${item.id}-${Date.now()}`,
                         type: item.json.type,
                         componentData: { ...item.json.componentData, title: item.json.componentData?.title || item.name },
                         position: {
-                            desktop: { x: 20, y: 20 },
-                            tablet: { x: 20, y: 20 },
-                            mobile: { x: 20, y: 20 },
+                            desktop: { x: 20, y: 20, z: 1 },
+                            tablet: { x: 20, y: 20, z: 1 },
+                            mobile: { x: 10, y: 10, z: 1 },
                         },
                         size: item.json.size || { width: 200, height: 50 },
                         styles: item.json.styles || {},
                         children: item.json.children || [],
                     });
-                    toast.success(`🎯 Đã thêm "${item.name}" vào section!`, {
-                        position: 'bottom-right',
-                        autoClose: 2000,
-                    });
                 }
             } catch (error) {
-                toast.error(`❌ Lỗi khi thêm ${item.name}: ${error.message}`);
+                toast.error(`Lỗi: ${error.message}`, { autoClose: 2000 });
             } finally {
                 setTimeout(() => setIsClicking(false), 200);
             }
