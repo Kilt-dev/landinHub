@@ -276,30 +276,58 @@ const CreateLanding = () => {
     // Add element
     const handleAddElement = useCallback((element) => {
         const newId = element.id || `${element.type}-${Date.now()}`;
-        const lastElement = pageData.elements
-            .filter((el) => el.type === 'section')
-            .sort((a, b) => (b.position?.[viewMode]?.y || 0) - (a.position?.[viewMode]?.y || 0))[0];
-        const lastY = lastElement?.position?.[viewMode]?.y || 0;
-        const lastHeight = lastElement?.size?.height || 0;
-        const lastMarginBottom = parseFloat(lastElement?.styles?.marginBottom || '0') || 0;
-        const newY = lastY + lastHeight + lastMarginBottom;
+
+        // Calculate position based on element type
+        let newY = 0;
+        let newX = 0;
+
+        if (element.type === 'section') {
+            // Sections stack vertically
+            const lastElement = pageData.elements
+                .filter((el) => el.type === 'section')
+                .sort((a, b) => (b.position?.[viewMode]?.y || 0) - (a.position?.[viewMode]?.y || 0))[0];
+            const lastY = lastElement?.position?.[viewMode]?.y || 0;
+            const lastHeight = lastElement?.size?.height || 0;
+            const lastMarginBottom = parseFloat(lastElement?.styles?.marginBottom || '0') || 0;
+            newY = lastY + lastHeight + lastMarginBottom;
+            newX = 0; // Sections always start at x=0
+        } else {
+            // Other elements (countdown, carousel, etc.) - place in center
+            const canvasWidth = viewMode === 'mobile' ? 375 : viewMode === 'tablet' ? 768 : 1200;
+            const elementWidth = element.size?.width || 600;
+            newX = Math.max(0, (canvasWidth - elementWidth) / 2);
+
+            // Find last element position
+            const allElements = pageData.elements;
+            if (allElements.length > 0) {
+                const lastEl = allElements[allElements.length - 1];
+                const lastElY = lastEl.position?.[viewMode]?.y || 0;
+                const lastElHeight = lastEl.size?.height || 0;
+                newY = lastElY + lastElHeight + 40; // Add 40px gap
+            } else {
+                newY = 40; // Start with 40px from top
+            }
+        }
+
         const newElement = {
             ...element,
             id: newId,
             position: {
-                desktop: { x: 0, y: newY },
-                tablet: { x: 0, y: newY },
-                mobile: { x: 0, y: newY },
+                desktop: element.position?.desktop || { x: newX, y: newY, z: element.position?.desktop?.z || 1 },
+                tablet: element.position?.tablet || { x: newX, y: newY, z: element.position?.tablet?.z || 1 },
+                mobile: element.position?.mobile || { x: newX, y: newY, z: element.position?.mobile?.z || 1 },
             },
+            size: element.size || { width: 600, height: 400 },
             styles: {
                 ...element.styles,
-                margin: '0',
-                padding: '0',
             },
+            componentData: element.componentData || {},
+            children: element.children || [],
         };
+
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
-            const newCanvasHeight = newY + (newElement.size?.height || 400);
+            const newCanvasHeight = newY + (newElement.size?.height || 400) + 100;
             const newPageData = {
                 ...prev,
                 elements: newElements,
@@ -310,7 +338,7 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã thêm phần tử!');
+        toast.success(`Đã thêm ${element.type}!`);
     }, [pageData, viewMode, history, historyIndex]);
 
     // Add child
