@@ -1,4 +1,5 @@
 /node_modules/
+node_modules/
 !/node_modules/.bin/
 !.pnpmfile.cjs
 !.pnpm-lock.yaml
@@ -16,6 +17,7 @@
 *.swp
 *.swo
 # Android
+apps/web/node_modules/
 apps/mobile/android/app/build/
 apps/mobile/android/.gradle/
 apps/mobile/android/local.properties
