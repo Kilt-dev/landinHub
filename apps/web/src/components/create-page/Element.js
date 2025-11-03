@@ -678,14 +678,22 @@ const Element = React.memo(
                 }
                 if (!e.target.closest('button')) {
                     e.stopPropagation();
+
+                    // IMPROVED: If already selected without multi-select keys, don't re-select
+                    // This allows drag to start smoothly without re-triggering selection
+                    if (isSelected && !e.ctrlKey && !e.metaKey) {
+                        console.log(`Element ${id} already selected, allowing drag`);
+                        return;
+                    }
+
                     if (typeof onSelectElement === 'function') {
-                        onSelectElement([id], e.ctrlKey);
+                        onSelectElement([id], e.ctrlKey || e.metaKey);
                     }
                     onSelectChild(id, null);
                     console.log(`Element ${id} selected`);
                 }
             },
-            [id, locked, onSelectElement, onSelectChild]
+            [id, locked, isSelected, onSelectElement, onSelectChild]
         );
 
         const handleClick = useCallback(
