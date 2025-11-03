@@ -688,6 +688,79 @@ const renderElementHTML = (element, isChild = false) => {
                 </div>
             `;
 
+        // Shape Components
+        case 'square':
+            const squareWidth = size.width || componentData.size?.width || 50;
+            const squareHeight = size.height || componentData.size?.height || 50;
+            const squareFill = componentData.fill || styles.fill || styles.background || '#000';
+            const squareStroke = componentData.stroke || styles.stroke || styles.borderColor || 'currentColor';
+            const squareStrokeWidth = componentData.strokeWidth || styles.strokeWidth || styles.borderWidth || 2;
+            return `
+                <svg
+                    ${baseAttrs}
+                    width="${squareWidth}"
+                    height="${squareHeight}"
+                    style="${inlineStyles}; ${positionStyles}"
+                    viewBox="0 0 ${squareWidth} ${squareHeight}"
+                    preserveAspectRatio="none"
+                >
+                    <rect
+                        x="0"
+                        y="0"
+                        width="${squareWidth}"
+                        height="${squareHeight}"
+                        fill="${squareFill}"
+                        stroke="${squareStroke}"
+                        stroke-width="${squareStrokeWidth}"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            `;
+
+        case 'star':
+            const starWidth = size.width || componentData.size?.width || 50;
+            const starHeight = size.height || componentData.size?.height || 50;
+            const starFill = componentData.fill || styles.fill || styles.background || '#000';
+            const starStroke = componentData.stroke || styles.stroke || styles.borderColor || 'currentColor';
+            const starStrokeWidth = componentData.strokeWidth || styles.strokeWidth || styles.borderWidth || 2;
+            // Scale the star path to fit the size
+            const starPath = `M${starWidth/2} ${starHeight*0.1} L${starWidth*0.64} ${starHeight*0.36} H${starWidth*0.96} L${starWidth*0.72} ${starHeight*0.58} L${starWidth*0.82} ${starHeight*0.88} L${starWidth/2} ${starHeight*0.72} L${starWidth*0.18} ${starHeight*0.88} L${starWidth*0.28} ${starHeight*0.58} L${starWidth*0.04} ${starHeight*0.36} H${starWidth*0.36} Z`;
+            return `
+                <svg
+                    ${baseAttrs}
+                    width="${starWidth}"
+                    height="${starHeight}"
+                    style="${inlineStyles}; ${positionStyles}"
+                    viewBox="0 0 ${starWidth} ${starHeight}"
+                    preserveAspectRatio="xMidYMid meet"
+                >
+                    <path
+                        d="${starPath}"
+                        fill="${starFill}"
+                        stroke="${starStroke}"
+                        stroke-width="${starStrokeWidth}"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            `;
+
+        case 'layoutgrid':
+            const gridChildren = children.map(child => renderElementHTML(child, true)).join('\n');
+            const gridColumns = componentData.columns ? `repeat(${componentData.columns}, 1fr)` : (styles.gridTemplateColumns || 'repeat(2, 1fr)');
+            const gridGap = componentData.gap || styles.gap || '20px';
+            const gridPadding = componentData.padding || styles.padding || '10px';
+            const gridBackground = componentData.background || styles.background || 'transparent';
+            return `
+                <div
+                    ${baseAttrs}
+                    style="${inlineStyles}; ${positionStyles}; display: grid; grid-template-columns: ${gridColumns}; gap: ${gridGap}; padding: ${gridPadding}; background: ${gridBackground};"
+                >
+                    ${gridChildren || '<p>Empty grid</p>'}
+                </div>
+            `;
+
         // Advanced Components - HTML Export
         case 'countdown':
             return `
