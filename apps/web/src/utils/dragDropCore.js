@@ -567,18 +567,23 @@ export const applySectionMobileStacking = (section, options = {}) => {
     });
 
     // Calculate total height for section
+    // Include bottom padding for better spacing
     const totalHeight = stackedChildren.reduce((height, child) => {
         const childY = child.position?.mobile?.y || 0;
         const childHeight = child.mobileSize?.height || 0;
         return Math.max(height, childY + childHeight);
-    }, 0) + spacing;
+    }, 0) + padding + spacing; // Add bottom padding
+
+    // Ensure minimum section height
+    const minSectionHeight = 100;
+    const finalHeight = Math.max(totalHeight, minSectionHeight);
 
     return {
         ...section,
         children: stackedChildren,
         mobileSize: {
             width: viewportWidth,
-            height: totalHeight,
+            height: finalHeight,
         },
     };
 };
