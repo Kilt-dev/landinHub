@@ -811,6 +811,28 @@ const Element = React.memo(
                                 pointerEvents: 'auto',
                             }}
                         >
+                            {/* Render section title/subtitle if present in componentData */}
+                            {componentData.title && (
+                                <h2 style={{
+                                    fontSize: componentData.titleFontSize || '1.8rem',
+                                    margin: componentData.titleMargin || '0 0 16px 0',
+                                    color: componentData.titleColor || '#1f2937',
+                                    fontWeight: componentData.titleFontWeight || '700',
+                                    textAlign: componentData.titleAlign || 'left',
+                                }}>
+                                    {componentData.title}
+                                </h2>
+                            )}
+                            {componentData.subtitle && (
+                                <p style={{
+                                    fontSize: componentData.subtitleFontSize || '1.2rem',
+                                    margin: componentData.subtitleMargin || '0 0 20px 0',
+                                    color: componentData.subtitleColor || '#4b5563',
+                                    textAlign: componentData.subtitleAlign || 'left',
+                                }}>
+                                    {componentData.subtitle}
+                                </p>
+                            )}
                             {children.map((child) => (
                                 <ChildElement
                                     key={child.id}
