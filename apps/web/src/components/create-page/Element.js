@@ -189,9 +189,11 @@ const ChildElement = React.memo(
                 cursor: locked || componentData.locked ? 'not-allowed' : isDragging ? 'grabbing' : 'move',
                 opacity: isDragging ? 0.5 : 1,
                 pointerEvents: 'auto', // FULL CLICK AREA for drag
+                // Performance optimization: hint browser for transform/opacity changes
+                willChange: isSelected || isDragging ? 'transform, opacity, width, height' : 'auto',
                 ...lockedStyles,
             }),
-            [responsivePosition, type, isDragging, locked, componentData.locked, lockedStyles, responsiveSize]
+            [responsivePosition, type, isDragging, locked, componentData.locked, lockedStyles, responsiveSize, isSelected]
         );
 
         const contentStyles = useMemo(
@@ -766,7 +768,8 @@ const Element = React.memo(
                         width: '100%',
                         height: '100%',
                         position: 'relative',
-                        isolation: 'isolate'
+                        isolation: 'isolate',
+                        overflow: 'visible' // Allow children to extend beyond section
                     }}>
 
                         {/* ✅ SIMPLIFIED BACKGROUND */}
@@ -809,6 +812,7 @@ const Element = React.memo(
                                 height: '100%',
                                 border: isOverContainer && canDropContainer ? '2px dashed #2563eb' : 'none',
                                 pointerEvents: 'auto',
+                                overflow: 'visible', // Allow children to extend beyond section bounds
                             }}
                         >
                             {children.map((child) => (
@@ -1061,11 +1065,13 @@ const Element = React.memo(
                 opacity: isDragging ? 0.5 : 1,
                 cursor: locked ? 'not-allowed' : isDragging ? 'grabbing' : 'pointer',
                 userSelect: type === 'heading' || type === 'paragraph' ? 'text' : 'none',
+                // Performance optimization: hint browser for transform/opacity changes
+                willChange: isSelected || isDragging ? 'transform, opacity, width, height' : 'auto',
                 ...responsiveStyles,
                 ...lockedStyles,
                 ...animationStyles,
             }),
-            [responsivePosition, responsiveSize, type, isDragging, locked, responsiveStyles, lockedStyles, animationStyles]
+            [responsivePosition, responsiveSize, type, isDragging, locked, isSelected, responsiveStyles, lockedStyles, animationStyles]
         );
 
         return (
