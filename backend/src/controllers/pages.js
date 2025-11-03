@@ -342,14 +342,17 @@ exports.updatePage = async (req, res) => {
             return res.status(404).json({ error: 'Không tìm thấy landing page' });
         }
 
-        // ========== VALIDATE HTML NẾU CÓ ==========
+        // ========== VALIDATE HTML NẾU CÓ (OPTIONAL - KHÔNG BLOCK SAVE) ==========
         if (html) {
-            const validation = await validateHTML(html);
-            if (!validation.isValid) {
-                console.error('HTML validation failed:', validation.error);
-                return res.status(400).json({
-                    error: 'Mã HTML không hợp lệ: ' + validation.error
-                });
+            try {
+                const validation = await validateHTML(html);
+                if (!validation.isValid) {
+                    console.warn('HTML validation warning (not blocking save):', validation.error);
+                    // Don't block save - just log warning
+                }
+            } catch (err) {
+                console.warn('HTML validation skipped (browser unavailable):', err.message);
+                // Continue saving even if validation fails
             }
         }
 
@@ -376,18 +379,24 @@ exports.updatePage = async (req, res) => {
             console.log('Updated pageData in database');
         }
 
-        // ========== TẠO/UPDATE SCREENSHOT ==========
+        // ========== TẠO/UPDATE SCREENSHOT (OPTIONAL - KHÔNG BLOCK SAVE) ==========
         let screenshotUrl = page.screenshot_url;
         if (html) {
             try {
-                console.log('Generating screenshot for updated HTML...');
+                console.log('Attempting to generate screenshot for updated HTML...');
                 const newScreenshotUrl = await generateScreenshot(html, id, false);
                 if (newScreenshotUrl) {
                     screenshotUrl = newScreenshotUrl;
                     console.log('New screenshot URL:', screenshotUrl);
+                } else {
+                    console.warn('Screenshot generation returned null - keeping existing screenshot');
                 }
             } catch (err) {
-                console.warn('Screenshot generation failed:', err.message);
+                console.warn('Screenshot generation failed (not blocking save):', err.message);
+                // Keep existing screenshot or use placeholder
+                if (!screenshotUrl) {
+                    screenshotUrl = 'https://via.placeholder.com/1280x720/e5e7eb/6b7280?text=Landing+Page';
+                }
             }
         }
 

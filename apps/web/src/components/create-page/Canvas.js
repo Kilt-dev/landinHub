@@ -1,16 +1,65 @@
+/**
+ * Canvas Component - Landing Page Builder
+ *
+ * ARCHITECTURE: 3-Layer Drag & Drop System (LadiPage-style)
+ *
+ * LAYER 1 (UI Layer):
+ * - Mouse event tracking (hover, drop)
+ * - Visual feedback (drag preview, guidelines)
+ * - Performance optimization (rafThrottle for 60fps)
+ *
+ * LAYER 2 (Logic Layer):
+ * - Coordinate transformation: client coordinates → canvas coordinates
+ * - Snap-to-grid algorithm: x = round(x / gridSize) * gridSize
+ * - Smart guide snapping: snap to element edges/centers
+ * - Collision detection (future enhancement)
+ *
+ * LAYER 3 (Data Layer):
+ * - JSON state management for all elements
+ * - Immutable updates to element positions
+ * - Auto-responsive scaling: desktop → tablet/mobile
+ * - State format: {id, type, position: {desktop, tablet, mobile}, size, ...}
+ *
+ * COORDINATE SYSTEM:
+ * - Client coordinates: Browser viewport (clientX, clientY from mouse event)
+ * - Canvas coordinates: Actual canvas position accounting for zoom/scroll
+ * - Transform: canvasX = (clientX - rect.left) / zoom
+ *
+ * RESPONSIVE SCALING:
+ * - Desktop: 1200px
+ * - Tablet: 768px (scale = 768/1200 = 0.64)
+ * - Mobile: 375px (scale = 375/1200 = 0.3125)
+ * - Formula: newX = oldX * scaleFactor
+ */
+
 import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { useDrop } from 'react-dnd';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
+import { debounce, throttle } from 'lodash';
 import Guidelines from './Guidelines';
 import SelectionOverlay from './SelectionOverlay';
 import '../../styles/CreateLanding.css';
 import { Element } from './Element';
-import { ItemTypes, getCanvasPosition, snapToGrid, getElementBounds, renderComponentContent } from './helpers';
+import { ItemTypes, renderComponentContent } from './helpers';
 import AddSectionButton from './AddSectionButton';
 import eventController from '../../utils/EventUtils';
 import { getResponsiveValues } from '../../utils/responsiveSync';
+// DRAG DROP CORE: New 3-layer architecture utilities
+import {
+    transformCoordinates,
+    snapToGrid,
+    snapToGuides,
+    generateSnapPoints,
+    autoScale,
+    applyMobileVerticalStacking,
+    applySectionMobileStacking,
+    clampToCanvas,
+    getElementBounds,
+    BREAKPOINTS,
+    rafThrottle,
+} from '../../utils/dragDropCore';
 
 const Canvas = React.memo(({
                                pageData,
@@ -33,6 +82,7 @@ const Canvas = React.memo(({
                                selectedChildId,
                                onAddChild,
                                onUpdateChildPosition,
+                               onUpdateChildSize,
                                onMoveChild,
                                guideLine,
                                onShowAddSectionPopup,
@@ -47,8 +97,14 @@ const Canvas = React.memo(({
     const [showPopup, setShowPopup] = useState(false);
     const [guideLinePosition, setGuideLinePosition] = useState(guideLine?.y || 0);
     const [visiblePopups, setVisiblePopups] = useState([]);
+    // Helper function to get canvas width based on viewMode
+    // Uses BREAKPOINTS from dragDropCore for consistency
+    const getCanvasWidth = useCallback((mode) => {
+        return BREAKPOINTS[mode] || BREAKPOINTS.desktop;
+    }, []);
+
     const [canvasBounds, setCanvasBounds] = useState({
-        width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : (viewMode === 'mobile' ? 375 : 1200),
+        width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : getCanvasWidth(viewMode),
         height: canvasRef.current ? canvasRef.current.offsetHeight / (zoomLevel / 100) : 1000,
     });
     useEffect(() => {
@@ -75,46 +131,32 @@ const Canvas = React.memo(({
     useEffect(() => {
         const handleResize = () => {
             setCanvasBounds({
-                width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : (viewMode === 'mobile' ? 375 : 1200),
+                width: canvasRef.current ? canvasRef.current.offsetWidth / (zoomLevel / 100) : getCanvasWidth(viewMode),
                 height: canvasRef.current ? canvasRef.current.offsetHeight / (zoomLevel / 100) : 1000,
             });
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
-    }, [viewMode, zoomLevel]);
+    }, [viewMode, zoomLevel, getCanvasWidth]);
 
+    // LAYER 2: Generate snap points using dragDropCore
     const getSnapPoints = useCallback(() => {
-        const points = [
-            { x: 0, y: 0 },
-            { x: viewMode === 'mobile' ? 375 : 1200, y: canvasBounds.height },
-            { x: (viewMode === 'mobile' ? 375 : 1200) / 2, y: canvasBounds.height / 2 },
+        // Use dragDropCore's generateSnapPoints for all elements
+        const elementSnapPoints = generateSnapPoints(pageData.elements, viewMode);
+
+        // Add canvas boundary snap points
+        const canvasWidth = getCanvasWidth(viewMode);
+        const canvasPoints = [
+            { x: 0, y: null },
+            { x: canvasWidth, y: null },
+            { x: canvasWidth / 2, y: null },
+            { x: null, y: 0 },
+            { x: null, y: canvasBounds.height },
+            { x: null, y: canvasBounds.height / 2 },
         ];
-        pageData.elements.forEach((el) => {
-            const bounds = getElementBounds(el);
-            points.push(
-                { x: bounds.left, y: bounds.top },
-                { x: bounds.right, y: bounds.bottom },
-                { x: bounds.centerX, y: bounds.centerY },
-                { x: bounds.left, y: bounds.centerY },
-                { x: bounds.right, y: bounds.centerY },
-                { x: bounds.centerX, y: bounds.top },
-                { x: bounds.centerX, y: bounds.bottom }
-            );
-            el.children?.forEach((child) => {
-                const childBounds = getElementBounds(child);
-                points.push(
-                    { x: childBounds.left, y: childBounds.top },
-                    { x: childBounds.right, y: childBounds.bottom },
-                    { x: childBounds.centerX, y: childBounds.centerY },
-                    { x: childBounds.left, y: childBounds.centerY },
-                    { x: childBounds.right, y: childBounds.centerY },
-                    { x: childBounds.centerX, y: childBounds.top },
-                    { x: childBounds.centerX, y: childBounds.bottom }
-                );
-            });
-        });
-        return points;
-    }, [pageData.elements, canvasBounds, viewMode]);
+
+        return [...elementSnapPoints, ...canvasPoints];
+    }, [pageData.elements, canvasBounds, viewMode, getCanvasWidth]);
 
     const calculateGuidelines = useCallback((snapped) => {
         const newGuidelines = [];
@@ -136,17 +178,18 @@ const Canvas = React.memo(({
                 if (Math.abs(snapped.y - childBounds.centerY) < 15) newGuidelines.push({ vertical: false, position: childBounds.centerY });
             });
         });
+        const canvasWidth = getCanvasWidth(viewMode);
         if (Math.abs(snapped.x) < 15) newGuidelines.push({ vertical: true, position: 0 });
-        if (Math.abs(snapped.x - (viewMode === 'mobile' ? 375 : 1200)) < 15)
-            newGuidelines.push({ vertical: true, position: viewMode === 'mobile' ? 375 : 1200 });
-        if (Math.abs(snapped.x - (viewMode === 'mobile' ? 375 : 1200) / 2) < 15)
-            newGuidelines.push({ vertical: true, position: (viewMode === 'mobile' ? 375 : 1200) / 2 });
+        if (Math.abs(snapped.x - canvasWidth) < 15)
+            newGuidelines.push({ vertical: true, position: canvasWidth });
+        if (Math.abs(snapped.x - canvasWidth / 2) < 15)
+            newGuidelines.push({ vertical: true, position: canvasWidth / 2 });
         if (Math.abs(snapped.y) < 15) newGuidelines.push({ vertical: false, position: 0 });
         if (Math.abs(snapped.y - canvasBounds.height) < 15) newGuidelines.push({ vertical: false, position: canvasBounds.height });
         if (Math.abs(snapped.y - canvasBounds.height / 2) < 15)
             newGuidelines.push({ vertical: false, position: canvasBounds.height / 2 });
         return newGuidelines;
-    }, [pageData.elements, viewMode, canvasBounds]);
+    }, [pageData.elements, viewMode, canvasBounds, getCanvasWidth]);
 
     const handleSelectElement = useCallback((ids, ctrlKey) => {
         if (typeof onSelectElement === 'function') {
@@ -202,46 +245,75 @@ const Canvas = React.memo(({
         };
     }, [pageData.elements, onSelectElement, selectedIds, handleSelectElement]);
 
+    // LAYER 1: UI Layer - Throttle hover updates for 60fps performance
+    const throttledHover = useMemo(
+        () =>
+            rafThrottle((item, monitor, clientOffset) => {
+                if (!clientOffset || !canvasRef.current) {
+                    setDragPreview(null);
+                    return;
+                }
+
+                // LAYER 2: Transform client coordinates to canvas coordinates
+                const containerRect = canvasRef.current.getBoundingClientRect();
+                const canvasPos = transformCoordinates(
+                    clientOffset.x,
+                    clientOffset.y,
+                    containerRect,
+                    zoomLevel
+                );
+
+                // LAYER 2: Apply snap-to-grid and snap-to-guides
+                let snapped;
+                if (showGrid && gridSize > 1) {
+                    // Grid snapping enabled
+                    snapped = snapToGrid(canvasPos.x, canvasPos.y, gridSize, true);
+                } else {
+                    // Smart guide snapping only
+                    const snapPoints = getSnapPoints();
+                    const guideSnap = snapToGuides(canvasPos.x, canvasPos.y, snapPoints, 10);
+                    snapped = { x: guideSnap.x, y: guideSnap.y };
+                }
+
+                if (monitor.getItemType() === ItemTypes.ELEMENT && item.json) {
+                    const defaultWidth = item.json.type === 'section' ? getCanvasWidth(viewMode) : 600;
+                    setDragPreview({
+                        id: 'preview',
+                        x: snapped.x,
+                        y: snapped.y,
+                        size: item.json.size || { width: defaultWidth, height: 400 },
+                        type: item.json.type,
+                        componentData: item.json.componentData || { structure: 'ladi-standard' },
+                        styles: item.json.styles || {},
+                        children: item.json.children || [],
+                    });
+                } else if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
+                    const sourceElement = pageData.elements.find((el) => el.id === item.parentId);
+                    const child = sourceElement?.children.find((c) => c.id === item.childId);
+                    if (child) {
+                        setDragPreview({
+                            id: item.childId,
+                            x: snapped.x,
+                            y: snapped.y,
+                            size: item.size || { width: 200, height: 50 },
+                            type: child.type,
+                            componentData: child.componentData || {},
+                            styles: child.styles || {},
+                            children: [],
+                        });
+                    }
+                }
+                const newGuidelines = calculateGuidelines(snapped);
+                setGuidelines(newGuidelines);
+            }, 16), // ~60fps
+        [zoomLevel, viewMode, showGrid, gridSize, pageData.elements, getCanvasWidth, getSnapPoints, calculateGuidelines]
+    );
+
     const [{ isOver, dragItem }, drop] = useDrop(() => ({
         accept: [ItemTypes.ELEMENT, ItemTypes.CHILD_ELEMENT],
         hover: (item, monitor) => {
             const clientOffset = monitor.getClientOffset();
-            if (!clientOffset || !canvasRef.current) {
-                setDragPreview(null);
-                return;
-            }
-            const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
-            const snapPoints = getSnapPoints();
-            const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
-            if (monitor.getItemType() === ItemTypes.ELEMENT && item.json) {
-                setDragPreview({
-                    id: 'preview',
-                    x: snapped.x,
-                    y: snapped.y,
-                    size: item.json.size || { width: viewMode === 'mobile' ? 375 : 1200, height: 400 },
-                    type: item.json.type,
-                    componentData: item.json.componentData || { structure: 'ladi-standard' },
-                    styles: item.json.styles || {},
-                    children: item.json.children || [],
-                });
-            } else if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
-                const sourceElement = pageData.elements.find((el) => el.id === item.parentId);
-                const child = sourceElement?.children.find((c) => c.id === item.childId);
-                if (child) {
-                    setDragPreview({
-                        id: item.childId,
-                        x: snapped.x,
-                        y: snapped.y,
-                        size: item.size || { width: 200, height: 50 },
-                        type: child.type,
-                        componentData: child.componentData || {},
-                        styles: child.styles || {},
-                        children: [],
-                    });
-                }
-            }
-            const newGuidelines = calculateGuidelines(snapped);
-            setGuidelines(newGuidelines);
+            throttledHover(item, monitor, clientOffset);
         },
         drop: (item, monitor) => {
             const clientOffset = monitor.getClientOffset();
@@ -251,10 +323,39 @@ const Canvas = React.memo(({
                 setGuidelines([]);
                 return { moved: false };
             }
-            const pos = getCanvasPosition(clientOffset.x, clientOffset.y, canvasRef.current, zoomLevel);
-            const snapPoints = getSnapPoints();
-            const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+
+            // LAYER 2: Transform coordinates using dragDropCore
+            const containerRect = canvasRef.current.getBoundingClientRect();
+            const canvasPos = transformCoordinates(
+                clientOffset.x,
+                clientOffset.y,
+                containerRect,
+                zoomLevel
+            );
+
+            // LAYER 2: Apply snapping
+            let snapped;
+            if (showGrid && gridSize > 1) {
+                snapped = snapToGrid(canvasPos.x, canvasPos.y, gridSize, true);
+            } else {
+                const snapPoints = getSnapPoints();
+                const guideSnap = snapToGuides(canvasPos.x, canvasPos.y, snapPoints, 10);
+                snapped = { x: guideSnap.x, y: guideSnap.y };
+            }
             if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
+                // IMPROVED: Check if dropping on a section/popup
+                // If yes, let the section handle it (don't intercept)
+                // Only convert to top-level if dropping on empty canvas
+
+                const didDrop = monitor.didDrop();
+                if (didDrop) {
+                    // Section or popup already handled the drop
+                    setDragPreview(null);
+                    setGuidelines([]);
+                    return { moved: false };
+                }
+
+                // Dropping on EMPTY canvas → convert to top-level element
                 const sourceSection = pageData.elements.find((el) => el.id === item.parentId);
                 if (!sourceSection) {
                     toast.error('Không tìm thấy section nguồn!');
@@ -262,70 +363,114 @@ const Canvas = React.memo(({
                     setGuidelines([]);
                     return { moved: false };
                 }
-                onMoveChild(item.parentId, item.childId, null, snapped);
-                toast.success('Đã di chuyển thành phần con ra canvas!');
-                setDragPreview(null);
-                setGuidelines([]);
-                return { moved: true, newPosition: snapped };
-            } else if (monitor.getItemType() === ItemTypes.ELEMENT) {
-                if (item.json.type !== 'section' && item.json.type !== 'popup' && item.json.type !== 'modal') {
-                    toast.error('Chỉ có thể thả section, popup hoặc modal lên canvas!');
+
+                // Find the child being dragged
+                const childElement = sourceSection.children?.find((c) => c.id === item.childId);
+                if (!childElement) {
+                    toast.error('Không tìm thấy element con!');
                     setDragPreview(null);
                     setGuidelines([]);
                     return { moved: false };
                 }
+
+                // Convert to top-level element for free positioning
+                const newElement = {
+                    ...childElement,
+                    position: {
+                        desktop: { x: snapped.x, y: snapped.y, z: 10 },
+                        tablet: { x: snapped.x, y: snapped.y, z: 10 },
+                        mobile: { x: snapped.x, y: snapped.y, z: 10 },
+                    },
+                };
+
+                // Remove from parent and add as top-level
+                onMoveChild(item.parentId, item.childId, null, snapped);
+
+                setDragPreview(null);
+                setGuidelines([]);
+                toast.success('Element được di chuyển ra ngoài section!');
+                return { moved: true, newPosition: snapped };
+            } else if (monitor.getItemType() === ItemTypes.ELEMENT) {
+                if (item.json.type !== 'section' && item.json.type !== 'popup' && item.json.type !== 'modal') {
+                    setDragPreview(null);
+                    setGuidelines([]);
+                    return { moved: false };
+                }
+
+                // FIXED: Calculate position for current viewMode, but always use desktop for section stacking
                 const lastSectionY = pageData.elements
                     .filter((el) => el.type === 'section')
                     .reduce((maxY, el) => {
-                        const y = el.position?.[viewMode]?.y || 0;
+                        const y = el.position?.desktop?.y || 0;
                         const height = el.size?.height || 400;
                         return Math.max(maxY, y + height);
                     }, 0);
-                const newElement = {
+
+                // For sections, use lastSectionY for all viewModes (sections stack vertically)
+                // For popups/modals, use snapped position adjusted per viewMode
+                const getResponsivePosition = (mode) => {
+                    if (item.json.type === 'section') {
+                        return { x: 0, y: lastSectionY, z: 1 };
+                    }
+                    // For popups/modals, center them or use drop position
+                    const canvasWidth = getCanvasWidth(mode);
+                    return {
+                        x: Math.max(0, Math.min(snapped.x, canvasWidth - (item.json.size?.width || 600))),
+                        y: Math.max(0, snapped.y),
+                        z: 1001
+                    };
+                };
+
+                let newElement = {
                     id: `${item.json.type}-${Date.now()}`,
                     type: item.json.type,
                     componentData: JSON.parse(JSON.stringify(item.json.componentData || { structure: item.json.type === 'section' ? 'ladi-standard' : undefined })),
                     position: {
-                        [viewMode]: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
-                        desktop: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
-                        tablet: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
-                        mobile: {
-                            x: item.json.type === 'section' ? 0 : snapped.x,
-                            y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
-                        },
+                        desktop: getResponsivePosition('desktop'),
+                        tablet: getResponsivePosition('tablet'),
+                        mobile: getResponsivePosition('mobile'),
                     },
                     size: {
                         ...item.json.size,
-                        width: viewMode === 'mobile' ? 375 : item.json.type === 'section' ? 1200 : 600,
+                        width: item.json.type === 'section' ? 1200 : (item.json.size?.width || 600),
+                        height: item.json.size?.height || (item.json.type === 'section' ? 400 : 400),
                     },
+                    mobileSize: item.json.mobileSize,
+                    tabletSize: item.json.tabletSize,
                     styles: JSON.parse(JSON.stringify(item.json.styles || {})),
                     children: JSON.parse(JSON.stringify(item.json.children || [])),
-                    visible: true,
-                    locked: false,
-                    meta: { updated_at: new Date().toISOString() },
+                    visible: item.json.visible !== undefined ? item.json.visible : true,
+                    locked: item.json.locked || false,
+                    // IMPROVED: Preserve all metadata properly
+                    meta: {
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                        ...JSON.parse(JSON.stringify(item.json.meta || {})),
+                    },
                 };
+
+                // LAYER 3: Apply auto-responsive scaling using dragDropCore
+                if (item.json.type !== 'section') {
+                    // Auto-scale to all viewports (desktop, tablet, mobile)
+                    newElement = autoScale(newElement);
+                } else {
+                    // For sections, use default responsive sizes
+                    newElement.mobileSize = item.json.mobileSize || { width: BREAKPOINTS.mobile, height: item.json.size?.height || 400 };
+                    newElement.tabletSize = item.json.tabletSize || { width: BREAKPOINTS.tablet, height: item.json.size?.height || 400 };
+                }
+
                 onAddElement(newElement);
                 if (item.json.type === 'section') {
-                    setGuideLinePosition(lastSectionY + 10 + (item.json.size?.height || 400));
+                    setGuideLinePosition(lastSectionY + (item.json.size?.height || 400));
                     updateCanvasHeight();
                 }
-                toast.success(`Đã thêm ${item.json.type} mới!`);
                 setDragPreview(null);
                 setGuidelines([]);
                 return {
                     moved: true,
                     newPosition: {
                         x: item.json.type === 'section' ? 0 : snapped.x,
-                        y: item.json.type === 'section' ? lastSectionY + 10 : snapped.y,
+                        y: item.json.type === 'section' ? lastSectionY : snapped.y,
                     },
                 };
             }
@@ -551,13 +696,17 @@ const Canvas = React.memo(({
                 }`}
                 onClick={handleCanvasClick}
                 style={{
-                    width: '100%',
-                    height: pageData.canvas.height ? `${pageData.canvas.height}px` : 'auto',
-                    background: pageData.canvas.background,
+                    // FIXED: Set explicit width based on viewMode for proper responsive layout
+                    width: `${getCanvasWidth(viewMode)}px`,
+                    minHeight: pageData.canvas.height ? `${pageData.canvas.height}px` : '800px',
+                    height: 'auto',
+                    background: pageData.canvas.background || '#ffffff',
                     transform: `scale(${zoomLevel / 100})`,
                     transformOrigin: 'top center',
                     margin: '0 auto',
                     position: 'relative',
+                    boxSizing: 'border-box',
+                    overflow: 'visible',
                 }}
             >
                 <Guidelines guidelines={guidelines} zoomLevel={zoomLevel} />
@@ -578,6 +727,7 @@ const Canvas = React.memo(({
                         selectedChildId={selectedChildId}
                         onAddChild={onAddChild}
                         onUpdateChildPosition={onUpdateChildPosition}
+                        onUpdateChildSize={onUpdateChildSize}
                         onMoveChild={onMoveChild}
                         showGrid={showGrid}
                         setDragPreview={setDragPreview}
@@ -602,7 +752,7 @@ const Canvas = React.memo(({
                                 left: '50%',
                                 transform: 'translateX(-50%)',
                                 top: guideLinePosition,
-                                width: viewMode === 'mobile' ? '375px' : '1200px',
+                                width: `${getCanvasWidth(viewMode)}px`,
                                 height: '1px',
                                 backgroundColor: '#2563eb',
                                 opacity: 0.5,
@@ -615,7 +765,7 @@ const Canvas = React.memo(({
                         <div
                             style={{
                                 position: 'absolute',
-                                left: viewMode === 'mobile' ? 'calc(50% - 187.5px)' : 'calc(50% - 600px)',
+                                left: `calc(50% - ${getCanvasWidth(viewMode) / 2}px)`,
                                 top: 0,
                                 width: '1px',
                                 height: pageData.canvas.height ? `${pageData.canvas.height}px` : '100%',
@@ -627,7 +777,7 @@ const Canvas = React.memo(({
                         <div
                             style={{
                                 position: 'absolute',
-                                left: viewMode === 'mobile' ? 'calc(50% + 187.5px)' : 'calc(50% + 600px)',
+                                left: `calc(50% + ${getCanvasWidth(viewMode) / 2}px)`,
                                 top: 0,
                                 width: '1px',
                                 height: pageData.canvas.height ? `${pageData.canvas.height}px` : '100%',
@@ -698,6 +848,7 @@ Canvas.propTypes = {
     selectedChildId: PropTypes.string,
     onAddChild: PropTypes.func.isRequired,
     onUpdateChildPosition: PropTypes.func.isRequired,
+    onUpdateChildSize: PropTypes.func.isRequired,
     onMoveChild: PropTypes.func.isRequired,
     guideLine: PropTypes.shape({
         show: PropTypes.bool,

@@ -2,6 +2,16 @@ import PropTypes from 'prop-types';
 import { toast } from 'react-toastify';
 import { sections } from '../../constants/sections';
 import eventController from '../../utils/EventUtils';
+import {
+    CountdownRenderer,
+    CarouselRenderer,
+    AccordionRenderer,
+    TabsRenderer,
+    ProgressRenderer,
+    RatingRenderer,
+    SocialProofRenderer,
+    SocialProofStatsRenderer
+} from './advanced';
 
 // Constants
 /**
@@ -24,47 +34,73 @@ const toKebabCase = (str) =>
 
 /**
  * Calculates precise coordinates within a canvas or section
+ * FIXED: Better handling of zoom, scroll, and negative positions
  * @param {number} mouseX - Mouse X coordinate
  * @param {number} mouseY - Mouse Y coordinate
  * @param {HTMLElement} containerElement - The container element
  * @param {number} zoomLevel - Zoom level percentage
  * @returns {Object} Coordinates { x, y }
  */
-export const getCanvasPosition = (mouseX, mouseY, containerElement, zoomLevel) => {
+export const getCanvasPosition = (mouseX, mouseY, containerElement, zoomLevel = 100) => {
     if (!containerElement) {
         console.error('Container element is null in getCanvasPosition');
         return { x: 0, y: 0 };
     }
 
     const rect = containerElement.getBoundingClientRect();
-    const scrollX = containerElement.scrollLeft || 0;
-    const scrollY = containerElement.scrollTop || 0;
+    const scrollX = window.scrollX || window.pageXOffset || 0;
+    const scrollY = window.scrollY || window.pageYOffset || 0;
 
-    const rawX = (mouseX - rect.left + scrollX) / (zoomLevel / 100);
-    const rawY = (mouseY - rect.top + scrollY) / (zoomLevel / 100);
+    // Calculate position relative to container, accounting for zoom and scroll
+    const zoom = zoomLevel / 100;
+    const rawX = ((mouseX - rect.left) / zoom);
+    const rawY = ((mouseY - rect.top) / zoom);
 
-    return { x: Math.max(0, rawX), y: Math.max(0, rawY) };
+    // Allow negative positions but round to avoid sub-pixel issues
+    return {
+        x: Math.round(rawX),
+        y: Math.round(rawY)
+    };
 };
 
 
 /**
  * Snaps coordinates to grid or nearby snap points
+ * FREE MODE: Pass enableSnap = false for pixel-perfect free positioning
+ * FIXED: Better snapping tolerance and grid handling
  * @param {number} x - X coordinate
  * @param {number} y - Y coordinate
  * @param {number} gridSize - Size of the grid
  * @param {Array<Object>} snapPoints - Array of snap points { x, y }
- * @returns {Object} Snapped coordinates { x, y }
+ * @param {boolean} enableSnap - Enable/disable snapping (default: true)
+ * @returns {Object} Snapped or free coordinates { x, y }
  */
-export const snapToGrid = (x, y, gridSize, snapPoints = []) => {
-    let snappedX = Math.round(x / gridSize) * gridSize;
-    let snappedY = Math.round(y / gridSize) * gridSize;
+export const snapToGrid = (x, y, gridSize = 1, snapPoints = [], enableSnap = true) => {
+    // Round to avoid sub-pixel issues
+    const roundedX = Math.round(x);
+    const roundedY = Math.round(y);
 
+    // Free positioning mode - return exact coordinates
+    if (!enableSnap || gridSize <= 1) {
+        return { x: roundedX, y: roundedY };
+    }
+
+    // Snap to grid
+    let snappedX = Math.round(roundedX / gridSize) * gridSize;
+    let snappedY = Math.round(roundedY / gridSize) * gridSize;
+
+    // Snap to nearby points (guidelines) - with 10px tolerance
+    const SNAP_TOLERANCE = 10;
     snapPoints.forEach((point) => {
-        if (Math.abs(x - point.x) < 15) snappedX = point.x;
-        if (Math.abs(y - point.y) < 15) snappedY = point.y;
+        if (point && typeof point.x === 'number' && Math.abs(roundedX - point.x) < SNAP_TOLERANCE) {
+            snappedX = point.x;
+        }
+        if (point && typeof point.y === 'number' && Math.abs(roundedY - point.y) < SNAP_TOLERANCE) {
+            snappedY = point.y;
+        }
     });
 
-    return { x: snappedX, y: snappedY };
+    return { x: Math.round(snappedX), y: Math.round(snappedY) };
 };
 
 /**
@@ -406,18 +442,34 @@ export const renderComponentContent = (
                     }}
                 >
                     {children.map((child, index) => {
+                        // Get responsive values for child
+                        const childPosition = child.position?.[viewMode] || child.position?.desktop || { x: 0, y: 0 };
+                        const childSize = viewMode === 'mobile' && child.mobileSize
+                            ? child.mobileSize
+                            : viewMode === 'tablet' && child.tabletSize
+                                ? child.tabletSize
+                                : child.size || {};
+
                         // Determine if child should use absolute positioning
                         const childNeedsAbsolute = child.styles?.position === 'absolute' ||
                             ['icon', 'square', 'star'].includes(child.type?.toLowerCase());
+
+                        // Merge child styles with position
+                        const childStyles = {
+                            ...child.styles,
+                            position: childNeedsAbsolute ? 'absolute' : (child.styles?.position || 'absolute'), // Children in sections are absolute by default
+                            left: childPosition.x !== undefined ? `${childPosition.x}px` : undefined,
+                            top: childPosition.y !== undefined ? `${childPosition.y}px` : undefined,
+                            width: childSize.width ? `${childSize.width}px` : child.styles?.width,
+                            height: childSize.height ? `${childSize.height}px` : child.styles?.height,
+                            zIndex: childPosition.z || child.styles?.zIndex || 1,
+                        };
 
                         return React.cloneElement(
                             renderComponentContent(
                                 child.type,
                                 child.componentData || {},
-                                {
-                                    ...child.styles,
-                                    position: childNeedsAbsolute ? 'absolute' : (child.styles?.position || 'relative'),
-                                },
+                                childStyles,
                                 child.children || [],
                                 isCanvas,
                                 onSelectChild,
@@ -443,8 +495,9 @@ export const renderComponentContent = (
                 if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
                     onSelectChild(parentId, childId);
                 }
-                if (events.onClick) {
-                    eventController.handleEvent(events.onClick, childId || parentId, isCanvas);
+                // Only trigger events in preview mode, not canvas
+                if (events.onClick && !isCanvas) {
+                    eventController.handleEvent(events.onClick, childId || parentId, false);
                 }
             };
 
@@ -477,8 +530,9 @@ export const renderComponentContent = (
                 if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
                     onSelectChild(parentId, childId);
                 }
-                if (events.onClick) {
-                    eventController.handleEvent(events.onClick, childId || parentId, isCanvas);
+                // Only trigger events in preview mode, not canvas
+                if (events.onClick && !isCanvas) {
+                    eventController.handleEvent(events.onClick, childId || parentId, false);
                 }
             };
 
@@ -546,8 +600,9 @@ export const renderComponentContent = (
                 if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
                     onSelectChild(parentId, childId);
                 }
-                if (events.onClick) {
-                    eventController.handleEvent(events.onClick, childId || parentId, isCanvas);
+                // Only trigger events in preview mode, not canvas
+                if (events.onClick && !isCanvas) {
+                    eventController.handleEvent(events.onClick, childId || parentId, false);
                 }
             };
 
@@ -661,37 +716,21 @@ export const renderComponentContent = (
 
             const handleClick = (e) => {
                 e.stopPropagation();
+                // Canvas: Only select element, no event simulation
                 if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
                     onSelectChild(parentId, childId);
+                    return; // Don't trigger events on canvas
                 }
-                if (componentData.events?.onClick) {
-                    eventController.handleEvent(componentData.events.onClick, childId || parentId, isCanvas);
+                // Preview: Execute actual events
+                if (componentData.events?.onClick && !isCanvas) {
+                    eventController.handleEvent(componentData.events.onClick, childId || parentId, false);
                     const event = componentData.events.onClick;
-                    if (isCanvas) {
-                        if (event.type === 'submitForm') {
-                            toast.info(`Mô phỏng: Gửi form đến ${event.apiUrl}`, {
-                                position: 'bottom-right',
-                                autoClose: 2000,
-                            });
-                        } else if (event.type === 'navigate') {
-                            toast.info(`Mô phỏng: Điều hướng đến ${event.url}`, {
-                                position: 'bottom-right',
-                                autoClose: 2000,
-                            });
-                        } else if (event.type === 'triggerApi') {
-                            toast.info(`Mô phỏng: Gọi API ${event.apiUrl}`, {
-                                position: 'bottom-right',
-                                autoClose: 2000,
-                            });
-                        }
-                    } else {
-                        if (event.type === 'submitForm') {
-                            console.log(`Submitting form to ${event.apiUrl}`);
-                        } else if (event.type === 'navigate') {
-                            window.location.href = event.url;
-                        } else if (event.type === 'triggerApi') {
-                            console.log(`Trigger API: ${event.apiUrl}`);
-                        }
+                    if (event.type === 'submitForm') {
+                        console.log(`Submitting form to ${event.apiUrl}`);
+                    } else if (event.type === 'navigate') {
+                        window.location.href = event.url;
+                    } else if (event.type === 'triggerApi') {
+                        console.log(`Trigger API: ${event.apiUrl}`);
                     }
                 }
             };
@@ -748,22 +787,56 @@ export const renderComponentContent = (
             );
         }
 
-        case 'form': {
+        case 'iframe': {
             return (
-                <div
+                <iframe
+                    src={componentData.src || ''}
+                    title={componentData.title || 'Iframe'}
+                    width={componentData.width || '100%'}
+                    height={componentData.height || '100%'}
+                    frameBorder={componentData.frameBorder ?? 0}
+                    allow={componentData.allow || 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'}
+                    allowFullScreen={componentData.allowFullscreen ?? true}
+                    loading={componentData.loading || 'lazy'}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                        ...baseStyles,
+                    }}
+                />
+            );
+        }
+
+        case 'form': {
+            const fields = componentData.fields || [];
+            const showLabels = componentData.showLabels !== false;
+            const labelPosition = componentData.labelPosition || 'top';
+
+            return (
+                <form
+                    id={parentId}
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        if (isCanvas) {
+                            // In canvas mode, don't actually submit
+                            return false;
+                        }
+                    }}
                     style={{
                         display: 'flex',
                         flexDirection: componentData.direction || 'column',
-                        gap: componentData.gap || '10px',
+                        gap: componentData.gap || '16px',
+                        width: '100%',
                         ...baseStyles,
                     }}
                 >
-                    {componentData.title && !children.some((child) => child?.type === 'heading') && (
+                    {componentData.title && (
                         <h3
                             style={{
                                 ...getCleanTextStyles(baseStyles),
-                                margin: componentData.titleMargin || '0',
-                                fontSize: componentData.titleFontSize || '1.2rem',
+                                margin: componentData.titleMargin || '0 0 8px 0',
+                                fontSize: componentData.titleFontSize || '24px',
                                 color: componentData.titleColor || '#1f2937',
                                 fontWeight: componentData.titleFontWeight || '600',
                             }}
@@ -771,51 +844,169 @@ export const renderComponentContent = (
                             {componentData.title}
                         </h3>
                     )}
-                    {Array.isArray(componentData.fields) && componentData.fields.length > 0 ? (
-                        componentData.fields.map((field, index) => (
-                            <input
-                                key={index}
-                                type={field.type || 'text'}
-                                placeholder={field.placeholder || field.label || 'Nhập...'}
-                                style={{
-                                    padding: field.padding || '8px',
-                                    borderRadius: field.borderRadius || '8px',
-                                    border: field.border || '1px solid #ccc',
-                                    fontSize: field.fontSize || '1rem',
-                                }}
-                            />
-                        ))
-                    ) : (
-                        !children.some((child) => child?.type === 'input') && (
-                            <input
-                                type={componentData.inputType || 'text'}
-                                placeholder={componentData.placeholder || 'Nhập...'}
-                                style={{
-                                    padding: componentData.inputPadding || '8px',
-                                    borderRadius: componentData.inputBorderRadius || '8px',
-                                    border: componentData.inputBorder || '1px solid #ccc',
-                                    fontSize: componentData.inputFontSize || '1rem',
-                                }}
-                            />
-                        )
-                    )}
-                    {!children.some((child) => child?.type === 'button') && (
-                        <button
-                            type="submit"
-                            style={{
-                                background: componentData.buttonBackground || '#2563eb',
-                                color: componentData.buttonColor || '#fff',
-                                padding: componentData.buttonPadding || '8px 16px',
-                                borderRadius: componentData.buttonBorderRadius || '8px',
-                                border: componentData.buttonBorder || 'none',
-                                cursor: 'pointer',
-                                fontSize: componentData.buttonFontSize || '1rem',
-                                fontWeight: componentData.buttonFontWeight || '600',
-                            }}
-                        >
-                            {componentData.buttonText || 'Gửi'}
-                        </button>
-                    )}
+
+                    {fields.map((field, index) => {
+                        const fieldId = `${parentId}-${field.name || `field-${index}`}`;
+
+                        return (
+                            <div key={index} style={{ marginBottom: componentData.gap || '16px' }}>
+                                {/* Label */}
+                                {showLabels && labelPosition === 'top' && field.label && (
+                                    <label
+                                        htmlFor={fieldId}
+                                        style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: '600',
+                                            color: '#374151',
+                                        }}
+                                    >
+                                        {field.label}
+                                        {field.required && <span style={{ color: '#ef4444' }}> *</span>}
+                                    </label>
+                                )}
+
+                                {/* Field Input */}
+                                {field.type === 'textarea' ? (
+                                    <textarea
+                                        id={fieldId}
+                                        name={field.name}
+                                        placeholder={field.placeholder || ''}
+                                        required={field.required || false}
+                                        rows={field.rows || 4}
+                                        disabled={isCanvas}
+                                        style={{
+                                            width: '100%',
+                                            padding: field.padding || '12px',
+                                            borderRadius: field.borderRadius || '8px',
+                                            border: field.border || '1px solid #e5e7eb',
+                                            fontSize: field.fontSize || '14px',
+                                            fontFamily: 'inherit',
+                                            resize: 'vertical',
+                                            boxSizing: 'border-box',
+                                        }}
+                                    />
+                                ) : field.type === 'select' ? (
+                                    <select
+                                        id={fieldId}
+                                        name={field.name}
+                                        required={field.required || false}
+                                        disabled={isCanvas}
+                                        style={{
+                                            width: '100%',
+                                            padding: field.padding || '12px',
+                                            borderRadius: field.borderRadius || '8px',
+                                            border: field.border || '1px solid #e5e7eb',
+                                            fontSize: field.fontSize || '14px',
+                                            boxSizing: 'border-box',
+                                        }}
+                                    >
+                                        <option value="">Chọn...</option>
+                                        {(field.options || []).map((option, i) => (
+                                            <option key={i} value={option}>
+                                                {option}
+                                            </option>
+                                        ))}
+                                    </select>
+                                ) : field.type === 'checkbox' ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <input
+                                            type="checkbox"
+                                            id={fieldId}
+                                            name={field.name}
+                                            required={field.required || false}
+                                            disabled={isCanvas}
+                                            style={{
+                                                width: '18px',
+                                                height: '18px',
+                                                cursor: isCanvas ? 'default' : 'pointer',
+                                            }}
+                                        />
+                                        <label
+                                            htmlFor={fieldId}
+                                            style={{
+                                                fontSize: field.fontSize || '14px',
+                                                color: '#374151',
+                                                cursor: isCanvas ? 'default' : 'pointer',
+                                            }}
+                                        >
+                                            {field.label || field.placeholder}
+                                        </label>
+                                    </div>
+                                ) : field.type === 'radio' ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {(field.options || []).map((option, i) => (
+                                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <input
+                                                    type="radio"
+                                                    id={`${fieldId}-${i}`}
+                                                    name={field.name}
+                                                    value={option}
+                                                    required={field.required && i === 0}
+                                                    disabled={isCanvas}
+                                                    style={{
+                                                        width: '18px',
+                                                        height: '18px',
+                                                        cursor: isCanvas ? 'default' : 'pointer',
+                                                    }}
+                                                />
+                                                <label
+                                                    htmlFor={`${fieldId}-${i}`}
+                                                    style={{
+                                                        fontSize: field.fontSize || '14px',
+                                                        color: '#374151',
+                                                        cursor: isCanvas ? 'default' : 'pointer',
+                                                    }}
+                                                >
+                                                    {option}
+                                                </label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <input
+                                        type={field.type || 'text'}
+                                        id={fieldId}
+                                        name={field.name}
+                                        placeholder={field.placeholder || ''}
+                                        required={field.required || false}
+                                        disabled={isCanvas}
+                                        style={{
+                                            width: '100%',
+                                            padding: field.padding || '12px',
+                                            borderRadius: field.borderRadius || '8px',
+                                            border: field.border || '1px solid #e5e7eb',
+                                            fontSize: field.fontSize || '14px',
+                                            boxSizing: 'border-box',
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {/* Submit Button */}
+                    <button
+                        type="submit"
+                        disabled={isCanvas}
+                        style={{
+                            background: componentData.buttonBackground || '#667eea',
+                            color: componentData.buttonColor || '#ffffff',
+                            padding: componentData.buttonPadding || '12px 32px',
+                            borderRadius: componentData.buttonBorderRadius || '8px',
+                            border: componentData.buttonBorder || 'none',
+                            cursor: isCanvas ? 'default' : 'pointer',
+                            fontSize: componentData.buttonFontSize || '16px',
+                            fontWeight: componentData.buttonFontWeight || '600',
+                            transition: 'all 0.2s',
+                            alignSelf: componentData.direction === 'row' ? 'flex-start' : 'stretch',
+                        }}
+                    >
+                        {componentData.buttonText || 'Gửi ngay'}
+                    </button>
+
+                    {/* Render children if any */}
                     {children.map((child, index) =>
                         React.cloneElement(
                             renderComponentContent(
@@ -833,7 +1024,7 @@ export const renderComponentContent = (
                             { key: child.id || index }
                         )
                     )}
-                </div>
+                </form>
             );
         }
 
@@ -1363,6 +1554,60 @@ export const renderComponentContent = (
                     </div>
                 </>
             );
+        }
+
+        // Advanced Components
+        case 'countdown': {
+            return <CountdownRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'carousel': {
+            return <CarouselRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'accordion': {
+            return <AccordionRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'tabs': {
+            return <TabsRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'progress': {
+            return <ProgressRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'progress-circle': {
+            return (
+                <div style={{ ...baseStyles, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <div style={{
+                        width: '150px',
+                        height: '150px',
+                        borderRadius: '50%',
+                        border: `${componentData.strokeWidth || 12}px solid ${componentData.color || '#10b981'}`,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        fontSize: '2rem',
+                        fontWeight: '700',
+                        color: componentData.color || '#10b981'
+                    }}>
+                        {componentData.value || 0}%
+                    </div>
+                </div>
+            );
+        }
+
+        case 'rating': {
+            return <RatingRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'social-proof': {
+            return <SocialProofRenderer componentData={componentData} styles={baseStyles} />;
+        }
+
+        case 'social-proof-stats': {
+            return <SocialProofStatsRenderer componentData={componentData} styles={baseStyles} />;
         }
 
         default: {

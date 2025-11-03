@@ -72,6 +72,13 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                                             className="modal1-iframe"
                                             title="Desktop Preview"
                                             sandbox="allow-scripts allow-same-origin allow-popups"
+                                            style={{
+                                                width: "100%",
+                                                height: "100%",
+                                                border: "none",
+                                                overflow: "auto",
+                                                scrollBehavior: "smooth",
+                                            }}
                                         />
                                     </div>
                                 ) : (
@@ -80,14 +87,18 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                                         <div className="mobile-frame">
                                             <iframe
                                                 srcDoc={previewHtml}
-                                                className="modal1-iframe"
+                                                className="modal1-iframe mobile-iframe"
                                                 title="Mobile Preview"
                                                 sandbox="allow-scripts allow-same-origin allow-popups"
                                                 style={{
-                                                    width: "475px", // Chuẩn kích thước mobile
-                                                    height: "667px", // Chuẩn chiều cao iPhone
+                                                    width: "375px",
+                                                    height: "667px",
                                                     border: "none",
                                                     transformOrigin: "top center",
+                                                    overflowY: "auto",
+                                                    overflowX: "hidden",
+                                                    scrollBehavior: "smooth",
+                                                    WebkitOverflowScrolling: "touch",
                                                 }}
                                             />
                                         </div>

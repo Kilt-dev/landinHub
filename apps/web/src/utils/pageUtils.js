@@ -1,3 +1,5 @@
+import { generateAllFormScripts } from './formSubmissionHandler';
+
 // ==================== EVENT RUNTIME GENERATOR ====================
 
 /**
@@ -515,9 +517,14 @@ const renderElementHTML = (element, isChild = false) => {
             return renderSectionHTML(element);
 
         case 'button':
+            // Generate onclick handler if events exist
+            const onClickAttr = componentData.events?.onClick
+                ? `onclick="LPB.handleEvent(${JSON.stringify(componentData.events.onClick).replace(/"/g, '&quot;')})"`
+                : '';
             return `
                 <button
                     ${baseAttrs}
+                    ${onClickAttr}
                     style="${inlineStyles}; ${positionStyles}"
                 >
                     ${componentData.content || componentData.text || 'Button'}
@@ -592,6 +599,22 @@ const renderElementHTML = (element, isChild = false) => {
                 </video>
             `;
 
+        case 'iframe':
+            return `
+                <iframe
+                    ${baseAttrs}
+                    src="${componentData.src || ''}"
+                    title="${componentData.title || 'Iframe'}"
+                    width="${componentData.width || size.width || '100%'}"
+                    height="${componentData.height || size.height || '100%'}"
+                    frameborder="${componentData.frameBorder ?? 0}"
+                    allow="${componentData.allow || 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'}"
+                    allowfullscreen="${componentData.allowFullscreen !== false}"
+                    loading="${componentData.loading || 'lazy'}"
+                    style="${inlineStyles}; ${positionStyles}"
+                ></iframe>
+            `;
+
         case 'divider':
         case 'hr':
             return `
@@ -662,6 +685,331 @@ const renderElementHTML = (element, isChild = false) => {
                     style="${inlineStyles}; ${positionStyles}"
                 >
                     ${containerChildren || componentData.content || ''}
+                </div>
+            `;
+
+        // Shape Components
+        case 'square':
+            const squareWidth = size.width || componentData.size?.width || 50;
+            const squareHeight = size.height || componentData.size?.height || 50;
+            const squareFill = componentData.fill || styles.fill || styles.background || '#000';
+            const squareStroke = componentData.stroke || styles.stroke || styles.borderColor || 'currentColor';
+            const squareStrokeWidth = componentData.strokeWidth || styles.strokeWidth || styles.borderWidth || 2;
+            return `
+                <svg
+                    ${baseAttrs}
+                    width="${squareWidth}"
+                    height="${squareHeight}"
+                    style="${inlineStyles}; ${positionStyles}"
+                    viewBox="0 0 ${squareWidth} ${squareHeight}"
+                    preserveAspectRatio="none"
+                >
+                    <rect
+                        x="0"
+                        y="0"
+                        width="${squareWidth}"
+                        height="${squareHeight}"
+                        fill="${squareFill}"
+                        stroke="${squareStroke}"
+                        stroke-width="${squareStrokeWidth}"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            `;
+
+        case 'star':
+            const starWidth = size.width || componentData.size?.width || 50;
+            const starHeight = size.height || componentData.size?.height || 50;
+            const starFill = componentData.fill || styles.fill || styles.background || '#000';
+            const starStroke = componentData.stroke || styles.stroke || styles.borderColor || 'currentColor';
+            const starStrokeWidth = componentData.strokeWidth || styles.strokeWidth || styles.borderWidth || 2;
+            // Scale the star path to fit the size
+            const starPath = `M${starWidth/2} ${starHeight*0.1} L${starWidth*0.64} ${starHeight*0.36} H${starWidth*0.96} L${starWidth*0.72} ${starHeight*0.58} L${starWidth*0.82} ${starHeight*0.88} L${starWidth/2} ${starHeight*0.72} L${starWidth*0.18} ${starHeight*0.88} L${starWidth*0.28} ${starHeight*0.58} L${starWidth*0.04} ${starHeight*0.36} H${starWidth*0.36} Z`;
+            return `
+                <svg
+                    ${baseAttrs}
+                    width="${starWidth}"
+                    height="${starHeight}"
+                    style="${inlineStyles}; ${positionStyles}"
+                    viewBox="0 0 ${starWidth} ${starHeight}"
+                    preserveAspectRatio="xMidYMid meet"
+                >
+                    <path
+                        d="${starPath}"
+                        fill="${starFill}"
+                        stroke="${starStroke}"
+                        stroke-width="${starStrokeWidth}"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            `;
+
+        case 'layoutgrid':
+            const gridChildren = children.map(child => renderElementHTML(child, true)).join('\n');
+            const gridColumns = componentData.columns ? `repeat(${componentData.columns}, 1fr)` : (styles.gridTemplateColumns || 'repeat(2, 1fr)');
+            const gridGap = componentData.gap || styles.gap || '20px';
+            const gridPadding = componentData.padding || styles.padding || '10px';
+            const gridBackground = componentData.background || styles.background || 'transparent';
+            return `
+                <div
+                    ${baseAttrs}
+                    style="${inlineStyles}; ${positionStyles}; display: grid; grid-template-columns: ${gridColumns}; gap: ${gridGap}; padding: ${gridPadding}; background: ${gridBackground};"
+                >
+                    ${gridChildren || '<p>Empty grid</p>'}
+                </div>
+            `;
+
+        // Advanced Components - HTML Export
+        case 'countdown':
+            return `
+                <div ${baseAttrs} data-countdown="${componentData.targetDate || ''}" style="${inlineStyles}; ${positionStyles}" class="lpb-countdown">
+                    <div class="countdown-timer" id="timer-${id}"></div>
+                    <script>
+                        (function() {
+                            const target = new Date('${componentData.targetDate}').getTime();
+                            const el = document.getElementById('timer-${id}');
+                            const labels = ${JSON.stringify(componentData.labels || {})};
+                            setInterval(() => {
+                                const now = new Date().getTime();
+                                const diff = target - now;
+                                if (diff < 0) { el.innerHTML = 'Đã kết thúc'; return; }
+                                const d = Math.floor(diff / (1000*60*60*24));
+                                const h = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+                                const m = Math.floor((diff % (1000*60*60)) / (1000*60));
+                                const s = Math.floor((diff % (1000*60)) / 1000);
+                                el.innerHTML = \`<div>\${d}<br><small>\${labels.days || 'Days'}</small></div><div>\${h}<br><small>\${labels.hours || 'Hours'}</small></div><div>\${m}<br><small>\${labels.minutes || 'Mins'}</small></div><div>\${s}<br><small>\${labels.seconds || 'Secs'}</small></div>\`;
+                            }, 1000);
+                        })();
+                    </script>
+                </div>
+            `;
+
+        case 'carousel':
+            const carouselId = `carousel-${id}`;
+            const items = componentData.items || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}; position: relative; overflow: hidden;" class="lpb-carousel">
+                    ${componentData.title ? `<h3 style="text-align: center; margin-bottom: 20px;">${componentData.title}</h3>` : ''}
+                    <div id="${carouselId}" class="carousel-container" style="display: flex; width: 100%; overflow: hidden;">
+                        ${items.map((item, idx) => `
+                            <div class="carousel-item" style="min-width: 100%; display: ${idx === 0 ? 'block' : 'none'}; padding: 20px; text-align: center;">
+                                ${item.image ? `<img src="${item.image}" style="max-width: 100%; border-radius: 8px; margin-bottom: 12px;" alt="${item.name || ''}" />` : ''}
+                                ${item.name ? `<h4 style="margin: 8px 0; font-size: 1.25rem;">${item.name}</h4>` : ''}
+                                ${item.role ? `<p style="color: #6b7280; margin: 4px 0;">${item.role}</p>` : ''}
+                                ${item.text || item.content ? `<p style="margin-top: 12px;">${item.text || item.content}</p>` : ''}
+                                ${item.rating ? `<div style="color: #fbbf24; margin-top: 8px;">${'★'.repeat(Math.floor(item.rating))}${'☆'.repeat(5 - Math.floor(item.rating))}</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                    ${items.length > 1 ? `
+                        <button onclick="carouselPrev('${carouselId}')" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 50%; z-index: 10;">‹</button>
+                        <button onclick="carouselNext('${carouselId}')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 50%; z-index: 10;">›</button>
+                    ` : ''}
+                    <script>
+                        if (!window.carouselIndexes) window.carouselIndexes = {};
+                        window.carouselIndexes['${carouselId}'] = 0;
+                        window.carouselPrev = function(id) {
+                            const items = document.querySelectorAll('#' + id + ' .carousel-item');
+                            items[window.carouselIndexes[id]].style.display = 'none';
+                            window.carouselIndexes[id] = (window.carouselIndexes[id] - 1 + items.length) % items.length;
+                            items[window.carouselIndexes[id]].style.display = 'block';
+                        };
+                        window.carouselNext = function(id) {
+                            const items = document.querySelectorAll('#' + id + ' .carousel-item');
+                            items[window.carouselIndexes[id]].style.display = 'none';
+                            window.carouselIndexes[id] = (window.carouselIndexes[id] + 1) % items.length;
+                            items[window.carouselIndexes[id]].style.display = 'block';
+                        };
+                    </script>
+                </div>
+            `;
+
+        case 'accordion':
+            const accordionItems = componentData.items || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}" class="lpb-accordion">
+                    ${componentData.title ? `<h3 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: 700;">${componentData.title}</h3>` : ''}
+                    ${accordionItems.map((item, idx) => `
+                        <div style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                            <button onclick="toggleAccordion('${id}-${idx}')" style="width: 100%; padding: 16px; background: #ffffff; border: none; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1rem; font-weight: 600;">
+                                <span>${item.question || item.title}</span>
+                                <span id="${id}-${idx}-icon">▼</span>
+                            </button>
+                            <div id="${id}-${idx}" style="display: ${idx === 0 ? 'block' : 'none'}; padding: 16px; background: #f9fafb; color: #6b7280;">
+                                ${item.answer || item.content}
+                            </div>
+                        </div>
+                    `).join('')}
+                    <script>
+                        window.toggleAccordion = function(id) {
+                            const content = document.getElementById(id);
+                            const icon = document.getElementById(id + '-icon');
+                            if (content.style.display === 'none') {
+                                content.style.display = 'block';
+                                icon.innerText = '▲';
+                            } else {
+                                content.style.display = 'none';
+                                icon.innerText = '▼';
+                            }
+                        };
+                    </script>
+                </div>
+            `;
+
+        case 'tabs':
+            const tabs = componentData.tabs || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}" class="lpb-tabs">
+                    ${componentData.title ? `<h3 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: 700; text-align: center;">${componentData.title}</h3>` : ''}
+                    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e5e7eb;">
+                        ${tabs.map((tab, idx) => `
+                            <button onclick="switchTab('${id}', ${idx})" id="${id}-tab-${idx}" style="padding: 12px 24px; background: transparent; border: none; border-bottom: 2px solid ${idx === 0 ? '#3b82f6' : 'transparent'}; color: ${idx === 0 ? '#3b82f6' : '#6b7280'}; font-weight: ${idx === 0 ? '600' : '400'}; cursor: pointer; margin-bottom: -2px;">
+                                ${tab.label}
+                            </button>
+                        `).join('')}
+                    </div>
+                    ${tabs.map((tab, idx) => `
+                        <div id="${id}-content-${idx}" style="display: ${idx === 0 ? 'block' : 'none'}; text-align: center;">
+                            ${tab.content ? `
+                                <div style="font-size: 2.5rem; font-weight: 700; color: #1f2937; margin-bottom: 8px;">
+                                    ${tab.content.price || ''}
+                                    ${tab.content.period ? `<span style="font-size: 1rem; font-weight: 400; color: #6b7280;">/${tab.content.period}</span>` : ''}
+                                </div>
+                                ${tab.content.features ? `<ul style="list-style: none; padding: 0; margin-top: 20px;">
+                                    ${tab.content.features.map(f => `<li style="padding: 8px 0; color: #374151;">✓ ${f}</li>`).join('')}
+                                </ul>` : ''}
+                            ` : tab.text || ''}
+                        </div>
+                    `).join('')}
+                    <script>
+                        window.switchTab = function(id, index) {
+                            const tabs = document.querySelectorAll('[id^="' + id + '-tab-"]');
+                            const contents = document.querySelectorAll('[id^="' + id + '-content-"]');
+                            tabs.forEach((tab, i) => {
+                                tab.style.borderBottomColor = i === index ? '#3b82f6' : 'transparent';
+                                tab.style.color = i === index ? '#3b82f6' : '#6b7280';
+                                tab.style.fontWeight = i === index ? '600' : '400';
+                            });
+                            contents.forEach((content, i) => {
+                                content.style.display = i === index ? 'block' : 'none';
+                            });
+                        };
+                    </script>
+                </div>
+            `;
+
+        case 'progress':
+            const progressItems = componentData.items || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}" class="lpb-progress">
+                    ${componentData.title ? `<h3 style="margin-bottom: 20px; font-size: 1.5rem; font-weight: 700;">${componentData.title}</h3>` : ''}
+                    ${progressItems.map(item => `
+                        <div style="margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="font-weight: 600; color: #374151;">${item.label}</span>
+                                ${componentData.showPercentage !== false ? `<span style="color: #6b7280;">${item.value}%</span>` : ''}
+                            </div>
+                            <div style="width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden;">
+                                <div style="width: ${item.value}%; height: 100%; background: ${item.color || '#3b82f6'}; border-radius: 4px; transition: width 1s ease-out;"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+        case 'rating':
+            const rating = componentData.rating || 0;
+            const maxRating = componentData.maxRating || 5;
+            const reviews = componentData.reviews || 0;
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}; display: flex; align-items: center; gap: 8px;" class="lpb-rating">
+                    <div style="display: flex; gap: 4px;">
+                        ${Array.from({length: maxRating}, (_, i) => {
+                            const filled = i < Math.floor(rating);
+                            return `<span style="color: ${filled ? (componentData.color || '#fbbf24') : '#d1d5db'}; font-size: 24px;">${filled ? '★' : '☆'}</span>`;
+                        }).join('')}
+                    </div>
+                    <span style="font-weight: 600; font-size: 1.125rem;">${rating.toFixed(1)}</span>
+                    ${componentData.showReviews !== false ? `<span style="color: #6b7280;">(${reviews} đánh giá)</span>` : ''}
+                </div>
+            `;
+
+        case 'social-proof':
+            const notifications = componentData.notifications || [];
+            const notificationId = `notification-${id}`;
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles};" class="lpb-social-proof">
+                    <div id="${notificationId}" style="background: #ffffff; border-radius: 12px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: none;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img id="${notificationId}-avatar" src="" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;" alt="Avatar" />
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">
+                                    <span id="${notificationId}-name"></span> <span id="${notificationId}-action"></span>
+                                </div>
+                                <div style="font-size: 0.875rem; color: #6b7280;">
+                                    <span id="${notificationId}-product"></span> • <span id="${notificationId}-time"></span>
+                                </div>
+                            </div>
+                            <button onclick="closeSocialProof('${notificationId}')" style="background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 1.25rem; padding: 0; width: 24px; height: 24px;">×</button>
+                        </div>
+                    </div>
+                    <script>
+                        (function() {
+                            const notifications = ${JSON.stringify(notifications)};
+                            const interval = ${componentData.interval || 5000};
+                            let currentIndex = 0;
+                            const el = document.getElementById('${notificationId}');
+
+                            function showNotification() {
+                                if (notifications.length === 0) return;
+                                const notif = notifications[currentIndex];
+                                document.getElementById('${notificationId}-avatar').src = notif.avatar || 'https://i.pravatar.cc/50';
+                                document.getElementById('${notificationId}-name').innerText = notif.name || 'Khách hàng';
+                                document.getElementById('${notificationId}-action').innerText = notif.action || 'vừa mua';
+                                document.getElementById('${notificationId}-product').innerText = notif.product || 'Sản phẩm';
+                                document.getElementById('${notificationId}-time').innerText = notif.time || '1 phút trước';
+                                el.style.display = 'block';
+
+                                setTimeout(() => {
+                                    el.style.display = 'none';
+                                }, 4000);
+
+                                currentIndex = (currentIndex + 1) % notifications.length;
+                            }
+
+                            window.closeSocialProof = function(id) {
+                                document.getElementById(id).style.display = 'none';
+                            };
+
+                            // Show first notification after 2s
+                            setTimeout(showNotification, 2000);
+                            // Then show every interval
+                            setInterval(showNotification, interval);
+                        })();
+                    </script>
+                </div>
+            `;
+
+        case 'social-proof-stats':
+            const stats = componentData.stats || [];
+            return `
+                <div ${baseAttrs} style="${inlineStyles}; ${positionStyles}; display: grid; grid-template-columns: repeat(${Math.min(stats.length, 4)}, 1fr); gap: 20px;" class="lpb-social-proof-stats">
+                    ${stats.map(stat => `
+                        <div style="text-align: center; padding: 20px;">
+                            <div style="font-size: 2.5rem; margin-bottom: 8px;">${stat.icon || '📊'}</div>
+                            <div style="font-size: 2rem; font-weight: 700; color: #1f2937; margin-bottom: 4px;">${stat.value}</div>
+                            <div style="font-size: 0.875rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em;">${stat.label}</div>
+                        </div>
+                    `).join('')}
+                    <style>
+                        @media (max-width: 768px) {
+                            .lpb-social-proof-stats {
+                                grid-template-columns: repeat(2, 1fr) !important;
+                            }
+                        }
+                    </style>
                 </div>
             `;
 
@@ -820,20 +1168,56 @@ const generateCSS = (pageData) => {
             box-sizing: border-box;
         }
 
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
         body {
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
         }
 
         .lpb-element {
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* Base responsive images */
         .lpb-element img {
             max-width: 100%;
             height: auto;
+            display: block;
+        }
+
+        /* Smooth scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5568d3, #6a3e8f);
+        }
+
+        /* Section smooth rendering */
+        .ladi-section {
+            transition: background-color 0.3s ease, background-image 0.3s ease;
+        }
+
+        .ladi-container {
+            transition: padding 0.2s ease;
         }
     `;
 
@@ -887,6 +1271,21 @@ const generateCSS = (pageData) => {
     css += `\n@media (max-width: 768px) {`;
 
     pageData.elements.forEach(element => {
+        // Apply responsive styles for all element types
+        if (element.responsiveStyles?.tablet) {
+            css += `\n    #${element.id} {`;
+            Object.entries(element.responsiveStyles.tablet).forEach(([key, value]) => {
+                const kebabKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+                css += `${kebabKey}:${value};`;
+            });
+            css += `}`;
+        }
+
+        // Apply responsive sizing for tablet
+        if (element.tabletSize) {
+            css += `\n    #${element.id} { width: ${element.tabletSize.width}px; height: ${element.tabletSize.height}px; }`;
+        }
+
         if (element.type === 'section') {
             css += `\n    #${element.id} { top: var(--tablet-y-${element.id}, ${element.position?.tablet?.y || element.position?.desktop?.y || 0}px); }`;
 
@@ -896,6 +1295,16 @@ const generateCSS = (pageData) => {
                     const tabletX = child.position?.tablet?.x || child.position?.desktop?.x || 0;
                     const tabletY = child.position?.tablet?.y || child.position?.desktop?.y || 0;
                     css += `\n    #${child.id} { left: ${tabletX}px; top: ${tabletY}px; }`;
+
+                    // Apply child responsive styles
+                    if (child.responsiveStyles?.tablet) {
+                        css += `\n    #${child.id} {`;
+                        Object.entries(child.responsiveStyles.tablet).forEach(([key, value]) => {
+                            const kebabKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+                            css += `${kebabKey}:${value};`;
+                        });
+                        css += `}`;
+                    }
                 });
             }
         }
@@ -908,6 +1317,21 @@ const generateCSS = (pageData) => {
     css += `\n@media (max-width: 480px) {`;
 
     pageData.elements.forEach(element => {
+        // Apply responsive styles for all element types
+        if (element.responsiveStyles?.mobile) {
+            css += `\n    #${element.id} {`;
+            Object.entries(element.responsiveStyles.mobile).forEach(([key, value]) => {
+                const kebabKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+                css += `${kebabKey}:${value};`;
+            });
+            css += `}`;
+        }
+
+        // Apply responsive sizing for mobile
+        if (element.mobileSize) {
+            css += `\n    #${element.id} { width: ${element.mobileSize.width}px; height: ${element.mobileSize.height}px; }`;
+        }
+
         if (element.type === 'section') {
             css += `\n    #${element.id} { top: var(--mobile-y-${element.id}, ${element.position?.mobile?.y || element.position?.desktop?.y || 0}px); }`;
 
@@ -917,6 +1341,16 @@ const generateCSS = (pageData) => {
                     const mobileX = child.position?.mobile?.x || child.position?.desktop?.x || 0;
                     const mobileY = child.position?.mobile?.y || child.position?.desktop?.y || 0;
                     css += `\n    #${child.id} { left: ${mobileX}px; top: ${mobileY}px; }`;
+
+                    // Apply child responsive styles
+                    if (child.responsiveStyles?.mobile) {
+                        css += `\n    #${child.id} {`;
+                        Object.entries(child.responsiveStyles.mobile).forEach(([key, value]) => {
+                            const kebabKey = key.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
+                            css += `${kebabKey}:${value};`;
+                        });
+                        css += `}`;
+                    }
                 });
             }
         }
@@ -952,6 +1386,9 @@ export const renderStaticHTML = (pageData) => {
     const sectionsHTML = sections.map(section => renderSectionHTML(section)).join('\n');
     const popupsHTML = renderPopupsHTML(popups);
     const runtimeScript = generateEventRuntime(events, popups);
+
+    // Generate form submission scripts
+    const formScripts = generateAllFormScripts(pageData);
 
     // Generate CSS
     const cssContent = generateCSS(pageData);
@@ -1123,6 +1560,21 @@ export const renderStaticHTML = (pageData) => {
                 max-width: 100% !important;
                 height: auto !important;
             }
+
+            /* Scale down icons on mobile */
+            .lpb-icon {
+                max-width: 48px !important;
+                max-height: 48px !important;
+            }
+
+            .lpb-icon i {
+                font-size: 24px !important;
+            }
+
+            .lpb-icon img, .lpb-icon svg {
+                max-width: 48px !important;
+                max-height: 48px !important;
+            }
         }
 
         /* Small Mobile (≤480px) */
@@ -1154,6 +1606,21 @@ export const renderStaticHTML = (pageData) => {
             .lpb-button {
                 padding: 8px 16px !important;
                 min-height: 40px !important;
+            }
+
+            /* Smaller icons on small mobile */
+            .lpb-icon {
+                max-width: 40px !important;
+                max-height: 40px !important;
+            }
+
+            .lpb-icon i {
+                font-size: 20px !important;
+            }
+
+            .lpb-icon img, .lpb-icon svg {
+                max-width: 40px !important;
+                max-height: 40px !important;
             }
         }
 
@@ -1203,10 +1670,19 @@ export const renderStaticHTML = (pageData) => {
                 min-height: 36px !important;
             }
 
-            /* Reduce icon sizes */
+            /* Reduce icon sizes for very small screens */
             .lpb-icon {
-                width: 80% !important;
-                height: 80% !important;
+                max-width: 32px !important;
+                max-height: 32px !important;
+            }
+
+            .lpb-icon i {
+                font-size: 16px !important;
+            }
+
+            .lpb-icon img, .lpb-icon svg {
+                max-width: 32px !important;
+                max-height: 32px !important;
             }
         }
     </style>
@@ -1228,6 +1704,9 @@ export const renderStaticHTML = (pageData) => {
     <script>
         ${runtimeScript}
     </script>
+
+    <!-- Form Submission Scripts -->
+    ${formScripts.join('\n')}
 
     <!-- Embedded PageData for easy import -->
     <script type="application/json" id="lpb-page-data">
@@ -1748,6 +2227,17 @@ const parseComponentData = (element, type) => {
             componentData.loop = element.hasAttribute('loop');
             componentData.muted = element.hasAttribute('muted');
             componentData.fallbackText = element.textContent.trim();
+            break;
+
+        case 'iframe':
+            componentData.src = element.getAttribute('src') || '';
+            componentData.title = element.getAttribute('title') || 'Iframe';
+            componentData.width = element.getAttribute('width') || '100%';
+            componentData.height = element.getAttribute('height') || '100%';
+            componentData.frameBorder = parseInt(element.getAttribute('frameborder')) || 0;
+            componentData.allow = element.getAttribute('allow') || 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            componentData.allowFullscreen = element.hasAttribute('allowfullscreen');
+            componentData.loading = element.getAttribute('loading') || 'lazy';
             break;
 
         case 'divider':
