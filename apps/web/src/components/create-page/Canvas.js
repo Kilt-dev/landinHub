@@ -53,6 +53,8 @@ import {
     snapToGuides,
     generateSnapPoints,
     autoScale,
+    applyMobileVerticalStacking,
+    applySectionMobileStacking,
     clampToCanvas,
     getElementBounds,
     BREAKPOINTS,
