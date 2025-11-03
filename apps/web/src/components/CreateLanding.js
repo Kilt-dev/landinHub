@@ -1174,6 +1174,39 @@ const CreateLanding = () => {
     }, [pageId, pageData]);
 
     // Save
+    // Helper: Ensure all elements have mobile positions
+    const ensureMobilePositions = useCallback((data) => {
+        return {
+            ...data,
+            elements: data.elements.map((element) => {
+                // If element already has mobile positions, keep them
+                if (element.position?.mobile && element.mobileSize) {
+                    return element;
+                }
+
+                // Apply mobile stacking for sections
+                if (element.type === 'section' && element.children && element.children.length > 0) {
+                    return applySectionMobileStacking(element, {
+                        startY: 20,
+                        spacing: 16,
+                        padding: 20,
+                        viewportWidth: 375,
+                    });
+                }
+
+                // For non-section elements without mobile positions, use desktop positions
+                return {
+                    ...element,
+                    position: {
+                        ...element.position,
+                        mobile: element.position?.mobile || element.position?.desktop || { x: 0, y: 0, z: 1 },
+                    },
+                    mobileSize: element.mobileSize || element.size || { width: 200, height: 50 },
+                };
+            }),
+        };
+    }, []);
+
     const handleSave = useCallback(async () => {
         if (!pageId) {
             toast.error('Không tìm thấy ID trang.');
@@ -1181,8 +1214,10 @@ const CreateLanding = () => {
         }
         setIsSaving(true); // Show DogLoader during save
         try {
-            const htmlContent = renderStaticHTML(pageData);
-            const response = await api.put(`/api/pages/${pageId}`, { html: htmlContent, pageData });
+            // Ensure mobile positions before saving
+            const pageDataWithMobile = ensureMobilePositions(pageData);
+            const htmlContent = renderStaticHTML(pageDataWithMobile);
+            const response = await api.put(`/api/pages/${pageId}`, { html: htmlContent, pageData: pageDataWithMobile });
             if (response.data.success) {
                 toast.success(`Lưu trang thành công! (${pageData.elements.length} phần tử)`);
                 if (!response.data.page.screenshot_url) {
@@ -1208,14 +1243,16 @@ const CreateLanding = () => {
         } finally {
             setIsSaving(false); // Hide DogLoader
         }
-    }, [pageId, navigate, pageData]);
+    }, [pageId, navigate, pageData, ensureMobilePositions]);
 
     // Preview
     const handlePreview = useCallback(() => {
-        const htmlContent = renderStaticHTML(pageData);
+        // Ensure all elements have mobile positions before preview
+        const pageDataWithMobile = ensureMobilePositions(pageData);
+        const htmlContent = renderStaticHTML(pageDataWithMobile);
         setPreviewHtml(htmlContent);
         setShowPreview(true);
-    }, [pageData]);
+    }, [pageData, ensureMobilePositions]);
 
     // AI Content Generator
     const handleAIContentGenerator = useCallback(() => {
