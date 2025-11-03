@@ -1560,6 +1560,21 @@ export const renderStaticHTML = (pageData) => {
                 max-width: 100% !important;
                 height: auto !important;
             }
+
+            /* Scale down icons on mobile */
+            .lpb-icon {
+                max-width: 48px !important;
+                max-height: 48px !important;
+            }
+
+            .lpb-icon i {
+                font-size: 24px !important;
+            }
+
+            .lpb-icon img, .lpb-icon svg {
+                max-width: 48px !important;
+                max-height: 48px !important;
+            }
         }
 
         /* Small Mobile (≤480px) */
@@ -1591,6 +1606,21 @@ export const renderStaticHTML = (pageData) => {
             .lpb-button {
                 padding: 8px 16px !important;
                 min-height: 40px !important;
+            }
+
+            /* Smaller icons on small mobile */
+            .lpb-icon {
+                max-width: 40px !important;
+                max-height: 40px !important;
+            }
+
+            .lpb-icon i {
+                font-size: 20px !important;
+            }
+
+            .lpb-icon img, .lpb-icon svg {
+                max-width: 40px !important;
+                max-height: 40px !important;
             }
         }
 
@@ -1640,10 +1670,19 @@ export const renderStaticHTML = (pageData) => {
                 min-height: 36px !important;
             }
 
-            /* Reduce icon sizes */
+            /* Reduce icon sizes for very small screens */
             .lpb-icon {
-                width: 80% !important;
-                height: 80% !important;
+                max-width: 32px !important;
+                max-height: 32px !important;
+            }
+
+            .lpb-icon i {
+                font-size: 16px !important;
+            }
+
+            .lpb-icon img, .lpb-icon svg {
+                max-width: 32px !important;
+                max-height: 32px !important;
             }
         }
     </style>

@@ -495,8 +495,9 @@ export const renderComponentContent = (
                 if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
                     onSelectChild(parentId, childId);
                 }
-                if (events.onClick) {
-                    eventController.handleEvent(events.onClick, childId || parentId, isCanvas);
+                // Only trigger events in preview mode, not canvas
+                if (events.onClick && !isCanvas) {
+                    eventController.handleEvent(events.onClick, childId || parentId, false);
                 }
             };
 
@@ -529,8 +530,9 @@ export const renderComponentContent = (
                 if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
                     onSelectChild(parentId, childId);
                 }
-                if (events.onClick) {
-                    eventController.handleEvent(events.onClick, childId || parentId, isCanvas);
+                // Only trigger events in preview mode, not canvas
+                if (events.onClick && !isCanvas) {
+                    eventController.handleEvent(events.onClick, childId || parentId, false);
                 }
             };
 
@@ -598,8 +600,9 @@ export const renderComponentContent = (
                 if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
                     onSelectChild(parentId, childId);
                 }
-                if (events.onClick) {
-                    eventController.handleEvent(events.onClick, childId || parentId, isCanvas);
+                // Only trigger events in preview mode, not canvas
+                if (events.onClick && !isCanvas) {
+                    eventController.handleEvent(events.onClick, childId || parentId, false);
                 }
             };
 
@@ -713,37 +716,21 @@ export const renderComponentContent = (
 
             const handleClick = (e) => {
                 e.stopPropagation();
+                // Canvas: Only select element, no event simulation
                 if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
                     onSelectChild(parentId, childId);
+                    return; // Don't trigger events on canvas
                 }
-                if (componentData.events?.onClick) {
-                    eventController.handleEvent(componentData.events.onClick, childId || parentId, isCanvas);
+                // Preview: Execute actual events
+                if (componentData.events?.onClick && !isCanvas) {
+                    eventController.handleEvent(componentData.events.onClick, childId || parentId, false);
                     const event = componentData.events.onClick;
-                    if (isCanvas) {
-                        if (event.type === 'submitForm') {
-                            toast.info(`Mô phỏng: Gửi form đến ${event.apiUrl}`, {
-                                position: 'bottom-right',
-                                autoClose: 2000,
-                            });
-                        } else if (event.type === 'navigate') {
-                            toast.info(`Mô phỏng: Điều hướng đến ${event.url}`, {
-                                position: 'bottom-right',
-                                autoClose: 2000,
-                            });
-                        } else if (event.type === 'triggerApi') {
-                            toast.info(`Mô phỏng: Gọi API ${event.apiUrl}`, {
-                                position: 'bottom-right',
-                                autoClose: 2000,
-                            });
-                        }
-                    } else {
-                        if (event.type === 'submitForm') {
-                            console.log(`Submitting form to ${event.apiUrl}`);
-                        } else if (event.type === 'navigate') {
-                            window.location.href = event.url;
-                        } else if (event.type === 'triggerApi') {
-                            console.log(`Trigger API: ${event.apiUrl}`);
-                        }
+                    if (event.type === 'submitForm') {
+                        console.log(`Submitting form to ${event.apiUrl}`);
+                    } else if (event.type === 'navigate') {
+                        window.location.href = event.url;
+                    } else if (event.type === 'triggerApi') {
+                        console.log(`Trigger API: ${event.apiUrl}`);
                     }
                 }
             };
