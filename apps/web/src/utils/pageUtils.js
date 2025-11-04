@@ -1504,17 +1504,64 @@ export const renderStaticHTML = (pageData) => {
             }
         }
 
-        /* Mobile (≤768px) */
+        /* Mobile (≤768px) - Builder Compatible Layout */
         @media (max-width: 768px) {
+            html, body {
+                width: 100% !important;
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
+            }
+
+            #lpb-canvas {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
             .lpb-section {
+                position: absolute !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 left: 0 !important;
+                right: 0 !important;
                 transform: none !important;
+                margin: 0 !important;
             }
+
+            /* Apply mobile Y positions to sections */
+            ${pageData.elements.filter(el => el.type === 'section').map(section => {
+                const mobileY = section.position?.mobile?.y || section.position?.desktop?.y || 0;
+                const mobileHeight = section.mobileSize?.height || section.size?.height;
+                let css = `
+            .lpb-section#${section.id} {
+                top: ${mobileY}px !important;
+                ${mobileHeight ? `height: ${mobileHeight}px !important; min-height: ${mobileHeight}px !important;` : ''}
+            }`;
+
+                // Add child element mobile positions
+                if (section.children && section.children.length > 0) {
+                    section.children.forEach(child => {
+                        const mobileX = child.position?.mobile?.x || child.position?.desktop?.x || 0;
+                        const mobileY = child.position?.mobile?.y || child.position?.desktop?.y || 0;
+                        const mobileWidth = child.mobileSize?.width || child.size?.width;
+                        const mobileHeight = child.mobileSize?.height || child.size?.height;
+
+                        css += `
+            #${child.id} {
+                position: absolute !important;
+                left: ${mobileX}px !important;
+                top: ${mobileY}px !important;
+                ${mobileWidth ? `width: ${mobileWidth}px !important;` : ''}
+                ${mobileHeight ? `height: ${mobileHeight}px !important;` : ''}
+            }`;
+                    });
+                }
+
+                return css;
+            }).join('')}
 
             .ladi-container {
                 padding: 16px !important;
+                width: 100% !important;
             }
 
             .lpb-popup-container {
@@ -1525,6 +1572,18 @@ export const renderStaticHTML = (pageData) => {
 
             .lpb-popup-body {
                 padding: 16px !important;
+            }
+
+            /* Force text wrapping on mobile */
+            .lpb-heading, .lpb-paragraph, .lpb-button, .lpb-element {
+                max-width: 100% !important;
+                word-wrap: break-word !important;
+            }
+
+            /* Responsive images */
+            .lpb-image img, .lpb-element img {
+                max-width: 100% !important;
+                height: auto !important;
             }
 
             /* Scale down typography */

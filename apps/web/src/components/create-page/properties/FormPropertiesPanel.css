@@ -4,24 +4,26 @@
     display: flex;
     flex-direction: column;
     background: white;
+    overflow: hidden;
 }
 
 .form-panel-header {
-    padding: 20px;
+    padding: 16px;
     border-bottom: 2px solid #f3f4f6;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
+    flex-shrink: 0;
 }
 
 .form-panel-header h3 {
-    margin: 0 0 8px 0;
-    font-size: 18px;
+    margin: 0 0 6px 0;
+    font-size: 16px;
     font-weight: 700;
 }
 
 .form-panel-header p {
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
     opacity: 0.9;
 }
 
@@ -29,14 +31,15 @@
     display: flex;
     border-bottom: 2px solid #f3f4f6;
     background: #f9fafb;
+    flex-shrink: 0;
 }
 
 .form-panel-tabs button {
     flex: 1;
-    padding: 12px;
+    padding: 10px 12px;
     border: none;
     background: transparent;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: #6b7280;
     cursor: pointer;
@@ -61,7 +64,35 @@
 .form-settings-tab {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    overflow-x: hidden;
+    padding: 16px;
+    min-height: 0;
+}
+
+.form-fields-tab::-webkit-scrollbar,
+.form-design-tab::-webkit-scrollbar,
+.form-settings-tab::-webkit-scrollbar {
+    width: 6px;
+}
+
+.form-fields-tab::-webkit-scrollbar-track,
+.form-design-tab::-webkit-scrollbar-track,
+.form-settings-tab::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.form-fields-tab::-webkit-scrollbar-thumb,
+.form-design-tab::-webkit-scrollbar-thumb,
+.form-settings-tab::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+.form-fields-tab::-webkit-scrollbar-thumb:hover,
+.form-design-tab::-webkit-scrollbar-thumb:hover,
+.form-settings-tab::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 .section-label {
