@@ -73,8 +73,8 @@ const getS3KeyFromFilePath = (file_path, fileName = 'index.html') => {
     return s3Key.endsWith(fileName) ? s3Key : `${s3Key}/${fileName}`;
 };
 
-// Tối ưu hóa tạo screenshot
-const generateScreenshot = async (htmlContent, pageId, isUrl = false) => {
+// Tối ưu hóa tạo screenshot với hỗ trợ popup states
+const generateScreenshot = async (htmlContent, pageId, isUrl = false, options = {}) => {
     console.log('Generating screenshot for page:', pageId);
 
     const browser = await getBrowser();
@@ -82,11 +82,11 @@ const generateScreenshot = async (htmlContent, pageId, isUrl = false) => {
 
     try {
         // Tăng kích thước viewport để phù hợp với thiết kế responsive
-        await page.setViewport({
-            width: 1280,
-            height: 720,
-            deviceScaleFactor: 1
-        });
+        const viewport = options.mobile ?
+            { width: 375, height: 667, deviceScaleFactor: 2 } :
+            { width: 1280, height: 720, deviceScaleFactor: 1 };
+
+        await page.setViewport(viewport);
 
         if (isUrl) {
             await page.goto(htmlContent, {
@@ -103,18 +103,35 @@ const generateScreenshot = async (htmlContent, pageId, isUrl = false) => {
         // Chờ thêm để đảm bảo tất cả tài nguyên được tải
         await new Promise(resolve => setTimeout(resolve, 3000));
 
+        // Nếu cần capture popup state
+        if (options.popupId) {
+            console.log('Opening popup for screenshot:', options.popupId);
+            await page.evaluate((popupId) => {
+                if (window.LPB && window.LPB.popups) {
+                    window.LPB.popups.open(popupId);
+                }
+            }, options.popupId);
+
+            // Chờ popup animation
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
         // Tối ưu hóa kích thước ảnh chụp
         const screenshot = await page.screenshot({
             type: 'png',
-            clip: {
+            clip: options.fullPage ? undefined : {
                 x: 0,
                 y: 0,
-                width: 1280,
-                height: 720
-            }
+                width: viewport.width,
+                height: viewport.height
+            },
+            fullPage: options.fullPage || false
         });
 
-        const screenshotKey = `screenshots/${pageId}.png`;
+        const suffix = options.popupId ? `-popup-${options.popupId}` : '';
+        const deviceSuffix = options.mobile ? '-mobile' : '';
+        const screenshotKey = `screenshots/${pageId}${suffix}${deviceSuffix}.png`;
+
         await uploadToS3(screenshotKey, screenshot, 'image/png');
 
         const screenshotUrl = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${screenshotKey}`;
