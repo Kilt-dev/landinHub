@@ -163,17 +163,101 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                                                     WebkitOverflowScrolling: "touch",
                                                 }}
                                                 onLoad={(e) => {
-                                                    // Ensure mobile viewport after iframe loads
+                                                    // Force mobile layout matching builder
                                                     try {
                                                         const iframeDoc = e.target.contentDocument || e.target.contentWindow.document;
-                                                        if (iframeDoc && !iframeDoc.querySelector('meta[name="viewport"]')) {
+                                                        if (!iframeDoc) return;
+
+                                                        // Inject viewport meta tag
+                                                        if (!iframeDoc.querySelector('meta[name="viewport"]')) {
                                                             const viewport = iframeDoc.createElement('meta');
                                                             viewport.name = 'viewport';
-                                                            viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                                                            viewport.content = 'width=375, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
                                                             iframeDoc.head.appendChild(viewport);
                                                         }
-                                                    } catch (e) {
-                                                        console.warn('Could not inject viewport meta tag:', e);
+
+                                                        // Inject mobile-specific CSS to match builder layout
+                                                        const mobileStyles = iframeDoc.createElement('style');
+                                                        mobileStyles.id = 'mobile-preview-styles';
+                                                        mobileStyles.textContent = `
+                                                            /* Force mobile layout matching builder */
+                                                            html, body {
+                                                                width: 375px !important;
+                                                                max-width: 375px !important;
+                                                                overflow-x: hidden !important;
+                                                            }
+
+                                                            #lpb-canvas {
+                                                                width: 375px !important;
+                                                                max-width: 375px !important;
+                                                            }
+
+                                                            .lpb-section {
+                                                                position: absolute !important;
+                                                                width: 100% !important;
+                                                                max-width: 375px !important;
+                                                                left: 0 !important;
+                                                                right: 0 !important;
+                                                                transform: none !important;
+                                                                margin: 0 !important;
+                                                            }
+
+                                                            /* Apply mobile positions from data attributes */
+                                                            .lpb-section {
+                                                                top: attr(data-mobile-y px) !important;
+                                                            }
+
+                                                            .lpb-element[data-mobile-x] {
+                                                                left: attr(data-mobile-x px) !important;
+                                                            }
+
+                                                            .lpb-element[data-mobile-y] {
+                                                                top: attr(data-mobile-y px) !important;
+                                                            }
+
+                                                            /* Force text to wrap on mobile */
+                                                            .lpb-heading, .lpb-paragraph, .lpb-button {
+                                                                max-width: 100% !important;
+                                                                word-wrap: break-word !important;
+                                                            }
+
+                                                            /* Scale images properly */
+                                                            .lpb-image img {
+                                                                max-width: 100% !important;
+                                                                height: auto !important;
+                                                            }
+                                                        `;
+
+                                                        if (!iframeDoc.getElementById('mobile-preview-styles')) {
+                                                            iframeDoc.head.appendChild(mobileStyles);
+                                                        }
+
+                                                        // Apply mobile positions via JavaScript (since CSS attr() doesn't work for custom attributes)
+                                                        const applyMobilePositions = () => {
+                                                            // Apply section mobile Y positions
+                                                            const sections = iframeDoc.querySelectorAll('.lpb-section[data-mobile-y]');
+                                                            sections.forEach(section => {
+                                                                const mobileY = section.getAttribute('data-mobile-y');
+                                                                if (mobileY) {
+                                                                    section.style.top = `${mobileY}px`;
+                                                                }
+                                                            });
+
+                                                            // Apply element mobile X/Y positions
+                                                            const elements = iframeDoc.querySelectorAll('.lpb-element[data-mobile-x], .lpb-element[data-mobile-y]');
+                                                            elements.forEach(el => {
+                                                                const mobileX = el.getAttribute('data-mobile-x');
+                                                                const mobileY = el.getAttribute('data-mobile-y');
+                                                                if (mobileX) el.style.left = `${mobileX}px`;
+                                                                if (mobileY) el.style.top = `${mobileY}px`;
+                                                            });
+                                                        };
+
+                                                        // Apply immediately and after a short delay
+                                                        applyMobilePositions();
+                                                        setTimeout(applyMobilePositions, 100);
+                                                    } catch (error) {
+                                                        console.warn('Could not inject mobile styles:', error);
                                                     }
                                                 }}
                                             />
