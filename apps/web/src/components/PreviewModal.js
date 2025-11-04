@@ -2,13 +2,39 @@ import React, { useState } from "react";
 import { Eye, X, Monitor, Smartphone } from "lucide-react";
 import "../styles/PreviewModal.css";
 
-const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, previewHtml }) => {
+const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, previewHtml, pageData }) => {
     const [viewMode, setViewMode] = useState("desktop");
+    const [popupStates, setPopupStates] = useState({});
+
+    // Extract popups from pageData
+    const popups = pageData?.elements?.filter(el => el.type === 'popup') || [];
 
     const handleClose = (e) => {
         e.stopPropagation();
         setShowPreviewModal(false);
         setPreviewHtml("");
+        setPopupStates({});
+    };
+
+    // Toggle popup in preview iframe
+    const handleTogglePopup = (popupId) => {
+        try {
+            const iframe = document.querySelector('.modal1-iframe');
+            if (iframe && iframe.contentWindow) {
+                const win = iframe.contentWindow;
+                if (win.LPB && win.LPB.popups) {
+                    if (popupStates[popupId]) {
+                        win.LPB.popups.close(popupId);
+                        setPopupStates(prev => ({ ...prev, [popupId]: false }));
+                    } else {
+                        win.LPB.popups.open(popupId);
+                        setPopupStates(prev => ({ ...prev, [popupId]: true }));
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling popup:', error);
+        }
     };
 
     const handleOverlayClick = (e) => {
@@ -46,6 +72,42 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                             <X size={20} />
                         </button>
                     </div>
+
+                    {/* POPUP CONTROLS */}
+                    {popups.length > 0 && (
+                        <div style={{
+                            padding: "8px 20px",
+                            background: "#f9fafb",
+                            borderBottom: "1px solid #e5e7eb",
+                            display: "flex",
+                            gap: "8px",
+                            alignItems: "center",
+                            flexWrap: "wrap"
+                        }}>
+                            <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>
+                                Preview Popups:
+                            </span>
+                            {popups.map(popup => (
+                                <button
+                                    key={popup.id}
+                                    onClick={() => handleTogglePopup(popup.id)}
+                                    style={{
+                                        padding: "4px 12px",
+                                        fontSize: "12px",
+                                        borderRadius: "6px",
+                                        border: popupStates[popup.id] ? "1px solid #3b82f6" : "1px solid #d1d5db",
+                                        background: popupStates[popup.id] ? "#eff6ff" : "#ffffff",
+                                        color: popupStates[popup.id] ? "#3b82f6" : "#6b7280",
+                                        cursor: "pointer",
+                                        fontWeight: 500,
+                                        transition: "all 0.2s ease"
+                                    }}
+                                >
+                                    {popup.componentData?.title || popup.id}
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     {/* PREVIEW CONTAINER */}
                     <div className={`preview-container ${viewMode}`}>
@@ -89,7 +151,7 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                                                 srcDoc={previewHtml}
                                                 className="modal1-iframe mobile-iframe"
                                                 title="Mobile Preview"
-                                                sandbox="allow-scripts allow-same-origin allow-popups"
+                                                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
                                                 style={{
                                                     width: "375px",
                                                     height: "667px",
@@ -99,6 +161,20 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                                                     overflowX: "hidden",
                                                     scrollBehavior: "smooth",
                                                     WebkitOverflowScrolling: "touch",
+                                                }}
+                                                onLoad={(e) => {
+                                                    // Ensure mobile viewport after iframe loads
+                                                    try {
+                                                        const iframeDoc = e.target.contentDocument || e.target.contentWindow.document;
+                                                        if (iframeDoc && !iframeDoc.querySelector('meta[name="viewport"]')) {
+                                                            const viewport = iframeDoc.createElement('meta');
+                                                            viewport.name = 'viewport';
+                                                            viewport.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+                                                            iframeDoc.head.appendChild(viewport);
+                                                        }
+                                                    } catch (e) {
+                                                        console.warn('Could not inject viewport meta tag:', e);
+                                                    }
                                                 }}
                                             />
                                         </div>

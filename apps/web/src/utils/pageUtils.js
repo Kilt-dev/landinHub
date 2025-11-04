@@ -1685,6 +1685,156 @@ export const renderStaticHTML = (pageData) => {
                 max-height: 32px !important;
             }
         }
+
+        /* ========== FORM CSS ISOLATION ========== */
+        /* Reset và isolate form elements khỏi system CSS */
+        .lpb-form, .lpb-element form {
+            all: unset;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .lpb-form *, .lpb-element form * {
+            box-sizing: border-box;
+        }
+
+        .lpb-form input,
+        .lpb-form textarea,
+        .lpb-form select,
+        .lpb-element form input,
+        .lpb-element form textarea,
+        .lpb-element form select {
+            all: unset;
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #ffffff;
+            color: #1f2937;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .lpb-form input:focus,
+        .lpb-form textarea:focus,
+        .lpb-form select:focus,
+        .lpb-element form input:focus,
+        .lpb-element form textarea:focus,
+        .lpb-element form select:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 0;
+            border-color: #3b82f6;
+        }
+
+        .lpb-form input::placeholder,
+        .lpb-form textarea::placeholder,
+        .lpb-element form input::placeholder,
+        .lpb-element form textarea::placeholder {
+            color: #9ca3af;
+        }
+
+        .lpb-form textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .lpb-form label,
+        .lpb-element form label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .lpb-form button[type="submit"],
+        .lpb-element form button[type="submit"] {
+            all: unset;
+            display: inline-block;
+            padding: 12px 24px;
+            background: #3b82f6;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .lpb-form button[type="submit"]:hover,
+        .lpb-element form button[type="submit"]:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .lpb-form input[type="checkbox"],
+        .lpb-form input[type="radio"],
+        .lpb-element form input[type="checkbox"],
+        .lpb-element form input[type="radio"] {
+            all: unset;
+            display: inline-block;
+            width: auto;
+            min-width: 18px;
+            min-height: 18px;
+            border: 2px solid #d1d5db;
+            margin-right: 8px;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+
+        .lpb-form input[type="checkbox"] {
+            border-radius: 4px;
+        }
+
+        .lpb-form input[type="radio"] {
+            border-radius: 50%;
+        }
+
+        .lpb-form input[type="checkbox"]:checked,
+        .lpb-form input[type="radio"]:checked,
+        .lpb-element form input[type="checkbox"]:checked,
+        .lpb-element form input[type="radio"]:checked {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        .lpb-form select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+
+        .lpb-form .form-field-wrapper {
+            margin-bottom: 16px;
+        }
+
+        /* Mobile form styles */
+        @media (max-width: 768px) {
+            .lpb-form input,
+            .lpb-form textarea,
+            .lpb-form select,
+            .lpb-element form input,
+            .lpb-element form textarea,
+            .lpb-element form select {
+                font-size: 16px !important; /* Prevent zoom on iOS */
+                padding: 14px !important;
+            }
+
+            .lpb-form button[type="submit"],
+            .lpb-element form button[type="submit"] {
+                width: 100%;
+                padding: 14px 24px !important;
+            }
+        }
     </style>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
