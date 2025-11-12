@@ -33,6 +33,7 @@ import AdminMarketplace from './pages/AdminMarketplace';
 import CozeChat from "./components/CozeChat";
 import AdminUser from "./pages/AdminUsers";
 import UnifiedPayments from './pages/UnifiedPayments';
+import DeploymentSettings from './components/DeploymentSettings';
 
 function App() {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -56,6 +57,7 @@ function App() {
                             {/* Protected routes */}
                             <Route path="/pages" element={<Pages />} />
                             <Route path="/pages/create" element={<CreateLandingPage />} />
+                            <Route path="/pages/:pageId/deploy" element={<DeploymentSettings />} />
                             <Route path="/create-landing" element={<Navigate to="/pages/create" replace />} />
                             <Route path="/templates" element={<Templates />} />
                             <Route path="/market" element={<Marketplace />} />
