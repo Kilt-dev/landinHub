@@ -789,20 +789,47 @@ export const renderComponentContent = (
         }
 
         case 'iframe': {
+            // Show placeholder if no src in canvas mode
+            if (isCanvas && !componentData.src) {
+                return (
+                    <div
+                        style={{
+                            width: '100%',
+                            minHeight: componentData.height || '400px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#f3f4f6',
+                            border: '2px dashed #d1d5db',
+                            borderRadius: '8px',
+                            color: '#6b7280',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            ...baseStyles,
+                        }}
+                    >
+                        <div style={{ fontSize: '48px' }}>🖼️</div>
+                        <div style={{ fontSize: '14px', fontWeight: '500' }}>Iframe Component</div>
+                        <div style={{ fontSize: '12px' }}>Thêm URL trong Properties Panel</div>
+                    </div>
+                );
+            }
+
             return (
                 <iframe
-                    src={componentData.src || ''}
+                    src={componentData.src || 'about:blank'}
                     title={componentData.title || 'Iframe'}
                     width={componentData.width || '100%'}
-                    height={componentData.height || '100%'}
+                    height={componentData.height || '400px'}
                     frameBorder={componentData.frameBorder ?? 0}
                     allow={componentData.allow || 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'}
                     allowFullScreen={componentData.allowFullscreen ?? true}
                     loading={componentData.loading || 'lazy'}
                     style={{
                         width: '100%',
-                        height: '100%',
-                        border: 'none',
+                        minHeight: componentData.height || '400px',
+                        border: componentData.border || 'none',
+                        pointerEvents: isCanvas ? 'none' : 'auto',
                         ...baseStyles,
                     }}
                 />
@@ -1320,10 +1347,11 @@ export const renderComponentContent = (
                 <hr
                     style={{
                         border: 'none',
-                        background: componentData.color || '#e5e7eb',
+                        backgroundColor: componentData.color || '#e5e7eb',
                         height: componentData.thickness || '2px',
                         width: componentData.width || '100%',
-                        margin: componentData.margin || '0',
+                        margin: componentData.margin || '20px 0',
+                        flexShrink: 0,
                         ...baseStyles,
                     }}
                 />
