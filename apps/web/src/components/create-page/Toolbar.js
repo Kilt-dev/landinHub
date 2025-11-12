@@ -7,6 +7,7 @@ import {syncAllElements} from "../../utils/responsiveSync";
 const Toolbar = ({
                      onSave,
                      onPreview,
+                     onDeploy, // Deploy to AWS CloudFront
                      onImport,
                      onGenerateCode,
                      viewMode,
@@ -99,6 +100,15 @@ const Toolbar = ({
                     <button onClick={onSave} className="lpb-toolbar-action-btn">
                         <i className="fas fa-save"></i> Lưu
                     </button>
+                    {onDeploy && (
+                        <button
+                            onClick={onDeploy}
+                            className="lpb-toolbar-action-btn lpb-deploy-btn"
+                            title="Deploy to AWS CloudFront"
+                        >
+                            <i className="fas fa-cloud-upload-alt"></i> Deploy
+                        </button>
+                    )}
                     <button onClick={onGenerateCode} className="lpb-toolbar-action-primary">
                         <i className="fas fa-code"></i> Triển khai
                     </button>
