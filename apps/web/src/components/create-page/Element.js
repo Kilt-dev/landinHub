@@ -1,12 +1,24 @@
+/**
+ * Element Component - Draggable/Droppable canvas elements
+ *
+ * Updated for 3-Layer Drag & Drop Architecture
+ * - Uses dragDropCore for coordinate transformation
+ * - Simplified drag/drop logic
+ * - Better responsive handling
+ */
+
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { useDrop, useDrag } from 'react-dnd';
 import { getEmptyImage } from 'react-dnd-html5-backend';
 import { toast } from 'react-toastify';
 import SectionToolkit from './toolkitqick/SectionToolkit';
-import { ItemTypes, getCanvasPosition, snapToGrid } from './helpers';
+import { ItemTypes, renderComponentContent } from './helpers';
 import eventController from '../../utils/EventUtils';
 import { getResponsiveValues } from '../../utils/responsiveSync';
+import ResizeHandles from './ResizeHandles';
+// Import from dragDropCore for consistent coordinate handling
+import { transformCoordinates, snapToGrid, snapToGuides, BREAKPOINTS } from '../../utils/dragDropCore';
 
 /**
  * Utility to check if URL is valid
@@ -28,17 +40,10 @@ const getLockedStyles = (isLocked) =>
 
 /**
  * Get canvas width based on view mode
+ * Uses BREAKPOINTS from dragDropCore for consistency
  */
 const getCanvasWidth = (viewMode) => {
-    switch (viewMode) {
-        case 'mobile':
-            return 375;
-        case 'tablet':
-            return 768;
-        case 'desktop':
-        default:
-            return 1200;
-    }
+    return BREAKPOINTS[viewMode] || BREAKPOINTS.desktop;
 };
 
 /**
@@ -59,7 +64,9 @@ const ChildElement = React.memo(
          visible = true,
          locked = false,
          onDeleteChild,
+         onUpdateChildSize,
          element,
+         zoomLevel = 1,
      }) => {
         const dragRef = useRef(null);
 
@@ -83,10 +90,27 @@ const ChildElement = React.memo(
                     toast.warning('Child element đã bị khóa!');
                     return null;
                 }
-                return { childId: id, parentId, isExisting: true, position: responsivePosition, size: responsiveSize };
+
+                // IMPROVED: Auto-deselect parent section when dragging child
+                // This prevents confusing visual state (section selected while dragging child)
+                if (typeof onSelectChild === 'function') {
+                    // Select only this child, deselect parent section
+                    onSelectChild(parentId, id);
+                }
+
+                // FREE DRAG: Include full element data for conversion to top-level
+                return {
+                    childId: id,
+                    parentId,
+                    isExisting: true,
+                    position: responsivePosition,
+                    size: responsiveSize,
+                    element: element, // Full element data
+                    freeDrag: true, // Enable free drag mode
+                };
             },
             collect: (monitor) => ({ isDragging: monitor.isDragging() }),
-        }, [id, parentId, responsivePosition, responsiveSize, locked, componentData.locked]);
+        }, [id, parentId, responsivePosition, responsiveSize, locked, componentData.locked, element, onSelectChild]);
 
         const handleClick = useCallback(
             (e) => {
@@ -95,11 +119,12 @@ const ChildElement = React.memo(
                     onSelectChild(parentId, id);
                     console.log(`onSelectChild called with parentId: ${parentId}, id: ${id}`);
                 }
-                if (componentData.events?.onClick) {
-                    eventController.handleEvent(componentData.events.onClick, id, true);
-                }
+                // REMOVED: Event handling in canvas - only in preview
+                // if (componentData.events?.onClick) {
+                //     eventController.handleEvent(componentData.events.onClick, id, true);
+                // }
             },
-            [parentId, id, type, onSelectChild, componentData.events]
+            [parentId, id, type, onSelectChild]
         );
 
         const handleDelete = useCallback(
@@ -116,9 +141,26 @@ const ChildElement = React.memo(
             [parentId, id, onDeleteChild, locked, componentData.locked]
         );
 
+        const handleResize = useCallback(
+            ({ width, height, x, y }) => {
+                if (typeof onUpdateChildSize === 'function' && !locked && !componentData.locked) {
+                    // Update both size and position if position changed (for resize from left/top)
+                    if (x !== responsivePosition.x || y !== responsivePosition.y) {
+                        // We need to update position too, but we don't have onUpdateChildPosition here
+                        // For now, just update the size
+                        onUpdateChildSize(parentId, id, { width, height });
+                    } else {
+                        onUpdateChildSize(parentId, id, { width, height });
+                    }
+                }
+            },
+            [parentId, id, onUpdateChildSize, locked, componentData.locked, responsivePosition]
+        );
+
+        // IMPROVED: Attach drag to wrapper for full click area
         useEffect(() => {
-            if (!locked && !componentData.locked) {
-                drag(dragRef);
+            if (!locked && !componentData.locked && dragRef.current) {
+                drag(dragRef.current);
             }
         }, [drag, locked, componentData.locked]);
 
@@ -144,27 +186,31 @@ const ChildElement = React.memo(
                 width: getElementWidth(),
                 height: getElementHeight(),
                 zIndex: isDragging ? 1000 : responsivePosition.z || 20,
-                cursor: locked || componentData.locked ? 'not-allowed' : isDragging ? 'grabbing' : 'pointer',
+                cursor: locked || componentData.locked ? 'not-allowed' : isDragging ? 'grabbing' : 'move',
                 opacity: isDragging ? 0.5 : 1,
-                pointerEvents: 'auto',
+                pointerEvents: 'auto', // FULL CLICK AREA for drag
+                // Performance optimization: hint browser for transform/opacity changes
+                willChange: isSelected || isDragging ? 'transform, opacity, width, height' : 'auto',
                 ...lockedStyles,
             }),
-            [responsivePosition, type, isDragging, locked, componentData.locked, lockedStyles, responsiveSize]
+            [responsivePosition, type, isDragging, locked, componentData.locked, lockedStyles, responsiveSize, isSelected]
         );
 
         const contentStyles = useMemo(
             () => ({
                 width: '100%',
                 height: '100%',
+                // IMPROVED: Always allow pointer events for drag/select, but control interaction
                 pointerEvents: 'auto',
-                userSelect: type === 'heading' || type === 'paragraph' ? 'text' : 'none',
+                userSelect: isSelected && (type === 'heading' || type === 'paragraph') ? 'text' : 'none',
                 ...responsiveStyles,
             }),
-            [type, responsiveStyles]
+            [type, responsiveStyles, isSelected]
         );
 
         return (
             <div
+                ref={dragRef}
                 className={`lpb-child-element ${isSelected ? 'lpb-child-element-selected' : ''} ${
                     isDragging ? 'lpb-child-element-dragging' : ''
                 } ${locked || componentData.locked ? 'lpb-element-locked' : ''}`}
@@ -172,12 +218,11 @@ const ChildElement = React.memo(
                 onClick={handleClick}
             >
                 <div
-                    ref={dragRef}
                     style={{
                         width: '100%',
                         height: '100%',
                         position: 'relative',
-                        pointerEvents: 'auto',
+                        pointerEvents: 'auto', // Always allow pointer events for drag/select
                     }}
                 >
                     {renderComponentContent(
@@ -212,29 +257,42 @@ const ChildElement = React.memo(
                     </div>
                 )}
                 {isSelected && (
-                    <button
-                        onClick={handleDelete}
-                        style={{
-                            position: 'absolute',
-                            top: '2px',
-                            left: '2px',
-                            zIndex: 10002,
-                            borderRadius: '50%',
-                            background: '#ff7b7b',
-                            border: 'none',
-                            color: '#ffffff',
-                            fontSize: '16px',
-                            cursor: 'pointer',
-                            padding: '6px',
-                            width: '30px',
-                            height: '30px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <i className="fas fa-trash-alt" />
-                    </button>
+                    <>
+                        <button
+                            onClick={handleDelete}
+                            style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: '2px',
+                                zIndex: 10002,
+                                borderRadius: '50%',
+                                background: '#ff7b7b',
+                                border: 'none',
+                                color: '#ffffff',
+                                fontSize: '16px',
+                                cursor: 'pointer',
+                                padding: '6px',
+                                width: '30px',
+                                height: '30px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <i className="fas fa-trash-alt" />
+                        </button>
+                        {!locked && !componentData.locked && (
+                            <ResizeHandles
+                                elementId={id}
+                                currentSize={responsiveSize}
+                                currentPosition={responsivePosition}
+                                onResize={handleResize}
+                                zoomLevel={zoomLevel}
+                                minWidth={type === 'icon' ? 30 : 50}
+                                minHeight={type === 'icon' ? 30 : 30}
+                            />
+                        )}
+                    </>
                 )}
             </div>
         );
@@ -250,6 +308,7 @@ const Element = React.memo(
          isSelected,
          onSelectElement,
          onUpdatePosition,
+         onUpdateSize,
          viewMode,
          zoomLevel,
          gridSize,
@@ -260,6 +319,7 @@ const Element = React.memo(
          selectedChildId,
          onAddChild,
          onUpdateChildPosition,
+         onUpdateChildSize,
          onMoveChild,
          showGrid,
          setDragPreview,
@@ -295,7 +355,19 @@ const Element = React.memo(
 
         const [{ isDragging }, drag, preview] = useDrag({
             type: ItemTypes.EXISTING_ELEMENT,
-            canDrag: () => !locked && type !== 'section' && type !== 'popup',
+            canDrag: () => {
+                // Locked elements cannot drag
+                if (locked) return false;
+
+                // Popups can always drag (floating elements)
+                if (type === 'popup') return true;
+
+                // Sections can drag for reordering
+                if (type === 'section') return true;
+
+                // All other elements can drag freely
+                return true;
+            },
             item: () => {
                 if (locked) {
                     toast.warning('Element đã bị khóa!');
@@ -303,6 +375,7 @@ const Element = React.memo(
                 }
                 return {
                     id,
+                    type, // Include type for better drag handling
                     elementSize: responsiveSize,
                     elementPosition: responsivePosition,
                     isExisting: true,
@@ -339,16 +412,36 @@ const Element = React.memo(
         const [{ isOverContainer, canDropContainer }, dropSection] = useDrop({
             accept: [ItemTypes.ELEMENT, ItemTypes.CHILD_ELEMENT],
             canDrop: (item, monitor) => {
-                if (type !== 'section' || componentData?.structure !== 'ladi-standard') return false;
-                if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT && item.parentId && item.parentId !== id) return false;
+                // FREE MODE: More permissive drop zones
+                // Allow drop in sections, popups, and containers
+                if (type !== 'section' && type !== 'popup' && type !== 'container') {
+                    return false;
+                }
+                // Allow all drag types for maximum flexibility
                 return true;
             },
             drop: (item, monitor) => {
                 if (!monitor.canDrop() || !containerRef.current) return { moved: false };
                 const clientOffset = monitor.getClientOffset();
                 if (!clientOffset) return { moved: false };
-                const pos = getCanvasPosition(clientOffset.x, clientOffset.y, containerRef.current, zoomLevel);
-                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+
+                // LAYER 2: Transform coordinates using dragDropCore
+                const containerRect = containerRef.current.getBoundingClientRect();
+                const canvasPos = transformCoordinates(
+                    clientOffset.x,
+                    clientOffset.y,
+                    containerRect,
+                    zoomLevel
+                );
+
+                // LAYER 2: Apply snapping
+                let snapped;
+                if (showGrid && gridSize > 1) {
+                    snapped = snapToGrid(canvasPos.x, canvasPos.y, gridSize, true);
+                } else {
+                    const guideSnap = snapToGuides(canvasPos.x, canvasPos.y, snapPoints, 10);
+                    snapped = { x: guideSnap.x, y: guideSnap.y };
+                }
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT) {
                     const newId = `${item.id}-${Date.now()}`;
@@ -373,12 +466,15 @@ const Element = React.memo(
                     setDragPreview(null);
                     return { moved: true, newPosition: snapped };
                 } else if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
+                    // IMPROVED: Flexible child movement
                     if (item.parentId === id) {
+                        // Moving within same section - smooth update
                         onUpdateChildPosition(id, item.childId, snapped);
-                        toast.success('Đã di chuyển thành phần con trong section!');
+                        // No toast for within-section moves (less noise)
                     } else {
+                        // Moving to different section - show feedback
                         onMoveChild(item.parentId, item.childId, id, snapped);
-                        toast.success('Đã di chuyển thành phần con sang section khác!');
+                        toast.success('Đã di chuyển sang section khác!');
                     }
                     setDragPreview(null);
                     return { moved: true, newPosition: snapped };
@@ -399,8 +495,24 @@ const Element = React.memo(
                 if (!containerRef.current) return { moved: false };
                 const clientOffset = monitor.getClientOffset();
                 if (!clientOffset) return { moved: false };
-                const pos = getCanvasPosition(clientOffset.x, clientOffset.y, containerRef.current, zoomLevel);
-                const snapped = snapToGrid(pos.x, pos.y, showGrid ? gridSize : Infinity, snapPoints);
+
+                // LAYER 2: Transform coordinates using dragDropCore
+                const containerRect = containerRef.current.getBoundingClientRect();
+                const canvasPos = transformCoordinates(
+                    clientOffset.x,
+                    clientOffset.y,
+                    containerRect,
+                    zoomLevel
+                );
+
+                // LAYER 2: Apply snapping
+                let snapped;
+                if (showGrid && gridSize > 1) {
+                    snapped = snapToGrid(canvasPos.x, canvasPos.y, gridSize, true);
+                } else {
+                    const guideSnap = snapToGuides(canvasPos.x, canvasPos.y, snapPoints, 10);
+                    snapped = { x: guideSnap.x, y: guideSnap.y };
+                }
 
                 if (monitor.getItemType() === ItemTypes.ELEMENT) {
                     const newId = `${item.id}-${Date.now()}`;
@@ -425,12 +537,15 @@ const Element = React.memo(
                     setDragPreview(null);
                     return { moved: true, newPosition: snapped };
                 } else if (monitor.getItemType() === ItemTypes.CHILD_ELEMENT) {
+                    // IMPROVED: Flexible child movement in popups
                     if (item.parentId === id) {
+                        // Moving within same popup - smooth update
                         onUpdateChildPosition(id, item.childId, snapped);
-                        toast.success('Đã di chuyển thành phần con trong popup!');
+                        // No toast for within-popup moves (less noise)
                     } else {
+                        // Moving to different popup - show feedback
                         onMoveChild(item.parentId, item.childId, id, snapped);
-                        toast.success('Đã di chuyển thành phần con sang popup khác!');
+                        toast.success('Đã di chuyển sang popup khác!');
                     }
                     setDragPreview(null);
                     return { moved: true, newPosition: snapped };
@@ -464,22 +579,30 @@ const Element = React.memo(
             const bgType = componentData.backgroundType ||
                 (bgImage ? 'image' : 'color');
 
-            console.log(`Section ${id} - BG Type: ${bgType}, Image: ${bgImage}`);
+            console.log(`Section ${id} (${viewMode}) - BG Type: ${bgType}, Canvas Width: ${canvasWidth}px`);
+
+            // FIXED: Use responsive size based on viewMode
+            const sectionHeight = viewMode === 'mobile' && element.mobileSize?.height
+                ? element.mobileSize.height
+                : viewMode === 'tablet' && element.tabletSize?.height
+                    ? element.tabletSize.height
+                    : responsiveSize.height || element.size?.height || 400;
 
             return {
                 position: 'absolute',
                 top: responsivePosition.y || 0,
                 width: `${canvasWidth}px`,
-                height: responsiveSize.height,
+                height: `${sectionHeight}px`,
                 left: '50%',
                 transform: 'translateX(-50%)',
                 zIndex: responsivePosition.z || 1,
                 userSelect: 'none',
                 overflow: 'visible',
+                boxSizing: 'border-box',
                 ...responsiveStyles,
                 // ✅ SIMPLIFIED BACKGROUND LOGIC
                 backgroundColor: bgType === 'color' ?
-                    (componentData.backgroundColor || '#ffffff') :
+                    (componentData.backgroundColor || responsiveStyles.backgroundColor || '#ffffff') :
                     'transparent',
                 backgroundImage: bgType === 'image' && bgImage ?
                     `url("${bgImage}")` :
@@ -495,20 +618,33 @@ const Element = React.memo(
                 ...animationStyles,
                 ...lockedStyles,
             };
-        }, [responsivePosition, responsiveSize, canvasWidth, componentData, responsiveStyles, animationStyles, lockedStyles]);
+        }, [responsivePosition, responsiveSize, canvasWidth, componentData, responsiveStyles, animationStyles, lockedStyles, viewMode, element]);
 
-        const popupStyles = useMemo(
-            () => ({
+        const popupStyles = useMemo(() => {
+            // FIXED: Better responsive popup sizing
+            const popupWidth = viewMode === 'mobile' && element.mobileSize?.width
+                ? element.mobileSize.width
+                : viewMode === 'tablet' && element.tabletSize?.width
+                    ? element.tabletSize.width
+                    : responsiveSize.width || 600;
+
+            const popupHeight = viewMode === 'mobile' && element.mobileSize?.height
+                ? element.mobileSize.height
+                : viewMode === 'tablet' && element.tabletSize?.height
+                    ? element.tabletSize.height
+                    : responsiveSize.height || 400;
+
+            return {
                 position: 'absolute',
                 top: '50%',
                 left: '50%',
                 transform: 'translate(-50%, -50%)',
-                width: viewMode === 'mobile' ? '90%' : responsiveSize.width || 600,
-                maxWidth: viewMode === 'mobile' ? '90%' : '600px',
-                minHeight: responsiveSize.height || 400,
+                width: viewMode === 'mobile' ? `min(${popupWidth}px, 90%)` : `${popupWidth}px`,
+                maxWidth: viewMode === 'mobile' ? '90%' : '100%',
+                minHeight: `${popupHeight}px`,
                 maxHeight: '90vh',
                 zIndex: 1001,
-                background: componentData.background || 'rgba(255, 255, 255, 0.95)',
+                background: componentData.background || responsiveStyles.background || 'rgba(255, 255, 255, 0.95)',
                 borderRadius: componentData.borderRadius || '12px',
                 boxShadow: isSelected ? '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 3px #3b82f6' : '0 8px 32px rgba(0, 0, 0, 0.25)',
                 overflow: 'hidden',
@@ -518,12 +654,12 @@ const Element = React.memo(
                 opacity: 1,
                 transformOrigin: 'center',
                 cursor: locked ? 'not-allowed' : 'default',
+                boxSizing: 'border-box',
                 ...responsiveStyles,
                 ...lockedStyles,
                 ...animationStyles,
-            }),
-            [viewMode, responsiveSize, componentData, isSelected, responsiveStyles, lockedStyles, animationStyles]
-        );
+            };
+        }, [viewMode, responsiveSize, componentData, isSelected, responsiveStyles, lockedStyles, animationStyles, element]);
 
         useEffect(() => {
             preview(getEmptyImage(), { captureDraggingState: true });
@@ -545,24 +681,33 @@ const Element = React.memo(
                 }
                 if (!e.target.closest('button')) {
                     e.stopPropagation();
+
+                    // IMPROVED: If already selected without multi-select keys, don't re-select
+                    // This allows drag to start smoothly without re-triggering selection
+                    if (isSelected && !e.ctrlKey && !e.metaKey) {
+                        console.log(`Element ${id} already selected, allowing drag`);
+                        return;
+                    }
+
                     if (typeof onSelectElement === 'function') {
-                        onSelectElement([id], e.ctrlKey);
+                        onSelectElement([id], e.ctrlKey || e.metaKey);
                     }
                     onSelectChild(id, null);
                     console.log(`Element ${id} selected`);
                 }
             },
-            [id, locked, onSelectElement, onSelectChild]
+            [id, locked, isSelected, onSelectElement, onSelectChild]
         );
 
         const handleClick = useCallback(
             (e) => {
                 e.stopPropagation();
-                if (componentData.events?.onClick) {
-                    eventController.handleEvent(componentData.events.onClick, id, true);
-                }
+                // REMOVED: Event handling in canvas - only in preview
+                // if (componentData.events?.onClick) {
+                //     eventController.handleEvent(componentData.events.onClick, id, true);
+                // }
             },
-            [id, componentData.events]
+            [id]
         );
 
         const handleContextMenu = useCallback(
@@ -572,6 +717,19 @@ const Element = React.memo(
                 onContextMenu(id, { x: e.clientX, y: e.clientY });
             },
             [id, onContextMenu]
+        );
+
+        const handleParentResize = useCallback(
+            ({ width, height, x, y }) => {
+                if (typeof onUpdateSize === 'function' && !locked) {
+                    // For parent elements, just update the size
+                    onUpdateSize(id, { width, height });
+
+                    // Note: Position updates for sections/popups are typically not needed
+                    // as they're positioned relative to the canvas
+                }
+            },
+            [id, onUpdateSize, locked]
         );
 
         if (!visible) {
@@ -610,7 +768,8 @@ const Element = React.memo(
                         width: '100%',
                         height: '100%',
                         position: 'relative',
-                        isolation: 'isolate'
+                        isolation: 'isolate',
+                        overflow: 'visible' // Allow children to extend beyond section
                     }}>
 
                         {/* ✅ SIMPLIFIED BACKGROUND */}
@@ -653,6 +812,7 @@ const Element = React.memo(
                                 height: '100%',
                                 border: isOverContainer && canDropContainer ? '2px dashed #2563eb' : 'none',
                                 pointerEvents: 'auto',
+                                overflow: 'visible', // Allow children to extend beyond section bounds
                             }}
                         >
                             {children.map((child) => (
@@ -674,6 +834,7 @@ const Element = React.memo(
                                     gridSize={gridSize}
                                     showGrid={showGrid}
                                     onUpdateChildPosition={onUpdateChildPosition}
+                                    onUpdateChildSize={onUpdateChildSize}
                                     onMoveChild={onMoveChild}
                                     viewMode={viewMode}
                                     onDeleteChild={onDeleteChild}
@@ -683,16 +844,30 @@ const Element = React.memo(
                     </div>
 
                     {isSelected && (
-                        <SectionToolkit
-                            element={element}
-                            position={{ x: 0, y: 0 }}
-                            onEdit={() => onEditElement(id)}
-                            onSaveTemplate={onSaveTemplate}
-                            onMoveUp={() => onMoveElementUp(id)}
-                            onMoveDown={() => onMoveElementDown(id)}
-                            onToggleVisibility={() => onToggleVisibility(id)}
-                            onDelete={() => onDeleteElement(id)}
-                        />
+                        <>
+                            <SectionToolkit
+                                element={element}
+                                position={{ x: 0, y: 0 }}
+                                onEdit={() => onEditElement(id)}
+                                onSaveTemplate={onSaveTemplate}
+                                onMoveUp={() => onMoveElementUp(id)}
+                                onMoveDown={() => onMoveElementDown(id)}
+                                onToggleVisibility={() => onToggleVisibility(id)}
+                                onDelete={() => onDeleteElement(id)}
+                            />
+                            {!locked && (
+                                <ResizeHandles
+                                    elementId={id}
+                                    currentSize={responsiveSize}
+                                    currentPosition={responsivePosition}
+                                    onResize={handleParentResize}
+                                    zoomLevel={zoomLevel}
+                                    minWidth={300}
+                                    minHeight={200}
+                                    maxWidth={getCanvasWidth(viewMode)}
+                                />
+                            )}
+                        </>
                     )}
                 </div>
             );
@@ -837,6 +1012,7 @@ const Element = React.memo(
                                     gridSize={gridSize}
                                     showGrid={showGrid}
                                     onUpdateChildPosition={onUpdateChildPosition}
+                                    onUpdateChildSize={onUpdateChildSize}
                                     onMoveChild={onMoveChild}
                                     viewMode={viewMode}
                                     onDeleteChild={onDeleteChild}
@@ -861,6 +1037,18 @@ const Element = React.memo(
                                 <i className="fas fa-lock" /> Locked
                             </div>
                         )}
+                        {isSelected && !locked && (
+                            <ResizeHandles
+                                elementId={id}
+                                currentSize={responsiveSize}
+                                currentPosition={responsivePosition}
+                                onResize={handleParentResize}
+                                zoomLevel={zoomLevel}
+                                minWidth={300}
+                                minHeight={200}
+                                maxWidth={getCanvasWidth(viewMode)}
+                            />
+                        )}
                     </div>
                 </>
             );
@@ -877,11 +1065,13 @@ const Element = React.memo(
                 opacity: isDragging ? 0.5 : 1,
                 cursor: locked ? 'not-allowed' : isDragging ? 'grabbing' : 'pointer',
                 userSelect: type === 'heading' || type === 'paragraph' ? 'text' : 'none',
+                // Performance optimization: hint browser for transform/opacity changes
+                willChange: isSelected || isDragging ? 'transform, opacity, width, height' : 'auto',
                 ...responsiveStyles,
                 ...lockedStyles,
                 ...animationStyles,
             }),
-            [responsivePosition, responsiveSize, type, isDragging, locked, responsiveStyles, lockedStyles, animationStyles]
+            [responsivePosition, responsiveSize, type, isDragging, locked, isSelected, responsiveStyles, lockedStyles, animationStyles]
         );
 
         return (
@@ -986,6 +1176,7 @@ Element.propTypes = {
     isSelected: PropTypes.bool.isRequired,
     onSelectElement: PropTypes.func.isRequired,
     onUpdatePosition: PropTypes.func.isRequired,
+    onUpdateSize: PropTypes.func.isRequired,
     viewMode: PropTypes.oneOf(['desktop', 'tablet', 'mobile']).isRequired,
     zoomLevel: PropTypes.number.isRequired,
     gridSize: PropTypes.number.isRequired,
@@ -999,6 +1190,7 @@ Element.propTypes = {
     selectedChildId: PropTypes.string,
     onAddChild: PropTypes.func.isRequired,
     onUpdateChildPosition: PropTypes.func.isRequired,
+    onUpdateChildSize: PropTypes.func.isRequired,
     onMoveChild: PropTypes.func.isRequired,
     showGrid: PropTypes.bool.isRequired,
     setDragPreview: PropTypes.func.isRequired,
@@ -1013,321 +1205,7 @@ Element.propTypes = {
     onDeleteChild: PropTypes.func.isRequired,
 };
 
-/**
- * Fixed renderComponentContent function with proper gallery, icon, and button rendering
- */
-export const renderComponentContent = (
-    elementType,
-    componentData = {},
-    styles = {},
-    children = [],
-    isCanvas,
-    onSelectChild,
-    parentId,
-    childId,
-    isTemplateMode,
-    viewMode
-) => {
-    console.log(`Rendering elementType: ${elementType}, parentId: ${parentId}, childId: ${childId}`);
-
-    const textStyles = {
-        pointerEvents: 'auto',
-        userSelect: 'text',
-        cursor: 'pointer',
-        ...styles,
-    };
-
-    const mediaStyles = {
-        pointerEvents: 'auto',
-        cursor: 'pointer',
-        width: '100%',
-        height: '100%',
-        objectFit: styles.objectFit || 'cover',
-        ...styles,
-    };
-
-    switch (elementType) {
-        case 'heading':
-            return (
-                <h1 style={textStyles} data-element-id={childId}>
-                    {componentData.content || 'Default Heading'}
-                </h1>
-            );
-
-        case 'paragraph':
-            return (
-                <p style={textStyles} data-element-id={childId}>
-                    {componentData.content || 'Default Paragraph'}
-                </p>
-            );
-
-        case 'gallery':
-            const images = componentData.images || [];
-            const galleryImages = Array.isArray(images) ? images : [];
-
-            return (
-                <div
-                    style={{
-                        display: styles.display || 'grid',
-                        gridTemplateColumns: styles.gridTemplateColumns || 'repeat(auto-fit, minmax(150px, 1fr))',
-                        gap: styles.gap || '16px',
-                        padding: styles.padding || '16px',
-                        maxWidth: '100%',
-                        boxSizing: 'border-box',
-                        width: '100%',
-                        height: '100%',
-                        ...styles,
-                    }}
-                    data-element-id={childId}
-                >
-                    {galleryImages.length > 0 ? (
-                        galleryImages.map((image, index) => {
-                            const imageSrc = typeof image === 'string'
-                                ? image
-                                : (image.src || image.url || 'https://via.placeholder.com/150?text=Image');
-                            const imageAlt = typeof image === 'string'
-                                ? `Image ${index + 1}`
-                                : (image.alt || `Image ${index + 1}`);
-
-                            return (
-                                <img
-                                    key={index}
-                                    src={imageSrc}
-                                    alt={imageAlt}
-                                    style={{
-                                        width: '100%',
-                                        height: 'auto',
-                                        objectFit: styles.objectFit || 'cover',
-                                        borderRadius: styles.borderRadius || '8px',
-                                        transition: styles[':hover'] ? 'all 0.3s ease' : 'none',
-                                        cursor: 'pointer',
-                                    }}
-                                    onError={(e) => {
-                                        e.target.src = 'https://via.placeholder.com/150?text=Error';
-                                    }}
-                                />
-                            );
-                        })
-                    ) : (
-                        <div
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                minHeight: '200px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: '#f3f4f6',
-                                borderRadius: '8px',
-                                color: '#9ca3af',
-                            }}
-                        >
-                            <div style={{ textAlign: 'center' }}>
-                                <i className="fas fa-images" style={{ fontSize: '48px', marginBottom: '8px' }} />
-                                <p>Gallery Placeholder</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-
-        case 'icon':
-            return (
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: '100%',
-                        height: '100%',
-                        ...styles,
-                    }}
-                    data-element-id={childId}
-                >
-                    {componentData.imageUrl ? (
-                        <img
-                            src={componentData.imageUrl}
-                            alt={componentData.alt || componentData.title || 'Icon'}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                maxWidth: '50px',
-                                maxHeight: '50px',
-                                objectFit: 'contain',
-                            }}
-                            onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.parentElement.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size: 24px; color: #ef4444;"></i>';
-                            }}
-                        />
-                    ) : componentData.icon && componentData.icon.includes('<svg') ? (
-                        <div
-                            dangerouslySetInnerHTML={{ __html: componentData.icon }}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        />
-                    ) : componentData.src ? (
-                        <img
-                            src={componentData.src}
-                            alt={componentData.alt || 'Icon'}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain',
-                            }}
-                            onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.parentElement.innerHTML = '<i class="fas fa-star" style="font-size: 24px; color: #f59e0b;"></i>';
-                            }}
-                        />
-                    ) : (
-                        <i
-                            className={componentData.icon || 'fas fa-star'}
-                            style={{
-                                fontSize: styles.fontSize || '24px',
-                                color: styles.color || '#000',
-                            }}
-                        />
-                    )}
-                </div>
-            );
-
-        case 'image':
-            return (
-                <img
-                    src={componentData.src || 'https://via.placeholder.com/200?text=Image'}
-                    alt={componentData.alt || 'Image'}
-                    style={mediaStyles}
-                    data-element-id={childId}
-                    onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/200?text=Error';
-                    }}
-                />
-            );
-
-        case 'button':
-            const buttonStyles = {
-                padding: componentData.padding || styles.padding || '10px 20px',
-                borderRadius: componentData.borderRadius || styles.borderRadius || '4px',
-                background: componentData.background || styles.background || '#007bff',
-                color: componentData.color || styles.color || '#fff',
-                border: styles.border || 'none',
-                cursor: 'pointer',
-                fontFamily: styles.fontFamily || 'inherit',
-                fontSize: styles.fontSize || '16px',
-                fontWeight: styles.fontWeight || '500',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '100%',
-                height: '100%',
-                transition: styles.transition || 'all 0.3s ease',
-                boxShadow: styles.boxShadow || 'none',
-                ...styles,
-                pointerEvents: 'auto',
-            };
-
-            const { ':hover': hover, ':active': active, '@keyframes': keyframes, ...cleanStyles } = buttonStyles;
-
-            return (
-                <button
-                    style={cleanStyles}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (componentData.events?.onClick) {
-                            eventController.handleEvent(componentData.events.onClick, childId || parentId, isCanvas);
-                        }
-                    }}
-                    onMouseEnter={(e) => {
-                        if (styles[':hover']) {
-                            Object.assign(e.target.style, styles[':hover']);
-                        }
-                    }}
-                    onMouseLeave={(e) => {
-                        Object.assign(e.target.style, cleanStyles);
-                    }}
-                    onMouseDown={(e) => {
-                        if (styles[':active']) {
-                            Object.assign(e.target.style, styles[':active']);
-                        }
-                    }}
-                    onMouseUp={(e) => {
-                        Object.assign(e.target.style, cleanStyles);
-                    }}
-                    data-element-id={childId}
-                >
-                    {componentData.content || 'Button'}
-                </button>
-            );
-
-        case 'video':
-            return (
-                <video
-                    controls
-                    src={componentData.src || 'https://www.w3schools.com/html/mov_bbb.mp4'}
-                    style={mediaStyles}
-                    data-element-id={childId}
-                >
-                    Your browser does not support the video tag.
-                </video>
-            );
-
-        case 'section':
-            return (
-                <div className="ladi-section" style={{ position: 'relative', width: '100%', height: '100%', overflow: 'visible' }}>
-                    <div className="ladi-container" style={{ position: 'relative', zIndex: 2, width: '100%', height: '100%' }}>
-                        {children.map((child) => {
-                            if (!child.type || !child.id) {
-                                console.warn('Invalid child:', child);
-                                return null;
-                            }
-                            return (
-                                <ChildElement
-                                    key={child.id}
-                                    parentId={parentId}
-                                    id={child.id}
-                                    type={child.type}
-                                    element={child}
-                                    componentData={child.componentData || {}}
-                                    styles={child.styles || {}}
-                                    position={child.position || {}}
-                                    size={child.size || { width: 200, height: 50 }}
-                                    visible={child.visible !== false}
-                                    locked={child.locked || false}
-                                    isSelected={childId === child.id}
-                                    onSelectChild={onSelectChild}
-                                    viewMode={viewMode}
-                                    onDeleteChild={onDeleteChild}
-                                />
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-
-        default:
-            return (
-                <div
-                    style={{
-                        ...styles,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: '#f3f4f6',
-                        color: '#6b7280',
-                        padding: '20px',
-                        borderRadius: '8px',
-                    }}
-                >
-                    Unsupported element type: {elementType}
-                </div>
-            );
-    }
-};
+// renderComponentContent is now imported from helpers.js (line 16)
+// This provides support for all 29 component types instead of just 8
 
 export { ChildElement, Element };

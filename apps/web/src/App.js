@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import './styles/GlobalTransitions.css';
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
 import Pages from './pages/Pages';
@@ -29,6 +30,10 @@ import PageAbout from './components/about_public/Pages ';
 import Blog from './components/about_public/Blog';
 import AdminAddTemplate from './components/AdminAddTemplate'; // Thêm component cho admin
 import AdminMarketplace from './pages/AdminMarketplace';
+import CozeChat from "./components/CozeChat";
+import AdminUser from "./pages/AdminUsers";
+import UnifiedPayments from './pages/UnifiedPayments';
+import DeploymentSettings from './components/DeploymentSettings';
 
 function App() {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -52,6 +57,7 @@ function App() {
                             {/* Protected routes */}
                             <Route path="/pages" element={<Pages />} />
                             <Route path="/pages/create" element={<CreateLandingPage />} />
+                            <Route path="/pages/:pageId/deploy" element={<DeploymentSettings />} />
                             <Route path="/create-landing" element={<Navigate to="/pages/create" replace />} />
                             <Route path="/templates" element={<Templates />} />
                             <Route path="/market" element={<Marketplace />} />
@@ -61,7 +67,7 @@ function App() {
                             <Route path="/sell-page" element={<SellPage />} />
                             <Route path="/my-sales" element={<MySales />} />
                             <Route path="/setting-form" element={<FormData />} />
-                            <Route path="/payments" element={<Payments />} />
+                            <Route path="/payments" element={<UnifiedPayments />} />
                             <Route path="/my-payouts" element={<MyPayouts />} />
                             <Route path="/payment/sandbox" element={<PaymentSandbox />} />
                             <Route path="/payment/result" element={<PaymentResult />} />
@@ -72,10 +78,17 @@ function App() {
                             <Route path="/admin/marketplace" element={<AdminMarketplace />} />
                             <Route path="/admin/payouts" element={<AdminPayoutManagement />} />
                             <Route path="/reports" element={<Reports />} />
-                            <Route path="/users" element={<Users />} />
+                            <Route path="/users" element={<AdminUser />} />
                             {/* Catch-all route */}
                             <Route path="*" element={<Navigate to="/auth" replace />} />
+
                         </Routes>
+
+                        {/* Toast notification */}
+                        <ToastContainer position="bottom-right" autoClose={3000} />
+
+                        {/* ✅ Chat LD hiển thị toàn hệ thống */}
+                        <CozeChat enabled={true} />
                     </UserProvider>
                 </Router>
             </ErrorBoundary>

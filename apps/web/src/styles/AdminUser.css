@@ -1,0 +1,229 @@
+/* --- Biến màu và cài đặt chung (Light Mode) --- */
+:root {
+    --bg-main: #f4f7fa; /* Nền chính màu xám rất nhạt */
+    --bg-surface: #ffffff; /* Nền trắng cho các card, form */
+    --primary-accent: #6c5ce7; /* Màu nhấn chính (tím) */
+    --primary-accent-hover: #5a4bcf;
+    --text-primary: #2d3748; /* Chữ chính màu than đậm */
+    --text-secondary: #718096; /* Chữ phụ, placeholder màu xám */
+    --border-color: #e2e8f0; /* Màu viền rất nhạt */
+    --danger-color: #e53e3e;
+    --danger-hover: #c53030;
+    --success-color: #38a169;
+    --success-hover: #2f855a;
+    --font-family: 'Poppins', sans-serif;
+    --shadow: 0 8px 25px rgba(0, 0, 0, 0.07);
+    --border-radius: 12px;
+}
+
+body {
+    margin-top: 70px;
+    font-family: var(--font-family);
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+}
+
+/* --- Layout chính --- */
+.admin-user-container {
+    display: flex;
+    background-color: var(--bg-main);
+    min-height: 100vh;
+}
+
+.admin-user-main {
+    flex-grow: 1;
+    transition: all 0.3s ease;
+}
+
+.admin-user-content {
+    margin-top: 10px;
+    margin-left: 90px;
+    padding: 2.5rem;
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start; /* Căn các item theo chiều dọc lên trên */
+    background: var(--bg-surface);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    margin-bottom: 2.5rem;
+    border-left: 5px solid var(--primary-accent); /* Thêm một đường nhấn mạnh */
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem; /* Khoảng cách giữa icon và khối text */
+}
+
+/* Kiểu dáng cho icon */
+.icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem; /* Kích thước icon */
+    width: 60px;
+    height: 60px;
+    border-radius: 50%; /* Bo tròn */
+    background-color: rgba(108, 92, 231, 0.1); /* Nền mờ màu accent */
+    color: var(--primary-accent);
+}
+
+.header-title h1 {
+    margin: 0;
+    font-size: 1.75rem; /* Giảm kích thước một chút cho cân đối */
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.header-title p {
+    margin: 0.25rem 0 0 0;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+/* --- Form Thêm/Sửa --- */
+.admin-user-form {
+    background: var(--bg-surface);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    align-items: center;
+    margin-bottom: 2.5rem;
+}
+
+.admin-user-form input,
+.admin-user-form select {
+    width: 100%;
+    background-color: #fdfdfd;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.admin-user-form input::placeholder {
+    color: var(--text-secondary);
+}
+
+.admin-user-form input:focus,
+.admin-user-form select:focus {
+    outline: none;
+    border-color: var(--primary-accent);
+    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
+}
+
+.admin-user-form button {
+    grid-column: 1 / -1; /* Button chiếm toàn bộ chiều rộng */
+    justify-self: end; /* Căn phải */
+    width: auto;
+    min-width: 150px;
+}
+
+/* --- Table Quản lý User --- */
+.user-table-container {
+    background: var(--bg-surface);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow-x: auto; /* Giúp bảng responsive trên màn hình nhỏ */
+}
+
+.user-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.user-table th {
+    color: var(--text-secondary);
+    padding: 1rem 1.5rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.user-table td {
+    padding: 1rem 1.5rem;
+    color: var(--text-primary);
+    font-weight: 400;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.user-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.user-table tbody tr:hover {
+    background-color: #f9fafb; /* Màu nền khi hover */
+}
+
+.user-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* --- Nút bấm (Buttons) --- */
+.btn-primary, .btn-edit, .btn-delete {
+    padding: 0.7rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-primary {
+    background-color: var(--primary-accent);
+    color: white;
+    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.2);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.3);
+}
+
+.action-cell {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-edit, .btn-delete {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+}
+
+.btn-edit {
+    background-color: transparent;
+    border: 1px solid var(--success-color);
+    color: var(--success-color);
+}
+
+.btn-edit:hover {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-delete {
+    background-color: transparent;
+    border: 1px solid var(--danger-color);
+    color: var(--danger-color);
+}
+
+.btn-delete:hover {
+    background-color: var(--danger-color);
+    color: white;
+}

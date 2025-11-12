@@ -258,6 +258,8 @@ exports.deletePage = async (req, res) => {
  */
 exports.getMarketplaceStats = async (req, res) => {
     try {
+
+        const { start, end } = req.query; // ?start=2025-01-01&end=2025-01-31
         const totalPages = await MarketplacePage.countDocuments();
         const activePages = await MarketplacePage.countDocuments({ status: 'ACTIVE' });
         const pendingPages = await MarketplacePage.countDocuments({ status: 'PENDING' });
@@ -267,7 +269,10 @@ exports.getMarketplaceStats = async (req, res) => {
         const completedTransactions = await Transaction.countDocuments({ status: 'COMPLETED' });
         const pendingTransactions = await Transaction.countDocuments({ status: 'PENDING' });
 
-        const revenue = await Transaction.calculateRevenue();
+        const revenue = await Transaction.calculateRevenue({
+            start_date: start,
+            end_date: end
+        });
 
         // Top sellers
         const topSellers = await Transaction.aggregate([
@@ -290,7 +295,6 @@ exports.getMarketplaceStats = async (req, res) => {
             seller.seller = user;
         }
 
-        // Top selling pages
         const topPages = await MarketplacePage.find({ status: 'ACTIVE' })
             .sort({ sold_count: -1 })
             .limit(10)
@@ -400,6 +404,21 @@ exports.processRefund = async (req, res) => {
             transaction_id,
             'Admin approved refund'
         );
+        await sendRefundCompleted(order);
+        await Notification.create({
+            recipientId: order.buyerId,
+            type: 'refund_completed',
+            title: 'Hoàn tiền thành công',
+            message: `Đơn ${order.orderId} đã được hoàn tiền.`,
+            metadata: { orderId: order.orderId }
+        });
+
+        global._io.to(`user_${order.buyerId}`).emit('new_notification', {
+            title: 'Hoàn tiền thành công',
+            message: `Đơn ${order.orderId} đã được hoàn tiền.`,
+            isRead: false,
+            createdAt: new Date()
+        });
 
         if (result.success) {
             res.json({

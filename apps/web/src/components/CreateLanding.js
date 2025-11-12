@@ -6,22 +6,37 @@ import Canvas from '../components/create-page/Canvas';
 import ComponentLibrary from '../components/create-page/ComponentLibrary';
 import PropertiesPanel from '../components/create-page/PropertiesPanel';
 import ElementPropertiesPanel from '../components/create-page/properties/ElementPropertiesPanel';
-import ButtonPropertiesPanel from './create-page/properties/ButtonPropertiesPanel';
+import ButtonPropertiesPanhttps://github.com/vicute0707/landing-hub/pull/40/conflict?name=apps%252Fweb%252Fsrc%252Fcomponents%252Fcreate-page%252Fhelpers.js&ancestor_oid=b929a1703d7cbcc7325a8ed00a83f33960f28445&base_oid=7e95b199e8d106c3c744f5488dcc1c2e6abf95b4&head_oid=3a5a0d6f7274d6a48572605d2b6964b61b621651el from './create-page/properties/ButtonPropertiesPanel';
 import IconPropertiesPanel from './create-page/properties/IconPropertiesPanel';
 import ImagePropertiesPanel from './create-page/properties/ImagePropertiesPanel';
+import FormPropertiesPanel from './create-page/properties/FormPropertiesPanel';
 import Toolbar from './create-page/Toolbar';
 import ResponsiveToolbar from './create-page/ResponsiveToolbar';
 import SectionPopup from '../components/create-page/SectionPopup';
 import LayerManager from './create-page/LayerManager';
+import PopupLayerManager from './create-page/PopupLayerManager';
 import api from '@landinghub/api';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { parseHTMLToPageData, renderStaticHTML } from '../utils/pageUtils';
 import { syncElementBetweenModes } from '../utils/responsiveSync';
+import { applyMobileVerticalStacking, applySectionMobileStacking } from '../utils/dragDropCore';
+import {
+    calculateNextSectionY,
+    reorderSections,
+    calculateCanvasHeight,
+    moveSectionUp,
+    moveSectionDown,
+    deleteSection
+} from '../utils/sectionUtils';
+import { useKeyboardShortcuts } from '../utils/keyboardShortcuts';
 import { ErrorBoundary } from './create-page/ErrorBoundary';
 import DogLoader from './Loader'; // Import the DogLoader component
+import eventController from '../utils/EventUtils'; // Import eventController for popup events
 import '../styles/CreateLanding.css';
 import PreviewModal from '../components/PreviewModal'; // Import PreviewModal
+import AIContentModal from './create-page/AIContentModal'; // AI Content Generator
+import AIPageAnalyzer from './create-page/AIPageAnalyzer'; // AI Page Analyzer
 
 
 // Constants
@@ -124,8 +139,54 @@ const CreateLanding = () => {
     const [showPreview, setShowPreview] = useState(false);
     const [guideLine, setGuideLine] = useState({ show: true, y: 0 });
     const [previewHtml, setPreviewHtml] = useState(''); // State for preview HTML
+    const [clipboard, setClipboard] = useState(null); // Clipboard for copy/paste
+    const [isPopupLayerCollapsed, setIsPopupLayerCollapsed] = useState(true); // Popup layer manager state
+
+    // AI Features State
+    const [showAIContentModal, setShowAIContentModal] = useState(false);
+    const [showAIAnalyzer, setShowAIAnalyzer] = useState(false);
+    const [aiElementType, setAIElementType] = useState('paragraph'); // Type for AI content generation
+
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
+
+    // Subscribe to popup events
+    useEffect(() => {
+        const handlePopupOpen = ({ popupId }) => {
+            console.log('[CreateLanding] Opening popup:', popupId);
+            setPageData(prev => ({
+                ...prev,
+                elements: prev.elements.map(el =>
+                    el.id === popupId
+                        ? { ...el, visible: true }
+                        : el
+                )
+            }));
+            toast.info(`Popup "${popupId}" đã mở`);
+        };
+
+        const handlePopupClose = ({ popupId }) => {
+            console.log('[CreateLanding] Closing popup:', popupId);
+            setPageData(prev => ({
+                ...prev,
+                elements: prev.elements.map(el =>
+                    el.id === popupId
+                        ? { ...el, visible: false }
+                        : el
+                )
+            }));
+        };
+
+        // Subscribe to events
+        const unsubscribeOpen = eventController.subscribe('popup-open', handlePopupOpen);
+        const unsubscribeClose = eventController.subscribe('popup-close', handlePopupClose);
+
+        // Cleanup on unmount
+        return () => {
+            unsubscribeOpen();
+            unsubscribeClose();
+        };
+    }, []);
 
     // Handle canvas height update
     const handleUpdateCanvasHeight = useCallback((newHeight) => {
@@ -201,20 +262,57 @@ const CreateLanding = () => {
         toast.success(childId ? 'Đã cập nhật khóa child!' : 'Đã cập nhật khóa element!');
     }, [history, historyIndex]);
 
-    // View mode change with responsive sync
+    // View mode change with responsive sync and mobile stacking
     const handleViewModeChange = useCallback((mode) => {
         setViewMode(mode);
         setPageData((prev) => {
             const canvasWidth = mode === 'desktop' ? 1200 : mode === 'tablet' ? 768 : 375;
 
             // Sync elements để đảm bảo responsive data được cập nhật
-            const syncedElements = prev.elements.map((element) => {
-                // Nếu element chưa có responsive data, sync ngay
-                if (!element.position?.mobile || !element.position?.tablet) {
-                    return syncElementBetweenModes(element, 'desktop');
-                }
-                return element;
+            let syncedElements = prev.elements.map((element) => {
+                // Always sync to ensure responsive data is up to date
+                return syncElementBetweenModes(element, 'desktop');
             });
+
+            // MOBILE: Apply vertical stacking for better mobile layout
+            if (mode === 'mobile') {
+                // Separate sections and other elements
+                const sections = syncedElements.filter(el => el.type === 'section');
+                const others = syncedElements.filter(el => el.type !== 'section');
+
+                // Apply mobile stacking to sections (stack children vertically)
+                const stackedSections = sections.map(section => {
+                    if (section.children && section.children.length > 0) {
+                        return applySectionMobileStacking(section, {
+                            startY: 20,
+                            spacing: 16,
+                            padding: 20,
+                            viewportWidth: 375
+                        });
+                    }
+                    return section;
+                });
+
+                // Apply vertical stacking to other top-level elements (popups don't need stacking)
+                const nonPopupOthers = others.filter(el => el.type !== 'popup' && el.type !== 'modal');
+                const popups = others.filter(el => el.type === 'popup' || el.type === 'modal');
+
+                const stackedOthers = nonPopupOthers.length > 0
+                    ? applyMobileVerticalStacking(nonPopupOthers, {
+                        startY: stackedSections.reduce((maxY, section) => {
+                            const sectionBottom = (section.position?.mobile?.y || 0) + (section.mobileSize?.height || section.size?.height || 400);
+                            return Math.max(maxY, sectionBottom);
+                        }, 0) + 20,
+                        spacing: 20,
+                        padding: 20,
+                        viewportWidth: 375,
+                        centerHorizontally: true
+                    })
+                    : nonPopupOthers;
+
+                // Combine: sections first, then stacked others, then popups (unchanged)
+                syncedElements = [...stackedSections, ...stackedOthers, ...popups];
+            }
 
             const newPageData = {
                 ...prev,
@@ -228,89 +326,158 @@ const CreateLanding = () => {
         });
 
         const modeLabel = mode === 'desktop' ? 'Desktop' : mode === 'tablet' ? 'Tablet' : 'Mobile';
-        toast.info(`Đã chuyển sang chế độ ${modeLabel}`);
+        toast.info(`Đã chuyển sang chế độ ${modeLabel}${mode === 'mobile' ? ' - Áp dụng vertical stacking' : ''}`);
     }, [history, historyIndex]);
 
     // Add section
     const handleAddSection = useCallback((section) => {
-        const lastSectionY = pageData.elements
-            .filter((el) => el.type === 'section')
-            .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0);
-        const newElement = {
+        // LUÔN tính Y position từ desktop mode để đảm bảo consistency
+        const nextY = calculateNextSectionY(pageData.elements);
+
+        // Initialize children with responsive data
+        const childrenWithResponsive = (section.json.children || []).map(child => {
+            const childElement = {
+                ...child,
+                position: child.position || {
+                    desktop: { x: 0, y: 0, z: 1 },
+                    tablet: { x: 0, y: 0, z: 1 },
+                    mobile: { x: 0, y: 0, z: 1 },
+                },
+                size: child.size || { width: 200, height: 50 },
+                visible: child.visible !== false,
+                locked: child.locked || false,
+            };
+            // Sync responsive data for child if missing
+            return (!childElement.mobileSize || !childElement.tabletSize)
+                ? syncElementBetweenModes(childElement, 'desktop')
+                : childElement;
+        });
+
+        const isPopup = section.json.type === 'popup';
+        const baseElement = {
             id: `${section.id}-${Date.now()}`,
             type: section.json.type,
             componentData: JSON.parse(JSON.stringify(section.json.componentData || {})),
             position: {
-                [viewMode]: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                desktop: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                tablet: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
-                mobile: { x: section.json.type === 'popup' ? 100 : 0, y: section.json.type === 'popup' ? 100 : lastSectionY },
+                // Sections: x=0, y=nextY (stacked vertically)
+                // Popups: centered x=100, y=100, high z-index
+                desktop: { x: isPopup ? 100 : 0, y: isPopup ? 100 : nextY, z: isPopup ? 1001 : 1 },
+                tablet: { x: isPopup ? 100 : 0, y: isPopup ? 100 : nextY, z: isPopup ? 1001 : 1 },
+                mobile: { x: isPopup ? 100 : 0, y: isPopup ? 100 : nextY, z: isPopup ? 1001 : 1 },
             },
-            size: { ...section.json.size, width: viewMode === 'mobile' ? 375 : section.json.type === 'popup' ? 600 : 1200 },
+            size: section.json.size || {
+                width: isPopup ? 600 : 1200,
+                height: section.json.size?.height || 400
+            },
+            mobileSize: section.json.mobileSize || (isPopup ? { width: 340, height: section.json.size?.height || 400 } : { width: 375, height: section.json.size?.height || 400 }),
+            tabletSize: section.json.tabletSize || (isPopup ? { width: 600, height: section.json.size?.height || 400 } : { width: 768, height: section.json.size?.height || 400 }),
             styles: JSON.parse(JSON.stringify(section.json.styles || {})),
-            children: JSON.parse(JSON.stringify(section.json.children || [])),
+            responsiveStyles: section.json.responsiveStyles || {},
+            children: childrenWithResponsive,
             visible: true,
             locked: false
         };
+
+        // ALWAYS sync to ensure all responsive data is complete and consistent
+        const newElement = syncElementBetweenModes(baseElement, 'desktop');
+
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
-            const newCanvasHeight = section.json.type === 'section' ? lastSectionY + (section.json.size?.height || 400) : prev.canvas.height;
+            const newCanvasHeight = calculateCanvasHeight(newElements);
             const newPageData = {
                 ...prev,
                 elements: newElements,
-                canvas: { ...prev.canvas, height: Math.max(prev.canvas.height || 0, newCanvasHeight) },
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        if (section.json.type === 'section') {
-            setGuideLine({ show: true, y: lastSectionY + (section.json.size?.height || 400) });
+
+        if (!isPopup) {
+            const newHeight = section.json.size?.height || 400;
+            setGuideLine({ show: true, y: nextY + newHeight });
         }
         toast.success(`Đã thêm ${section.json.type} mới!`);
         setShowPopup(false);
-    }, [pageData.elements, viewMode, history, historyIndex]);
+    }, [pageData.elements, history, historyIndex]);
 
     // Add element
     const handleAddElement = useCallback((element) => {
         const newId = element.id || `${element.type}-${Date.now()}`;
-        const lastElement = pageData.elements
-            .filter((el) => el.type === 'section')
-            .sort((a, b) => (b.position?.[viewMode]?.y || 0) - (a.position?.[viewMode]?.y || 0))[0];
-        const lastY = lastElement?.position?.[viewMode]?.y || 0;
-        const lastHeight = lastElement?.size?.height || 0;
-        const lastMarginBottom = parseFloat(lastElement?.styles?.marginBottom || '0') || 0;
-        const newY = lastY + lastHeight + lastMarginBottom;
-        const newElement = {
+
+        // Calculate position based on element type
+        // LUÔN dùng desktop mode làm base để đảm bảo consistency
+        let newY = 0;
+        let newX = 0;
+
+        if (element.type === 'section') {
+            // Sections stack vertically - use calculateNextSectionY
+            newY = calculateNextSectionY(pageData.elements);
+            newX = 0; // Sections always start at x=0
+        } else {
+            // Other elements (countdown, carousel, etc.) - place in center
+            const canvasWidth = 1200; // Always use desktop width for calculation
+            const elementWidth = element.size?.width || 600;
+            newX = Math.max(0, (canvasWidth - elementWidth) / 2);
+
+            // Find last element position (from desktop mode)
+            const allElements = pageData.elements;
+            if (allElements.length > 0) {
+                const lastEl = allElements[allElements.length - 1];
+                const lastElY = lastEl.position?.desktop?.y || 0;
+                const lastElHeight = lastEl.size?.height || 0;
+                newY = lastElY + lastElHeight + 40; // Add 40px gap
+            } else {
+                newY = 40; // Start with 40px from top
+            }
+        }
+
+        const baseElement = {
             ...element,
             id: newId,
             position: {
-                desktop: { x: 0, y: newY },
-                tablet: { x: 0, y: newY },
-                mobile: { x: 0, y: newY },
+                desktop: { x: newX, y: newY, z: element.position?.desktop?.z || 1 },
+                tablet: { x: newX, y: newY, z: element.position?.tablet?.z || 1 },
+                mobile: { x: newX, y: newY, z: element.position?.mobile?.z || 1 },
             },
+            size: element.size || { width: 600, height: 400 },
+            mobileSize: element.mobileSize,
+            tabletSize: element.tabletSize,
             styles: {
                 ...element.styles,
-                margin: '0',
-                padding: '0',
             },
+            responsiveStyles: element.responsiveStyles || {},
+            componentData: element.componentData || {},
+            mobileComponentData: element.mobileComponentData,
+            tabletComponentData: element.tabletComponentData,
+            children: element.children || [],
+            visible: element.visible !== false,
+            locked: element.locked || false,
         };
+
+        // Initialize full responsive data if not present
+        const newElement = (!baseElement.mobileSize || !baseElement.tabletSize ||
+                           !baseElement.responsiveStyles?.mobile || !baseElement.responsiveStyles?.tablet)
+            ? syncElementBetweenModes(baseElement, 'desktop')
+            : baseElement;
+
         setPageData((prev) => {
             const newElements = [...prev.elements, newElement];
-            const newCanvasHeight = newY + (newElement.size?.height || 400);
+            const newCanvasHeight = calculateCanvasHeight(newElements);
             const newPageData = {
                 ...prev,
                 elements: newElements,
-                canvas: { ...prev.canvas, height: Math.max(prev.canvas.height || 0, newCanvasHeight) },
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã thêm phần tử!');
-    }, [pageData, viewMode, history, historyIndex]);
+        toast.success(`Đã thêm ${element.type}!`);
+    }, [pageData, history, historyIndex]);
 
     // Add child
     const handleAddChild = useCallback((parentId, newChild) => {
@@ -349,38 +516,40 @@ const CreateLanding = () => {
     // Delete element with confirmation
     const handleDeleteElement = useCallback((id, e) => {
         if (e) e.stopPropagation();
-        if (!window.confirm('Bạn có chắc muốn xóa section này?')) return;
+        const element = pageData.elements.find((el) => el.id === id);
+        if (!element) return;
+
+        const confirmMessage = element.type === 'section'
+            ? 'Bạn có chắc muốn xóa section này?'
+            : 'Bạn có chắc muốn xóa element này?';
+
+        if (!window.confirm(confirmMessage)) return;
+
         setPageData((prev) => {
-            const newElements = prev.elements.filter((el) => el.id !== id);
-            let currentY = 0;
-            const updatedElements = newElements.map((el) => {
-                if (el.type === 'section') {
-                    const updatedElement = { ...el, position: { ...el.position, [viewMode]: { ...el.position[viewMode], y: currentY } } };
-                    currentY += el.size?.height || 400;
-                    return updatedElement;
-                }
-                return el;
-            });
+            // Use deleteSection utility để reorder sections properly
+            const reorderedElements = deleteSection(prev.elements, id);
+            const newCanvasHeight = calculateCanvasHeight(reorderedElements);
+
             const newPageData = {
                 ...prev,
-                elements: updatedElements,
-                canvas: { ...prev.canvas, height: Math.max(currentY + 100, 100) },
+                elements: reorderedElements,
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
+
         setSelectedIds((prev) => prev.filter((selId) => selId !== id));
         setSelectedChildId(null);
-        setGuideLine((prev) => ({
-            ...prev,
-            y: pageData.elements
-                .filter((el) => el.type === 'section')
-                .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0),
-        }));
-        toast.success('Đã xóa section!');
-    }, [historyIndex, pageData.elements, viewMode]);
+
+        // Update guideline to next section position
+        const nextY = calculateNextSectionY(pageData.elements.filter(el => el.id !== id));
+        setGuideLine({ show: true, y: nextY });
+
+        toast.success(`Đã xóa ${element.type}!`);
+    }, [historyIndex, pageData.elements]);
 
     // Delete child
     const handleDeleteChild = useCallback((parentId, childId, e) => {
@@ -412,81 +581,65 @@ const CreateLanding = () => {
     const handleMoveElementUp = useCallback((id, e) => {
         if (e) e.stopPropagation();
         setPageData((prev) => {
-            const index = prev.elements.findIndex((el) => el.id === id);
-            if (index <= 0) return prev;
-            const newElements = [...prev.elements];
-            [newElements[index - 1], newElements[index]] = [newElements[index], newElements[index - 1]];
-            let currentY = 0;
-            const updatedElements = newElements.map((el) => {
-                if (el.type === 'section') {
-                    const height = el.size?.height || 400;
-                    const updatedElement = {
-                        ...el,
-                        position: { ...el.position, [viewMode]: { x: 0, y: currentY } },
-                    };
-                    currentY += height;
-                    return updatedElement;
-                }
-                return el;
-            });
+            // Use moveSectionUp utility để reorder sections properly
+            const reorderedElements = moveSectionUp(prev.elements, id);
+
+            // Check if actually moved
+            if (reorderedElements === prev.elements) {
+                toast.info('Section đã ở vị trí đầu tiên');
+                return prev;
+            }
+
+            const newCanvasHeight = calculateCanvasHeight(reorderedElements);
             const newPageData = {
                 ...prev,
-                elements: updatedElements,
-                canvas: { ...prev.canvas, height: currentY + 100 },
+                elements: reorderedElements,
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        setGuideLine((prev) => ({
-            ...prev,
-            y: pageData.elements
-                .filter((el) => el.type === 'section')
-                .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0),
-        }));
+
+        // Update guideline
+        const nextY = calculateNextSectionY(pageData.elements);
+        setGuideLine({ show: true, y: nextY });
+
         toast.success('Đã di chuyển section lên!');
-    }, [historyIndex, viewMode, pageData.elements]);
+    }, [historyIndex, pageData.elements]);
 
     // Move element down
     const handleMoveElementDown = useCallback((id, e) => {
         if (e) e.stopPropagation();
         setPageData((prev) => {
-            const index = prev.elements.findIndex((el) => el.id === id);
-            if (index >= prev.elements.length - 1) return prev;
-            const newElements = [...prev.elements];
-            [newElements[index], newElements[index + 1]] = [newElements[index + 1], newElements[index]];
-            let currentY = 0;
-            const updatedElements = newElements.map((el) => {
-                if (el.type === 'section') {
-                    const height = el.size?.height || 400;
-                    const updatedElement = {
-                        ...el,
-                        position: { ...el.position, [viewMode]: { x: 0, y: currentY } },
-                    };
-                    currentY += height;
-                    return updatedElement;
-                }
-                return el;
-            });
+            // Use moveSectionDown utility để reorder sections properly
+            const reorderedElements = moveSectionDown(prev.elements, id);
+
+            // Check if actually moved
+            if (reorderedElements === prev.elements) {
+                toast.info('Section đã ở vị trí cuối cùng');
+                return prev;
+            }
+
+            const newCanvasHeight = calculateCanvasHeight(reorderedElements);
             const newPageData = {
                 ...prev,
-                elements: updatedElements,
-                canvas: { ...prev.canvas, height: currentY + 100 },
+                elements: reorderedElements,
+                canvas: { ...prev.canvas, height: newCanvasHeight },
                 meta: { ...prev.meta, updated_at: new Date().toISOString() }
             };
             setHistory([...history.slice(0, historyIndex + 1), newPageData]);
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        setGuideLine((prev) => ({
-            ...prev,
-            y: pageData.elements
-                .filter((el) => el.type === 'section')
-                .reduce((maxY, el) => Math.max(maxY, (el.position?.[viewMode]?.y || 0) + (el.size?.height || 400)), 0),
-        }));
+
+        // Update guideline
+        const nextY = calculateNextSectionY(pageData.elements);
+        setGuideLine({ show: true, y: nextY });
+
         toast.success('Đã di chuyển section xuống!');
-    }, [historyIndex, viewMode, pageData.elements]);
+    }, [historyIndex, pageData.elements]);
 
     // Select element
     const handleSelectElement = useCallback((ids, append = false) => {
@@ -587,33 +740,209 @@ const CreateLanding = () => {
         toast.success('Đã cập nhật phần tử!');
     }, [historyIndex, selectedIds, selectedChildId]);
 
-    // Duplicate element
+    // Copy element to clipboard
+    const handleCopyElement = useCallback(() => {
+        if (selectedIds.length === 0) {
+            toast.warning('Chọn một element để copy');
+            return;
+        }
+        const element = pageData.elements.find((el) => el.id === selectedIds[0]);
+        if (element) {
+            setClipboard({ ...element });
+            toast.success(`Đã copy ${element.type}! (Ctrl+V để paste)`);
+        }
+    }, [selectedIds, pageData.elements]);
+
+    // Cut element to clipboard
+    const handleCutElement = useCallback(() => {
+        if (selectedIds.length === 0) {
+            toast.warning('Chọn một element để cut');
+            return;
+        }
+        const element = pageData.elements.find((el) => el.id === selectedIds[0]);
+        if (element) {
+            setClipboard({ ...element });
+            // Delete the original element
+            handleDeleteElement(selectedIds[0], null);
+            toast.success(`Đã cut ${element.type}! (Ctrl+V để paste)`);
+        }
+    }, [selectedIds, pageData.elements, handleDeleteElement]);
+
+    // Paste element from clipboard
+    const handlePasteElement = useCallback(() => {
+        if (!clipboard) {
+            toast.warning('Clipboard trống! Copy một element trước (Ctrl+C)');
+            return;
+        }
+
+        const newElement = {
+            ...clipboard,
+            id: `${clipboard.type}-${Date.now()}`,
+            position: {
+                // Paste với offset +20px để thấy rõ element mới
+                desktop: {
+                    x: (clipboard.position?.desktop?.x || 0) + 20,
+                    y: (clipboard.position?.desktop?.y || 0) + 20,
+                    z: clipboard.position?.desktop?.z || 1
+                },
+                tablet: {
+                    x: (clipboard.position?.tablet?.x || 0) + 20,
+                    y: (clipboard.position?.tablet?.y || 0) + 20,
+                    z: clipboard.position?.tablet?.z || 1
+                },
+                mobile: {
+                    x: (clipboard.position?.mobile?.x || 0) + 20,
+                    y: (clipboard.position?.mobile?.y || 0) + 20,
+                    z: clipboard.position?.mobile?.z || 1
+                },
+            },
+        };
+
+        setPageData((prev) => {
+            const newElements = [...prev.elements, newElement];
+            const newPageData = {
+                ...prev,
+                elements: newElements,
+                canvas: { ...prev.canvas, height: calculateCanvasHeight(newElements) },
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+
+        // Select the newly pasted element
+        setSelectedIds([newElement.id]);
+        toast.success(`Đã paste ${clipboard.type}!`);
+    }, [clipboard, history, historyIndex]);
+
+    // Duplicate element (Ctrl+D)
     const handleDuplicateElement = useCallback((id, e) => {
         if (e) e.stopPropagation();
-        const element = pageData.elements.find((el) => el.id === id);
+
+        // If no ID provided, use selected element
+        const elementId = id || selectedIds[0];
+        if (!elementId) {
+            toast.warning('Chọn một element để duplicate');
+            return;
+        }
+
+        const element = pageData.elements.find((el) => el.id === elementId);
         if (element) {
             const newElement = {
                 ...element,
-                id: `${element.id}-${Date.now()}`,
+                id: `${element.type}-${Date.now()}`,
                 position: {
-                    desktop: { x: (element.position.desktop?.x || 0) + 10, y: (element.position.desktop?.y || 0) + 10 },
-                    tablet: { x: (element.position.tablet?.x || 0) + 10, y: (element.position.tablet?.y || 0) + 10 },
-                    mobile: { x: (element.position.mobile?.x || 0) + 10, y: (element.position.mobile?.y || 0) + 10 },
+                    desktop: {
+                        x: (element.position?.desktop?.x || 0) + 20,
+                        y: (element.position?.desktop?.y || 0) + 20,
+                        z: element.position?.desktop?.z || 1
+                    },
+                    tablet: {
+                        x: (element.position?.tablet?.x || 0) + 20,
+                        y: (element.position?.tablet?.y || 0) + 20,
+                        z: element.position?.tablet?.z || 1
+                    },
+                    mobile: {
+                        x: (element.position?.mobile?.x || 0) + 20,
+                        y: (element.position?.mobile?.y || 0) + 20,
+                        z: element.position?.mobile?.z || 1
+                    },
                 },
             };
             setPageData((prev) => {
+                const newElements = [...prev.elements, newElement];
                 const newPageData = {
                     ...prev,
-                    elements: [...prev.elements, newElement],
+                    elements: newElements,
+                    canvas: { ...prev.canvas, height: calculateCanvasHeight(newElements) },
                     meta: { ...prev.meta, updated_at: new Date().toISOString() }
                 };
                 setHistory([...history.slice(0, historyIndex + 1), newPageData]);
                 setHistoryIndex(historyIndex + 1);
                 return newPageData;
             });
-            toast.success('Đã sao chép phần tử!');
+
+            // Select the duplicated element
+            setSelectedIds([newElement.id]);
+            toast.success(`Đã duplicate ${element.type}!`);
         }
-    }, [historyIndex, pageData.elements]);
+    }, [historyIndex, pageData.elements, selectedIds]);
+
+    // Popup Layer Manager handlers
+    const handleTogglePopupVisibility = useCallback((popupId) => {
+        setPageData((prev) => {
+            const newPageData = {
+                ...prev,
+                elements: prev.elements.map((el) =>
+                    el.id === popupId ? { ...el, visible: !el.visible } : el
+                ),
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+    }, [history, historyIndex]);
+
+    const handleReorderPopups = useCallback((reorderedPopups) => {
+        setPageData((prev) => {
+            const nonPopups = prev.elements.filter((el) => el.type !== 'popup');
+            const newPageData = {
+                ...prev,
+                elements: [...nonPopups, ...reorderedPopups],
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+    }, [history, historyIndex]);
+
+    const handleAddNewPopup = useCallback(() => {
+        const nextZ = pageData.elements.filter((el) => el.type === 'popup').length + 1001;
+        const newPopup = {
+            id: `POPUP-${Date.now()}`,
+            type: 'popup',
+            componentData: {
+                title: `Popup ${nextZ - 1000}`,
+                trigger: 'manual',
+                structure: 'ladi-standard',
+            },
+            position: {
+                desktop: { x: 100, y: 100, z: nextZ },
+                tablet: { x: 100, y: 100, z: nextZ },
+                mobile: { x: 50, y: 50, z: nextZ },
+            },
+            size: { width: 600, height: 400 },
+            mobileSize: { width: 340, height: 400 },
+            tabletSize: { width: 600, height: 400 },
+            styles: {
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
+                padding: '24px',
+            },
+            children: [],
+            visible: true,
+            locked: false,
+            isPopup: true,
+        };
+
+        setPageData((prev) => {
+            const newElements = [...prev.elements, newPopup];
+            const newPageData = {
+                ...prev,
+                elements: newElements,
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
+
+        setSelectedIds([newPopup.id]);
+    }, [pageData.elements, history, historyIndex]);
 
     // Group elements
     const handleGroupElements = useCallback((ids, e) => {
@@ -687,6 +1016,33 @@ const CreateLanding = () => {
             return newPageData;
         });
         toast.success('Đã cập nhật vị trí thành phần con!');
+    }, [historyIndex, viewMode]);
+
+    // Update child size
+    const handleUpdateChildSize = useCallback((parentId, childId, newSize, e) => {
+        if (e) e.stopPropagation();
+        setPageData((prev) => {
+            const newPageData = {
+                ...prev,
+                elements: prev.elements.map((el) => {
+                    if (el.id === parentId) {
+                        return {
+                            ...el,
+                            children: el.children.map((child) =>
+                                child.id === childId
+                                    ? { ...child, size: { ...child.size, [viewMode]: newSize } }
+                                    : child
+                            ),
+                        };
+                    }
+                    return el;
+                }),
+                meta: { ...prev.meta, updated_at: new Date().toISOString() }
+            };
+            setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+            setHistoryIndex(historyIndex + 1);
+            return newPageData;
+        });
     }, [historyIndex, viewMode]);
 
     // Move child
@@ -817,6 +1173,39 @@ const CreateLanding = () => {
     }, [pageId, pageData]);
 
     // Save
+    // Helper: Ensure all elements have mobile positions
+    const ensureMobilePositions = useCallback((data) => {
+        return {
+            ...data,
+            elements: data.elements.map((element) => {
+                // If element already has mobile positions, keep them
+                if (element.position?.mobile && element.mobileSize) {
+                    return element;
+                }
+
+                // Apply mobile stacking for sections
+                if (element.type === 'section' && element.children && element.children.length > 0) {
+                    return applySectionMobileStacking(element, {
+                        startY: 20,
+                        spacing: 16,
+                        padding: 20,
+                        viewportWidth: 375,
+                    });
+                }
+
+                // For non-section elements without mobile positions, use desktop positions
+                return {
+                    ...element,
+                    position: {
+                        ...element.position,
+                        mobile: element.position?.mobile || element.position?.desktop || { x: 0, y: 0, z: 1 },
+                    },
+                    mobileSize: element.mobileSize || element.size || { width: 200, height: 50 },
+                };
+            }),
+        };
+    }, []);
+
     const handleSave = useCallback(async () => {
         if (!pageId) {
             toast.error('Không tìm thấy ID trang.');
@@ -824,8 +1213,10 @@ const CreateLanding = () => {
         }
         setIsSaving(true); // Show DogLoader during save
         try {
-            const htmlContent = renderStaticHTML(pageData);
-            const response = await api.put(`/api/pages/${pageId}`, { html: htmlContent, pageData });
+            // Ensure mobile positions before saving
+            const pageDataWithMobile = ensureMobilePositions(pageData);
+            const htmlContent = renderStaticHTML(pageDataWithMobile);
+            const response = await api.put(`/api/pages/${pageId}`, { html: htmlContent, pageData: pageDataWithMobile });
             if (response.data.success) {
                 toast.success(`Lưu trang thành công! (${pageData.elements.length} phần tử)`);
                 if (!response.data.page.screenshot_url) {
@@ -851,14 +1242,96 @@ const CreateLanding = () => {
         } finally {
             setIsSaving(false); // Hide DogLoader
         }
-    }, [pageId, navigate, pageData]);
+    }, [pageId, navigate, pageData, ensureMobilePositions]);
 
     // Preview
     const handlePreview = useCallback(() => {
-        const htmlContent = renderStaticHTML(pageData);
+        // Ensure all elements have mobile positions before preview
+        const pageDataWithMobile = ensureMobilePositions(pageData);
+        const htmlContent = renderStaticHTML(pageDataWithMobile);
         setPreviewHtml(htmlContent);
         setShowPreview(true);
-    }, [pageData]);
+    }, [pageData, ensureMobilePositions]);
+
+    // AI Content Generator
+    const handleAIContentGenerator = useCallback(() => {
+        // Determine element type from selected element
+        const selected = selectedIds.length > 0 && pageData.elements.find(el => el.id === selectedIds[0]);
+        const elementType = selected ? selected.type : 'paragraph';
+        setAIElementType(elementType);
+        setShowAIContentModal(true);
+    }, [selectedIds, pageData.elements]);
+
+    // AI Page Analyzer
+    const handleAIPageAnalyzer = useCallback(() => {
+        setShowAIAnalyzer(true);
+    }, []);
+
+    // AI Content Insert Handler
+    const handleAIContentInsert = useCallback((content) => {
+        if (selectedChildId && selectedIds.length > 0) {
+            // Update child element content
+            const parentId = selectedIds[0];
+            setPageData((prev) => {
+                const newPageData = {
+                    ...prev,
+                    elements: prev.elements.map((el) => {
+                        if (el.id === parentId) {
+                            return {
+                                ...el,
+                                children: el.children.map((child) =>
+                                    child.id === selectedChildId
+                                        ? {
+                                            ...child,
+                                            componentData: {
+                                                ...child.componentData,
+                                                text: content,
+                                                content: content
+                                            }
+                                        }
+                                        : child
+                                ),
+                            };
+                        }
+                        return el;
+                    }),
+                    meta: { ...prev.meta, updated_at: new Date().toISOString() }
+                };
+                setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+                setHistoryIndex(historyIndex + 1);
+                return newPageData;
+            });
+            toast.success('Đã chèn nội dung AI!');
+        } else if (selectedIds.length > 0) {
+            // Update parent element content
+            const elementId = selectedIds[0];
+            setPageData((prev) => {
+                const newPageData = {
+                    ...prev,
+                    elements: prev.elements.map((el) =>
+                        el.id === elementId
+                            ? {
+                                ...el,
+                                componentData: {
+                                    ...el.componentData,
+                                    text: content,
+                                    content: content
+                                }
+                            }
+                            : el
+                    ),
+                    meta: { ...prev.meta, updated_at: new Date().toISOString() }
+                };
+                setHistory([...history.slice(0, historyIndex + 1), newPageData]);
+                setHistoryIndex(historyIndex + 1);
+                return newPageData;
+            });
+            toast.success('Đã chèn nội dung AI!');
+        } else {
+            toast.warning('Vui lòng chọn một element trước!');
+        }
+        setShowAIContentModal(false);
+    }, [selectedIds, selectedChildId, historyIndex, history, pageData]);
 
     // Import .iuhpage file
     const handleImportIUHPage = useCallback((event) => {
@@ -1002,6 +1475,64 @@ const CreateLanding = () => {
             ? { json: pageData.elements.find((el) => el.id === selectedIds[0]), isChild: false }
             : null;
 
+    // Keyboard shortcuts - placed after all handlers are defined
+    useEffect(() => {
+        const handleKeyDown = useKeyboardShortcuts({
+            onUndo: handleUndo,
+            onRedo: handleRedo,
+            onCopy: handleCopyElement,
+            onCut: handleCutElement,
+            onPaste: handlePasteElement,
+            onDuplicate: () => handleDuplicateElement(null, null),
+            onDelete: () => {
+                if (selectedIds.length > 0) {
+                    handleDeleteElement(selectedIds[0], null);
+                }
+            },
+            onDeselect: () => {
+                setSelectedIds([]);
+                setSelectedChildId(null);
+            },
+            onSave: handleSave,
+            onPreview: () => handlePreview(),
+            onToggleGrid: () => setShowGrid(prev => !prev),
+        });
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [
+        handleUndo,
+        handleRedo,
+        handleCopyElement,
+        handleCutElement,
+        handlePasteElement,
+        handleDuplicateElement,
+        handleDeleteElement,
+        handleSave,
+        handlePreview,
+        selectedIds,
+    ]);
+
+    // Smart Auto-save with debounce (save after 30 seconds of inactivity)
+    useEffect(() => {
+        if (!pageId || isLoading || isSaving) return;
+
+        // Skip auto-save for first load
+        if (pageData.elements.length === 0) return;
+
+        const autoSaveTimer = setTimeout(() => {
+            console.log('[AutoSave] Triggering auto-save...');
+            handleAutoSave();
+        }, 30000); // 30 seconds
+
+        return () => {
+            clearTimeout(autoSaveTimer);
+        };
+    }, [pageData, pageId, isLoading, isSaving, handleAutoSave]);
+
     // Show DogLoader for both initial loading and save operations
     if (isLoading || isSaving) {
         return (
@@ -1088,6 +1619,17 @@ const CreateLanding = () => {
                 />
             );
         }
+        if (type === 'form') {
+            return (
+                <FormPropertiesPanel
+                    selectedElement={selectedElement}
+                    onUpdateElement={handleEditElement}
+                    isCollapsed={isPropertiesCollapsed}
+                    onToggle={() => setIsPropertiesCollapsed(!isPropertiesCollapsed)}
+                    className="w-80 bg-white shadow-lg p-4"
+                />
+            );
+        }
         return (
             <PropertiesPanel
                 selectedElement={selectedElement}
@@ -1148,6 +1690,8 @@ const CreateLanding = () => {
                             onToggleLock={handleToggleLock}
                             onDeleteElement={handleDeleteElement}
                             onShowAddSectionGuide={handleShowAddSectionPopup}
+                            onAIContentGenerator={handleAIContentGenerator}
+                            onAIPageAnalyzer={handleAIPageAnalyzer}
                             className="bg-white p-4 shadow-sm"
                         />
                     </ErrorBoundary>
@@ -1186,6 +1730,7 @@ const CreateLanding = () => {
                             onUpdateChildren={handleUpdateChildren}
                             onAddChild={handleAddChild}
                             onUpdateChildPosition={handleUpdateChildPosition}
+                            onUpdateChildSize={handleUpdateChildSize}
                             onMoveChild={handleMoveChild}
                             guideLine={guideLine}
                             onUpdateCanvasHeight={handleUpdateCanvasHeight}
@@ -1204,6 +1749,25 @@ const CreateLanding = () => {
                             setPreviewHtml={setPreviewHtml}
                             previewHtml={previewHtml}
                             fullScreen={false}
+                        />
+                    )}
+
+                    {/* AI Content Generator Modal */}
+                    {showAIContentModal && (
+                        <AIContentModal
+                            isOpen={showAIContentModal}
+                            onClose={() => setShowAIContentModal(false)}
+                            onInsert={handleAIContentInsert}
+                            elementType={aiElementType}
+                        />
+                    )}
+
+                    {/* AI Page Analyzer Modal */}
+                    {showAIAnalyzer && (
+                        <AIPageAnalyzer
+                            isOpen={showAIAnalyzer}
+                            onClose={() => setShowAIAnalyzer(false)}
+                            pageData={pageData}
                         />
                     )}
                 </div>
@@ -1227,6 +1791,20 @@ const CreateLanding = () => {
                     viewMode={viewMode}
                     onToggleVisibility={handleToggleVisibility}
                     className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg"
+                />
+                <PopupLayerManager
+                    popups={pageData.elements.filter((el) => el.type === 'popup')}
+                    selectedPopupId={selectedIds.find((id) => {
+                        const el = pageData.elements.find((e) => e.id === id);
+                        return el && el.type === 'popup';
+                    })}
+                    onSelectPopup={(popupId) => handleSelectElement([popupId])}
+                    onTogglePopupVisibility={handleTogglePopupVisibility}
+                    onDeletePopup={handleDeleteElement}
+                    onReorderPopups={handleReorderPopups}
+                    onAddPopup={handleAddNewPopup}
+                    isCollapsed={isPopupLayerCollapsed}
+                    onToggleCollapse={() => setIsPopupLayerCollapsed(!isPopupLayerCollapsed)}
                 />
             </div>
         </DndProvider>

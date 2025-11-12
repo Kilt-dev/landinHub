@@ -487,3 +487,50 @@
         font-size: 1.8rem;
     }
 }
+/* MarketplaceDetail.css */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+.modal-content {
+    background: #fff;
+    width: 90%;
+    max-width: 480px;
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+}
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.modal-header .close {
+    cursor: pointer;
+    font-size: 20px;
+    color: #888;
+}
+.status.delivered {
+    color: #28a745;
+    font-weight: 600;
+}
+.review-list { margin-top: 24px; }
+.review-item {
+    border-bottom: 1px solid #eee;
+    padding: 12px 0;
+}
+.review-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.review-date { font-size: 0.85em; color: #666; }
+.review-comment { margin-top: 6px; color: #333; }
+.stars { color: #ffc107; }
+.stars svg { margin-right: 2px; }

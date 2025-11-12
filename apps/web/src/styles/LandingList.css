@@ -119,19 +119,19 @@
 }
 
 /* Status Badge */
-.status-badge {
-    /*position: absolute;*/
-    /*top: 12px;*/
-    /*right: 12px;*/
-    /*padding: 6px 12px;*/
-    /*border-radius: 50px;*/
-    /*font-size: 12px;*/
-    /*font-weight: 600;*/
-    /*backdrop-filter: blur(10px);*/
-    /*display: flex;*/
-    /*align-items: center;*/
-    /*gap: 6px;*/
-    /*box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);*/
+.status-badge5 {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .status-dot {
@@ -280,15 +280,48 @@
     background: #f59e0b;
     color: white;
 }
+/* From Uiverse.io by vinodjangid07 */
+.delete-btn{
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background-color: rgb(20, 20, 20);
+    border: none;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.164);
+    cursor: pointer;
+    transition-duration: 0.3s;
+    overflow: hidden;
+    position: relative;
+    gap: 2px;
+}
 
-.delete-btn {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    color: #dc2626;
+.delete-btn .svgIcon {
+    width: 10px;
+    transition-duration: 0.3s;
+}
+
+.delete-btn .svgIcon path {
+    fill: white;
 }
 
 .delete-btn:hover {
-    background: #ef4444;
-    color: white;
+    transition-duration: 0.3s;
+    background-color: rgb(255, 69, 69);
+    align-items: center;
+    gap: 0;
+}
+
+.delete-btn .bin-top {
+    transform-origin: bottom right;
+}
+.delete-btn:hover .bin-top {
+    transition-duration: 0.5s;
+    transform: rotate(160deg);
 }
 
 /* Responsive Design */
