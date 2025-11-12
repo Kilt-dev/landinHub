@@ -1048,13 +1048,31 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
 
     const renderSettingsTab = () => (
         <div className="panel-section">
-            {/* Form Action */}
+            {/* Auto-save Info */}
+            <div style={{
+                padding: '12px 16px',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #3b82f6',
+                borderRadius: '8px',
+                marginBottom: '20px'
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '18px' }}>✅</span>
+                    <strong style={{ color: '#1e40af', fontSize: '14px' }}>Tự động lưu dữ liệu</strong>
+                </div>
+                <p style={{ fontSize: '13px', color: '#1e40af', margin: 0, lineHeight: '1.5' }}>
+                    Tất cả form submissions sẽ tự động được lưu vào hệ thống và có thể quản lý trong trang <strong>Form Data</strong>. Bạn có thể xem, xuất CSV và quản lý leads thông minh.
+                </p>
+            </div>
+
+            {/* Webhook URL (Optional) */}
             <div className="property-group">
-                <label>Form Action URL (API Endpoint)</label>
+                <label>Webhook URL (Tùy chọn)</label>
                 <input
                     type="text"
-                    value={formData.events?.onSubmit?.apiUrl || ''}
+                    value={formData.webhookUrl || formData.events?.onSubmit?.apiUrl || ''}
                     onChange={(e) => updateFormData({
+                        webhookUrl: e.target.value,
                         events: {
                             ...formData.events,
                             onSubmit: {
@@ -1063,10 +1081,10 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                             }
                         }
                     })}
-                    placeholder="/api/contact"
+                    placeholder="https://hooks.zapier.com/..."
                 />
                 <small style={{ display: 'block', marginTop: '6px', color: '#6b7280', fontSize: '12px' }}>
-                    URL để gửi form data (POST request)
+                    Tùy chọn: Gửi thêm notification đến webhook bên ngoài (Zapier, Make.com, etc.)
                 </small>
             </div>
 

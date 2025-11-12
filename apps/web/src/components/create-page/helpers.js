@@ -998,15 +998,6 @@ export const renderComponentContent = (
                     return false;
                 }
 
-                // Get API URL from form configuration
-                const apiUrl = componentData.events?.onSubmit?.apiUrl;
-                if (!apiUrl) {
-                    console.warn('Form submission: No API URL configured');
-                    setSubmitStatus('error');
-                    setSubmitMessage(componentData.errorMessage || 'Không có URL API được cấu hình.');
-                    return;
-                }
-
                 // Collect form data
                 const formElement = formRef.current;
                 const formData = new FormData(formElement);
@@ -1022,6 +1013,43 @@ export const renderComponentContent = (
                     }
                 }
 
+                // Get page ID from URL or data attribute
+                const pathParts = window.location.pathname.split('/');
+                const pageId = pathParts[pathParts.length - 1] || componentData.pageId || parentId;
+
+                // Collect metadata for lead tracking
+                const getDeviceType = () => {
+                    const width = window.innerWidth;
+                    if (width < 768) return 'mobile';
+                    if (width < 1024) return 'tablet';
+                    return 'desktop';
+                };
+
+                const getUtmParams = () => {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    return {
+                        utm_source: urlParams.get('utm_source'),
+                        utm_medium: urlParams.get('utm_medium'),
+                        utm_campaign: urlParams.get('utm_campaign'),
+                        utm_term: urlParams.get('utm_term'),
+                        utm_content: urlParams.get('utm_content'),
+                    };
+                };
+
+                // Prepare submission payload
+                const submissionData = {
+                    page_id: pageId,
+                    form_data: data,
+                    metadata: {
+                        device_type: getDeviceType(),
+                        user_agent: navigator.userAgent,
+                        screen_resolution: `${window.screen.width}x${window.screen.height}`,
+                        referrer: document.referrer || 'direct',
+                        submitted_at: new Date().toISOString(),
+                        ...getUtmParams(),
+                    }
+                };
+
                 // Set loading state
                 if (componentData.showLoadingState !== false) {
                     setIsSubmitting(true);
@@ -1030,23 +1058,39 @@ export const renderComponentContent = (
                 setSubmitMessage('');
 
                 try {
-                    // Make API call
-                    const response = await fetch(apiUrl, {
+                    // Submit to system API (auto-save to MongoDB)
+                    const systemApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/forms/submit`;
+                    const response = await fetch(systemApiUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify(data),
+                        body: JSON.stringify(submissionData),
                     });
 
                     if (response.ok) {
-                        // Success
+                        // Success - data saved to MongoDB
                         setSubmitStatus('success');
                         setSubmitMessage(componentData.successMessage || 'Cảm ơn bạn đã gửi thông tin!');
 
                         // Reset form if configured
-                        if (componentData.resetAfterSubmit) {
+                        if (componentData.resetAfterSubmit !== false) {
                             formElement.reset();
+                        }
+
+                        // Send to custom webhook if configured (optional)
+                        const webhookUrl = componentData.webhookUrl || componentData.events?.onSubmit?.apiUrl;
+                        if (webhookUrl) {
+                            try {
+                                await fetch(webhookUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(submissionData),
+                                });
+                            } catch (webhookError) {
+                                console.warn('Webhook notification failed:', webhookError);
+                                // Don't show error to user since main submission succeeded
+                            }
                         }
 
                         // Clear success message after 5 seconds
