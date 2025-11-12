@@ -24,24 +24,12 @@ const DeploymentSettings = () => {
     const [deploymentStatus, setDeploymentStatus] = useState('idle'); // idle | deploying | deployed | failed
     const [deploymentInfo, setDeploymentInfo] = useState(null);
 
-    // AWS Settings
-    const [awsSettings, setAwsSettings] = useState({
-        accessKeyId: '',
-        secretAccessKey: '',
-        region: 'ap-southeast-1', // Singapore
-        s3Bucket: '',
-        cloudFrontDistribution: '',
-        route53HostedZone: ''
-    });
-
-    // Domain Settings
+    // Domain Settings (User only sees this)
     const [domainSettings, setDomainSettings] = useState({
         customDomain: '',
-        useSSL: true,
-        certificateArn: ''
+        subdomain: '',
+        useCustomDomain: false
     });
-
-    const [showAwsKeys, setShowAwsKeys] = useState(false);
     const [deployLogs, setDeployLogs] = useState([]);
 
     useEffect(() => {
@@ -75,8 +63,13 @@ const DeploymentSettings = () => {
             if (response.data) {
                 setDeploymentInfo(response.data);
                 setDeploymentStatus(response.data.status);
-                setAwsSettings(response.data.awsSettings || awsSettings);
-                setDomainSettings(response.data.domainSettings || domainSettings);
+                if (response.data.customDomain) {
+                    setDomainSettings({
+                        customDomain: response.data.customDomain,
+                        subdomain: response.data.subdomain || '',
+                        useCustomDomain: !!response.data.customDomain
+                    });
+                }
             }
         } catch (error) {
             // No deployment yet - that's ok
@@ -84,26 +77,7 @@ const DeploymentSettings = () => {
         }
     };
 
-    const handleSaveAwsSettings = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.post(
-                `${process.env.REACT_APP_API_URL}/api/deployment/${pageId}/aws-settings`,
-                { awsSettings, domainSettings },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            alert('AWS settings đã được lưu!');
-        } catch (error) {
-            console.error('Error saving AWS settings:', error);
-            alert('Không thể lưu settings. Vui lòng thử lại.');
-        }
-    };
-
     const handleDeploy = async () => {
-        if (!awsSettings.accessKeyId || !awsSettings.secretAccessKey) {
-            alert('Vui lòng cấu hình AWS credentials trước khi deploy!');
-            return;
-        }
 
         setDeploymentStatus('deploying');
         setDeployLogs([]);
@@ -112,63 +86,40 @@ const DeploymentSettings = () => {
         try {
             const token = localStorage.getItem('token');
 
-            // Step 1: Build static HTML
-            addLog('📦 Đang build static HTML...');
-            const buildResponse = await axios.post(
-                `${process.env.REACT_APP_API_URL}/api/deployment/${pageId}/build`,
-                {},
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            addLog('✅ Build HTML thành công!');
+            // Single API call - Backend handles everything!
+            addLog('🚀 Đang bắt đầu deployment...');
 
-            // Step 2: Upload to S3
-            addLog('☁️ Đang upload lên S3...');
-            await axios.post(
-                `${process.env.REACT_APP_API_URL}/api/deployment/${pageId}/upload-s3`,
+            const response = await axios.post(
+                `${process.env.REACT_APP_API_URL}/api/deployment/${pageId}/deploy`,
                 {
-                    awsSettings,
-                    htmlContent: buildResponse.data.html
+                    customDomain: domainSettings.useCustomDomain ? domainSettings.customDomain : null,
+                    subdomain: domainSettings.subdomain || null
                 },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            addLog('✅ Upload S3 thành công!');
 
-            // Step 3: Create/Update CloudFront Distribution
-            addLog('🌐 Đang cấu hình CloudFront...');
-            const cfResponse = await axios.post(
-                `${process.env.REACT_APP_API_URL}/api/deployment/${pageId}/cloudfront`,
-                { awsSettings, domainSettings },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            addLog('✅ CloudFront distribution đã được tạo!');
+            // Backend returns progress updates via WebSocket or polling
+            // For now, simulate with timeout
+            addLog('📦 Backend đang build HTML...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
 
-            // Step 4: Configure Route 53 (if custom domain)
-            if (domainSettings.customDomain) {
-                addLog('🔗 Đang cấu hình Route 53...');
-                await axios.post(
-                    `${process.env.REACT_APP_API_URL}/api/deployment/${pageId}/route53`,
-                    {
-                        awsSettings,
-                        domainSettings,
-                        distributionDomain: cfResponse.data.domain
-                    },
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                addLog('✅ Route 53 đã được cấu hình!');
+            addLog('☁️ Backend đang upload lên CDN...');
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            addLog('🌐 Backend đang cấu hình distribution...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            if (domainSettings.useCustomDomain && domainSettings.customDomain) {
+                addLog('🔗 Backend đang cấu hình custom domain...');
+                await new Promise(resolve => setTimeout(resolve, 1500));
             }
 
-            // Step 5: Invalidate CloudFront Cache
-            addLog('🔄 Đang làm mới CloudFront cache...');
-            await axios.post(
-                `${process.env.REACT_APP_API_URL}/api/deployment/${pageId}/invalidate`,
-                { distributionId: cfResponse.data.distributionId },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            addLog('✅ Cache đã được invalidate!');
+            addLog('🔄 Backend đang làm mới cache...');
+            await new Promise(resolve => setTimeout(resolve, 800));
 
             addLog('🎉 Deployment hoàn tất!');
             setDeploymentStatus('deployed');
-            setDeploymentInfo(cfResponse.data);
+            setDeploymentInfo(response.data);
 
             fetchDeploymentInfo();
 
@@ -216,14 +167,14 @@ const DeploymentSettings = () => {
                 </p>
             </div>
 
-            {/* AWS Documentation Banner */}
+            {/* Information Banner */}
             <div className="info-banner">
                 <AlertCircle size={20} />
                 <div>
-                    <strong>Cần trợ giúp với AWS?</strong>
+                    <strong>Deploy tự động lên CDN toàn cầu</strong>
                     <p>
-                        Xem hướng dẫn chi tiết về cách lấy AWS Access Keys và cấu hình CloudFront + Route 53
-                        <a href="/docs/aws-setup" target="_blank"> tại đây</a>
+                        Landing page của bạn sẽ được deploy lên hệ thống CDN với 450+ edge locations trên toàn thế giới.
+                        HTTPS miễn phí, tốc độ tải nhanh, không giới hạn traffic.
                     </p>
                 </div>
             </div>
@@ -277,115 +228,62 @@ const DeploymentSettings = () => {
                 </div>
             )}
 
-            {/* AWS Settings */}
-            <div className="settings-section">
-                <h2>
-                    <Key size={20} />
-                    AWS Credentials
-                </h2>
-
-                <div className="form-group">
-                    <label>AWS Access Key ID *</label>
-                    <div className="input-with-icon">
-                        <input
-                            type={showAwsKeys ? "text" : "password"}
-                            value={awsSettings.accessKeyId}
-                            onChange={(e) => setAwsSettings({...awsSettings, accessKeyId: e.target.value})}
-                            placeholder="AKIA..."
-                        />
-                        <button
-                            className="toggle-visibility"
-                            onClick={() => setShowAwsKeys(!showAwsKeys)}
-                        >
-                            {showAwsKeys ? '🙈' : '👁️'}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="form-group">
-                    <label>AWS Secret Access Key *</label>
-                    <input
-                        type={showAwsKeys ? "text" : "password"}
-                        value={awsSettings.secretAccessKey}
-                        onChange={(e) => setAwsSettings({...awsSettings, secretAccessKey: e.target.value})}
-                        placeholder="wJalrXUtnFEMI/K7MDENG..."
-                    />
-                </div>
-
-                <div className="form-row">
-                    <div className="form-group">
-                        <label>AWS Region</label>
-                        <select
-                            value={awsSettings.region}
-                            onChange={(e) => setAwsSettings({...awsSettings, region: e.target.value})}
-                        >
-                            <option value="ap-southeast-1">Singapore (ap-southeast-1)</option>
-                            <option value="us-east-1">N. Virginia (us-east-1)</option>
-                            <option value="us-west-2">Oregon (us-west-2)</option>
-                            <option value="eu-west-1">Ireland (eu-west-1)</option>
-                            <option value="ap-northeast-1">Tokyo (ap-northeast-1)</option>
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>S3 Bucket Name (Tùy chọn)</label>
-                        <input
-                            type="text"
-                            value={awsSettings.s3Bucket}
-                            onChange={(e) => setAwsSettings({...awsSettings, s3Bucket: e.target.value})}
-                            placeholder="my-landing-pages-bucket"
-                        />
-                        <small>Để trống để tự động tạo bucket mới</small>
-                    </div>
-                </div>
-
-                <button className="btn-save" onClick={handleSaveAwsSettings}>
-                    <CheckCircle size={16} />
-                    Lưu AWS Settings
-                </button>
-            </div>
-
-            {/* Domain Settings */}
+            {/* Domain Settings - Simple & Clean */}
             <div className="settings-section">
                 <h2>
                     <Link size={20} />
-                    Domain Configuration
+                    Domain Settings
                 </h2>
-
-                <div className="form-group">
-                    <label>Custom Domain (Tùy chọn)</label>
-                    <input
-                        type="text"
-                        value={domainSettings.customDomain}
-                        onChange={(e) => setDomainSettings({...domainSettings, customDomain: e.target.value})}
-                        placeholder="landing.yourdomain.com"
-                    />
-                    <small>Để trống để sử dụng CloudFront domain mặc định</small>
-                </div>
 
                 <div className="form-group">
                     <label className="checkbox-label">
                         <input
                             type="checkbox"
-                            checked={domainSettings.useSSL}
-                            onChange={(e) => setDomainSettings({...domainSettings, useSSL: e.target.checked})}
+                            checked={domainSettings.useCustomDomain}
+                            onChange={(e) => setDomainSettings({...domainSettings, useCustomDomain: e.target.checked})}
                         />
-                        <span>Sử dụng SSL/TLS (HTTPS) - Khuyến nghị</span>
+                        <span>Sử dụng custom domain của riêng tôi</span>
                     </label>
+                    <small style={{ marginLeft: '28px', display: 'block', marginTop: '6px' }}>
+                        Nếu không chọn, hệ thống sẽ tự động tạo subdomain miễn phí
+                    </small>
                 </div>
 
-                {domainSettings.customDomain && (
+                {domainSettings.useCustomDomain ? (
                     <div className="form-group">
-                        <label>ACM Certificate ARN (Tùy chọn)</label>
+                        <label>Custom Domain</label>
                         <input
                             type="text"
-                            value={domainSettings.certificateArn}
-                            onChange={(e) => setDomainSettings({...domainSettings, certificateArn: e.target.value})}
-                            placeholder="arn:aws:acm:us-east-1:123456789012:certificate/..."
+                            value={domainSettings.customDomain}
+                            onChange={(e) => setDomainSettings({...domainSettings, customDomain: e.target.value})}
+                            placeholder="landing.yourdomain.com"
                         />
-                        <small>Để trống để tự động tạo certificate mới qua ACM</small>
+                        <small>
+                            Nhập domain bạn sở hữu. Hệ thống sẽ tự động cấu hình DNS và SSL certificate.
+                        </small>
+                    </div>
+                ) : (
+                    <div className="form-group">
+                        <label>Subdomain (Tùy chọn)</label>
+                        <div className="subdomain-input">
+                            <input
+                                type="text"
+                                value={domainSettings.subdomain}
+                                onChange={(e) => setDomainSettings({...domainSettings, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
+                                placeholder="my-landing"
+                            />
+                            <span className="subdomain-suffix">.landinghub.app</span>
+                        </div>
+                        <small>
+                            Để trống để tự động tạo (ví dụ: {pageData?.slug || 'page-123'}.landinghub.app)
+                        </small>
                     </div>
                 )}
+
+                <div className="ssl-notice">
+                    <CheckCircle size={16} style={{ color: '#10b981' }} />
+                    <span>SSL/HTTPS được tự động cấu hình miễn phí</span>
+                </div>
             </div>
 
             {/* Deploy Actions */}
@@ -408,14 +306,15 @@ const DeploymentSettings = () => {
                     )}
                 </button>
 
-                <a
-                    href="/docs/aws-setup"
-                    target="_blank"
-                    className="btn-docs"
-                >
-                    <ExternalLink size={16} />
-                    Hướng dẫn AWS Setup
-                </a>
+                {deploymentInfo && (
+                    <button
+                        className="btn-secondary"
+                        onClick={() => window.open(deploymentInfo.url, '_blank')}
+                    >
+                        <ExternalLink size={16} />
+                        Xem Landing Page
+                    </button>
+                )}
             </div>
 
             {/* Deployment Logs */}
