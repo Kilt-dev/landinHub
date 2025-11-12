@@ -1,3 +1,4 @@
+import React from 'react';
 import PropTypes from 'prop-types';
 import { toast } from 'react-toastify';
 import { sections } from '../../constants/sections';
@@ -788,20 +789,47 @@ export const renderComponentContent = (
         }
 
         case 'iframe': {
+            // Show placeholder if no src in canvas mode
+            if (isCanvas && !componentData.src) {
+                return (
+                    <div
+                        style={{
+                            width: '100%',
+                            minHeight: componentData.height || '400px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#f3f4f6',
+                            border: '2px dashed #d1d5db',
+                            borderRadius: '8px',
+                            color: '#6b7280',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            ...baseStyles,
+                        }}
+                    >
+                        <div style={{ fontSize: '48px' }}>🖼️</div>
+                        <div style={{ fontSize: '14px', fontWeight: '500' }}>Iframe Component</div>
+                        <div style={{ fontSize: '12px' }}>Thêm URL trong Properties Panel</div>
+                    </div>
+                );
+            }
+
             return (
                 <iframe
-                    src={componentData.src || ''}
+                    src={componentData.src || 'about:blank'}
                     title={componentData.title || 'Iframe'}
                     width={componentData.width || '100%'}
-                    height={componentData.height || '100%'}
+                    height={componentData.height || '400px'}
                     frameBorder={componentData.frameBorder ?? 0}
                     allow={componentData.allow || 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'}
                     allowFullScreen={componentData.allowFullscreen ?? true}
                     loading={componentData.loading || 'lazy'}
                     style={{
                         width: '100%',
-                        height: '100%',
-                        border: 'none',
+                        minHeight: componentData.height || '400px',
+                        border: componentData.border || 'none',
+                        pointerEvents: isCanvas ? 'none' : 'auto',
                         ...baseStyles,
                     }}
                 />
@@ -970,15 +998,6 @@ export const renderComponentContent = (
                     return false;
                 }
 
-                // Get API URL from form configuration
-                const apiUrl = componentData.events?.onSubmit?.apiUrl;
-                if (!apiUrl) {
-                    console.warn('Form submission: No API URL configured');
-                    setSubmitStatus('error');
-                    setSubmitMessage(componentData.errorMessage || 'Không có URL API được cấu hình.');
-                    return;
-                }
-
                 // Collect form data
                 const formElement = formRef.current;
                 const formData = new FormData(formElement);
@@ -994,6 +1013,43 @@ export const renderComponentContent = (
                     }
                 }
 
+                // Get page ID from URL or data attribute
+                const pathParts = window.location.pathname.split('/');
+                const pageId = pathParts[pathParts.length - 1] || componentData.pageId || parentId;
+
+                // Collect metadata for lead tracking
+                const getDeviceType = () => {
+                    const width = window.innerWidth;
+                    if (width < 768) return 'mobile';
+                    if (width < 1024) return 'tablet';
+                    return 'desktop';
+                };
+
+                const getUtmParams = () => {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    return {
+                        utm_source: urlParams.get('utm_source'),
+                        utm_medium: urlParams.get('utm_medium'),
+                        utm_campaign: urlParams.get('utm_campaign'),
+                        utm_term: urlParams.get('utm_term'),
+                        utm_content: urlParams.get('utm_content'),
+                    };
+                };
+
+                // Prepare submission payload
+                const submissionData = {
+                    page_id: pageId,
+                    form_data: data,
+                    metadata: {
+                        device_type: getDeviceType(),
+                        user_agent: navigator.userAgent,
+                        screen_resolution: `${window.screen.width}x${window.screen.height}`,
+                        referrer: document.referrer || 'direct',
+                        submitted_at: new Date().toISOString(),
+                        ...getUtmParams(),
+                    }
+                };
+
                 // Set loading state
                 if (componentData.showLoadingState !== false) {
                     setIsSubmitting(true);
@@ -1002,23 +1058,39 @@ export const renderComponentContent = (
                 setSubmitMessage('');
 
                 try {
-                    // Make API call
-                    const response = await fetch(apiUrl, {
+                    // Submit to system API (auto-save to MongoDB)
+                    const systemApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/forms/submit`;
+                    const response = await fetch(systemApiUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify(data),
+                        body: JSON.stringify(submissionData),
                     });
 
                     if (response.ok) {
-                        // Success
+                        // Success - data saved to MongoDB
                         setSubmitStatus('success');
                         setSubmitMessage(componentData.successMessage || 'Cảm ơn bạn đã gửi thông tin!');
 
                         // Reset form if configured
-                        if (componentData.resetAfterSubmit) {
+                        if (componentData.resetAfterSubmit !== false) {
                             formElement.reset();
+                        }
+
+                        // Send to custom webhook if configured (optional)
+                        const webhookUrl = componentData.webhookUrl || componentData.events?.onSubmit?.apiUrl;
+                        if (webhookUrl) {
+                            try {
+                                await fetch(webhookUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(submissionData),
+                                });
+                            } catch (webhookError) {
+                                console.warn('Webhook notification failed:', webhookError);
+                                // Don't show error to user since main submission succeeded
+                            }
                         }
 
                         // Clear success message after 5 seconds
@@ -1319,10 +1391,11 @@ export const renderComponentContent = (
                 <hr
                     style={{
                         border: 'none',
-                        background: componentData.color || '#e5e7eb',
+                        backgroundColor: componentData.color || '#e5e7eb',
                         height: componentData.thickness || '2px',
                         width: componentData.width || '100%',
-                        margin: componentData.margin || '0',
+                        margin: componentData.margin || '20px 0',
+                        flexShrink: 0,
                         ...baseStyles,
                     }}
                 />

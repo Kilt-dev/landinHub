@@ -109,18 +109,18 @@ const FormData = () => {
 
         } catch (error) {
             console.error('Error updating status:', error);
-            alert('KhÙng th√ c≠p nh≠t tr°ng th·i. Vui lÚng thÌ l°i.');
+            alert('Kh√¥ng th·ªÉ c·∫≠p nh·∫≠t tr·∫°ng th√°i. Vui l√≤ng th·ª≠ l·∫°i.');
         }
     };
 
     // Handle bulk delete
     const handleBulkDelete = async () => {
         if (selectedSubmissions.length === 0) {
-            alert('Vui lÚng chÕn Ìt nh•t mŸt submission √ xÛa');
+            alert('Vui l√≤ng ch·ªçn √≠t nh·∫•t m·ªôt submission ƒë·ªÉ x√≥a');
             return;
         }
 
-        if (!window.confirm(`B°n cÛ chØc mu—n xÛa ${selectedSubmissions.length} submissions?`)) {
+        if (!window.confirm(`B·∫°n c√≥ ch·∫Øc mu·ªën x√≥a ${selectedSubmissions.length} submissions?`)) {
             return;
         }
 
@@ -139,7 +139,7 @@ const FormData = () => {
 
         } catch (error) {
             console.error('Error deleting submissions:', error);
-            alert('KhÙng th√ xÛa submissions. Vui lÚng thÌ l°i.');
+            alert('Kh√¥ng th·ªÉ x√≥a submissions. Vui l√≤ng th·ª≠ l·∫°i.');
         }
     };
 
@@ -154,7 +154,7 @@ const FormData = () => {
             }
 
             if (!pageId) {
-                alert('KhÙng cÛ dÔ li«u √ export');
+                alert('Kh√¥ng c√≥ d·ªØ li·ªáu ƒë·ªÉ export');
                 return;
             }
 
@@ -176,7 +176,7 @@ const FormData = () => {
 
         } catch (error) {
             console.error('Error exporting submissions:', error);
-            alert('KhÙng th√ export dÔ li«u. Vui lÚng thÌ l°i.');
+            alert('Kh√¥ng th·ªÉ export d·ªØ li·ªáu. Vui l√≤ng th·ª≠ l·∫°i.');
         }
     };
 
@@ -225,10 +225,10 @@ const FormData = () => {
     // Get status label
     const getStatusLabel = (status) => {
         const labels = {
-            new: 'M€i',
-            read: '„ Õc',
-            replied: '„ tr£ l›i',
-            archived: 'L∞u trÔ',
+            new: 'M·ªõi',
+            read: 'ƒê√£ ƒë·ªçc',
+            replied: 'ƒê√£ tr·∫£ l·ªùi',
+            archived: 'L∆∞u tr·ªØ',
             spam: 'Spam'
         };
         return labels[status] || status;
@@ -239,17 +239,17 @@ const FormData = () => {
             {/* Header */}
             <div className="formdata-header">
                 <div className="formdata-header-left">
-                    <h1>Qu£n l˝ Form Submissions</h1>
+                    <h1>Qu·∫£n l√Ω Form Submissions</h1>
                     <p className="formdata-subtitle">
-                        Theo dıi v‡ qu£n l˝ t•t c£ dÔ li«u tÎ landing pages cÁa b°n
+                        Theo d√µi v√† qu·∫£n l√Ω t·∫•t c·∫£ d·ªØ li·ªáu t·ª´ landing pages c·ªßa b·∫°n
                     </p>
                 </div>
                 <div className="formdata-header-actions">
                     <button className="btn-export" onClick={() => handleExport()}>
-                        <span>= </span> Export CSV
+                        <span>üì•</span> Export CSV
                     </button>
                     <button className="btn-refresh" onClick={fetchSubmissions}>
-                        <span>=</span> L‡m m€i
+                        <span>üîÑ</span> L√†m m·ªõi
                     </button>
                 </div>
             </div>
@@ -257,40 +257,40 @@ const FormData = () => {
             {/* Stats Cards */}
             <div className="formdata-stats">
                 <div className="stat-card stat-total">
-                    <div className="stat-icon">=Ï</div>
+                    <div className="stat-icon">üìä</div>
                     <div className="stat-content">
                         <div className="stat-value">{stats.total}</div>
-                        <div className="stat-label">T’ng submissions</div>
+                        <div className="stat-label">T·ªïng submissions</div>
                     </div>
                 </div>
                 <div
                     className="stat-card stat-new"
                     onClick={() => setFilters({ ...filters, status: filters.status === 'new' ? '' : 'new' })}
                 >
-                    <div className="stat-icon">(</div>
+                    <div className="stat-icon">‚ú®</div>
                     <div className="stat-content">
                         <div className="stat-value">{stats.new}</div>
-                        <div className="stat-label">M€i</div>
+                        <div className="stat-label">M·ªõi</div>
                     </div>
                 </div>
                 <div
                     className="stat-card stat-read"
                     onClick={() => setFilters({ ...filters, status: filters.status === 'read' ? '' : 'read' })}
                 >
-                    <div className="stat-icon">=A</div>
+                    <div className="stat-icon">üëÅÔ∏è</div>
                     <div className="stat-content">
                         <div className="stat-value">{stats.read}</div>
-                        <div className="stat-label">„ Õc</div>
+                        <div className="stat-label">ƒê√£ ƒë·ªçc</div>
                     </div>
                 </div>
                 <div
                     className="stat-card stat-replied"
                     onClick={() => setFilters({ ...filters, status: filters.status === 'replied' ? '' : 'replied' })}
                 >
-                    <div className="stat-icon">=¨</div>
+                    <div className="stat-icon">üí¨</div>
                     <div className="stat-content">
                         <div className="stat-value">{stats.replied}</div>
-                        <div className="stat-label">„ tr£ l›i</div>
+                        <div className="stat-label">ƒê√£ tr·∫£ l·ªùi</div>
                     </div>
                 </div>
             </div>
@@ -301,7 +301,7 @@ const FormData = () => {
                     {selectedSubmissions.length > 0 && (
                         <>
                             <button className="btn-bulk-action" onClick={handleBulkDelete}>
-                                =— XÛa ({selectedSubmissions.length})
+                                üóëÔ∏è X√≥a ({selectedSubmissions.length})
                             </button>
                             <button
                                 className="btn-bulk-action"
@@ -310,7 +310,7 @@ const FormData = () => {
                                     setSelectedSubmissions([]);
                                 }}
                             >
-                                =¡ L∞u trÔ ({selectedSubmissions.length})
+                                üì¶ L∆∞u tr·ªØ ({selectedSubmissions.length})
                             </button>
                         </>
                     )}
@@ -321,11 +321,11 @@ const FormData = () => {
                         value={filters.status}
                         onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                     >
-                        <option value="">T•t c£ tr°ng th·i</option>
-                        <option value="new">M€i</option>
-                        <option value="read">„ Õc</option>
-                        <option value="replied">„ tr£ l›i</option>
-                        <option value="archived">L∞u trÔ</option>
+                        <option value="">T·∫•t c·∫£ tr·∫°ng th√°i</option>
+                        <option value="new">M·ªõi</option>
+                        <option value="read">ƒê√£ ƒë·ªçc</option>
+                        <option value="replied">ƒê√£ tr·∫£ l·ªùi</option>
+                        <option value="archived">L∆∞u tr·ªØ</option>
                         <option value="spam">Spam</option>
                     </select>
                     <div className="view-mode-toggle">
@@ -333,13 +333,13 @@ const FormData = () => {
                             className={viewMode === 'table' ? 'active' : ''}
                             onClick={() => setViewMode('table')}
                         >
-                            =À
+                            üìã
                         </button>
                         <button
                             className={viewMode === 'cards' ? 'active' : ''}
                             onClick={() => setViewMode('cards')}
                         >
-                            =«
+                            üé¥
                         </button>
                     </div>
                 </div>
@@ -349,13 +349,13 @@ const FormData = () => {
             {loading ? (
                 <div className="formdata-loading">
                     <div className="spinner"></div>
-                    <p>ang t£i dÔ li«u...</p>
+                    <p>ƒêang t·∫£i d·ªØ li·ªáu...</p>
                 </div>
             ) : submissions.length === 0 ? (
                 <div className="formdata-empty">
-                    <div className="empty-icon">=Ì</div>
-                    <h3>Ch∞a cÛ submissions n‡o</h3>
-                    <p>Khi ng∞›i d˘ng gÌi form tÎ landing pages, dÔ li«u sΩ hi√n thÀ ﬂ ‚y</p>
+                    <div className="empty-icon">üìù</div>
+                    <h3>Ch∆∞a c√≥ submissions n√†o</h3>
+                    <p>Khi ng∆∞·ªùi d√πng g·ª≠i form t·ª´ landing pages, d·ªØ li·ªáu s·∫Ω hi·ªÉn th·ªã ·ªü ƒë√¢y</p>
                 </div>
             ) : viewMode === 'table' ? (
                 <div className="submissions-table-wrapper">
@@ -369,12 +369,12 @@ const FormData = () => {
                                         onChange={toggleSelectAll}
                                     />
                                 </th>
-                                <th>Th›i gian</th>
+                                <th>Th·ªùi gian</th>
                                 <th>Landing Page</th>
-                                <th>DÔ li«u</th>
-                                <th>Thiøt bÀ</th>
-                                <th>Tr°ng th·i</th>
-                                <th style={{ width: '100px' }}>Thao t·c</th>
+                                <th>D·ªØ li·ªáu</th>
+                                <th>Thi·∫øt b·ªã</th>
+                                <th>Tr·∫°ng th√°i</th>
+                                <th style={{ width: '100px' }}>Thao t√°c</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -389,7 +389,7 @@ const FormData = () => {
                                     </td>
                                     <td className="td-date">
                                         {formatDate(submission.submitted_at)}
-                                        {submission.isRecent && <span className="badge-recent">M€i</span>}
+                                        {submission.isRecent && <span className="badge-recent">M·ªõi</span>}
                                     </td>
                                     <td className="td-page">
                                         {submission.page_id?.name || 'Unknown Page'}
@@ -411,10 +411,10 @@ const FormData = () => {
                                     </td>
                                     <td className="td-device">
                                         <span className="device-badge">
-                                            {submission.metadata?.device_type === 'mobile' && '=Ò'}
-                                            {submission.metadata?.device_type === 'tablet' && '=Ú'}
-                                            {submission.metadata?.device_type === 'desktop' && '=ª'}
-                                            {submission.metadata?.device_type || 'S'}
+                                            {submission.metadata?.device_type === 'mobile' && 'üì±'}
+                                            {submission.metadata?.device_type === 'tablet' && 'üì≤'}
+                                            {submission.metadata?.device_type === 'desktop' && 'üíª'}
+                                            {submission.metadata?.device_type || '‚ùì'}
                                         </span>
                                     </td>
                                     <td>
@@ -427,10 +427,10 @@ const FormData = () => {
                                                 color: 'white'
                                             }}
                                         >
-                                            <option value="new">M€i</option>
-                                            <option value="read">„ Õc</option>
-                                            <option value="replied">„ tr£ l›i</option>
-                                            <option value="archived">L∞u trÔ</option>
+                                            <option value="new">M·ªõi</option>
+                                            <option value="read">ƒê√£ ƒë·ªçc</option>
+                                            <option value="replied">ƒê√£ tr·∫£ l·ªùi</option>
+                                            <option value="archived">L∆∞u tr·ªØ</option>
                                             <option value="spam">Spam</option>
                                         </select>
                                     </td>
@@ -441,7 +441,7 @@ const FormData = () => {
                                                 expandedSubmission === submission._id ? null : submission._id
                                             )}
                                         >
-                                            {expandedSubmission === submission._id ? '=A Ûng' : '=A Xem'}
+                                            {expandedSubmission === submission._id ? 'üëÅÔ∏è ƒê√≥ng' : 'üëÅÔ∏è Xem'}
                                         </button>
                                     </td>
                                 </tr>
@@ -482,7 +482,7 @@ const FormData = () => {
                                     {submission.metadata?.device_type || 'unknown'}
                                 </span>
                                 <button onClick={() => setExpandedSubmission(submission._id)}>
-                                    Xem chi tiøt
+                                    Xem chi ti·∫øt
                                 </button>
                             </div>
                         </div>
@@ -497,7 +497,7 @@ const FormData = () => {
                         disabled={currentPage === 1}
                         onClick={() => setCurrentPage(currentPage - 1)}
                     >
-                        ê Tr∞€c
+                        ‚Üê Tr∆∞·ªõc
                     </button>
                     <span>
                         Trang {currentPage} / {totalPages}
@@ -506,7 +506,7 @@ const FormData = () => {
                         disabled={currentPage === totalPages}
                         onClick={() => setCurrentPage(currentPage + 1)}
                     >
-                        Sau í
+                        Sau ‚Üí
                     </button>
                 </div>
             )}
@@ -516,9 +516,9 @@ const FormData = () => {
                 <div className="submission-detail-modal" onClick={() => setExpandedSubmission(null)}>
                     <div className="submission-detail-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3>Chi tiøt Submission</h3>
+                            <h3>Chi ti·∫øt Submission</h3>
                             <button className="btn-close" onClick={() => setExpandedSubmission(null)}>
-                                
+                                ‚úï
                             </button>
                         </div>
                         <div className="modal-body">
@@ -529,14 +529,14 @@ const FormData = () => {
                                 return (
                                     <>
                                         <div className="detail-section">
-                                            <h4>ThÙng tin chung</h4>
+                                            <h4>Th√¥ng tin chung</h4>
                                             <p><strong>Landing Page:</strong> {sub.page_id?.name || 'Unknown'}</p>
-                                            <p><strong>Th›i gian:</strong> {formatDate(sub.submitted_at)}</p>
-                                            <p><strong>Tr°ng th·i:</strong> {getStatusLabel(sub.status)}</p>
+                                            <p><strong>Th·ªùi gian:</strong> {formatDate(sub.submitted_at)}</p>
+                                            <p><strong>Tr·∫°ng th√°i:</strong> {getStatusLabel(sub.status)}</p>
                                         </div>
 
                                         <div className="detail-section">
-                                            <h4>DÔ li«u Form</h4>
+                                            <h4>D·ªØ li·ªáu Form</h4>
                                             {Object.entries(sub.form_data || {}).map(([key, value]) => (
                                                 <p key={key}>
                                                     <strong>{key}:</strong> {String(value)}
