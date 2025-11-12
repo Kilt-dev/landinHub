@@ -37,4 +37,11 @@ router.post('/:pageId/invalidate', deploymentController.invalidateDeployment);
  */
 router.delete('/:pageId', deploymentController.deleteDeployment);
 
+/**
+ * Test form submission for deployed page
+ * POST /api/deployment/:pageId/test-form
+ * For testing purposes - simulates end user form submission
+ */
+router.post('/:pageId/test-form', deploymentController.testFormSubmission);
+
 module.exports = router;

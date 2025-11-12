@@ -17,6 +17,7 @@ const acm = new AWS.ACM({ region: 'us-east-1' }); // ACM must be in us-east-1 fo
 /**
  * Helper: Build HTML from page data
  * Generates complete HTML with embedded CSS/JS
+ * IMPORTANT: API_URL must be the production backend URL for form submissions to work
  */
 const buildHTML = async (pageData) => {
     const startTime = Date.now();
@@ -25,68 +26,324 @@ const buildHTML = async (pageData) => {
         // Get page components
         const components = pageData.page_data || [];
 
-        // Basic HTML structure
+        // CRITICAL: Use production API URL for deployed pages
+        // This must be accessible from CloudFront domains (check CORS!)
+        const apiUrl = process.env.FRONTEND_URL || process.env.API_URL || 'http://localhost:5000';
+        const backendUrl = process.env.API_URL || 'http://localhost:5000';
+
+        // Escape special characters in JSON
+        const escapeJSON = (str) => {
+            return str
+                .replace(/\\/g, '\\\\')
+                .replace(/"/g, '\\"')
+                .replace(/\n/g, '\\n')
+                .replace(/\r/g, '\\r')
+                .replace(/\t/g, '\\t');
+        };
+
+        // Serialize components data
+        const componentsJSON = JSON.stringify(components);
+
+        // Basic HTML structure with full support for form submissions
         const html = `<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="${pageData.description || pageData.name}">
-    <title>${pageData.name}</title>
+    <meta name="description" content="${(pageData.description || pageData.name || '').replace(/"/g, '&quot;')}">
+    <meta name="keywords" content="landing page, ${(pageData.name || '').replace(/"/g, '&quot;')}">
+    <meta name="author" content="Landing Hub">
+    <title>${(pageData.name || 'Landing Page').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-        .landing-container { width: 100%; min-height: 100vh; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .landing-container {
+            width: 100%;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-size: 18px;
+            color: #666;
+        }
+
+        /* Form styles */
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        form input,
+        form textarea,
+        form select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        form input:focus,
+        form textarea:focus,
+        form select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        form button[type="submit"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        form button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        form button[type="submit"]:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Success/Error messages */
+        .form-message {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .form-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
     </style>
 </head>
 <body>
-    <div class="landing-container" id="root">
-        <!-- Page content will be rendered by React -->
-        <div style="padding: 40px; text-align: center;">
-            <h1>${pageData.name}</h1>
-            <p>${pageData.description || ''}</p>
-        </div>
+    <div id="root" class="landing-container">
+        <div class="loading">Đang tải...</div>
     </div>
 
-    <!-- React and ReactDOM -->
+    <!-- React and ReactDOM from CDN -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
     <script>
-        // Page data
-        const pageData = ${JSON.stringify(components)};
+        // Configuration
+        const CONFIG = {
+            apiUrl: '${backendUrl}',
+            pageId: '${pageData._id}',
+            pageName: '${(pageData.name || '').replace(/'/g, "\\'")}',
+            components: ${componentsJSON}
+        };
 
-        // Form submission handler
+        console.log('Landing Hub - Page loaded:', CONFIG.pageName);
+        console.log('API URL:', CONFIG.apiUrl);
+        console.log('Page ID:', CONFIG.pageId);
+
+        /**
+         * Enhanced Form Submission Handler
+         * Submits form data to backend with metadata tracking
+         */
         window.handleFormSubmit = async function(e, formId) {
             e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = {};
-            for (let [key, value] of formData.entries()) {
-                data[key] = value;
+
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+
+            // Disable submit button
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Đang gửi...';
             }
 
-            // Submit to backend
-            const response = await fetch('${process.env.API_URL || ''}/api/forms/submit', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    page_id: '${pageData._id}',
+            try {
+                // Collect form data
+                const formData = new FormData(form);
+                const data = {};
+
+                // Handle checkboxes and regular fields
+                const checkboxes = new Set();
+                form.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    checkboxes.add(cb.name);
+                });
+
+                for (let [key, value] of formData.entries()) {
+                    if (checkboxes.has(key)) {
+                        if (!data[key]) {
+                            data[key] = formData.getAll(key);
+                        }
+                    } else {
+                        data[key] = value;
+                    }
+                }
+
+                // Collect metadata for lead tracking
+                const getDeviceType = () => {
+                    const width = window.innerWidth;
+                    if (width < 768) return 'mobile';
+                    if (width < 1024) return 'tablet';
+                    return 'desktop';
+                };
+
+                const getUtmParams = () => {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    return {
+                        utm_source: urlParams.get('utm_source'),
+                        utm_medium: urlParams.get('utm_medium'),
+                        utm_campaign: urlParams.get('utm_campaign'),
+                        utm_term: urlParams.get('utm_term'),
+                        utm_content: urlParams.get('utm_content'),
+                    };
+                };
+
+                // Prepare submission payload
+                const submissionData = {
+                    page_id: CONFIG.pageId,
                     form_data: data,
                     metadata: {
-                        device_type: window.innerWidth < 768 ? 'mobile' : 'desktop',
+                        device_type: getDeviceType(),
                         user_agent: navigator.userAgent,
-                        submitted_at: new Date().toISOString()
+                        screen_resolution: window.screen.width + 'x' + window.screen.height,
+                        referrer: document.referrer || 'direct',
+                        page_url: window.location.href,
+                        submitted_at: new Date().toISOString(),
+                        ...getUtmParams(),
                     }
-                })
-            });
+                };
 
-            if (response.ok) {
-                alert('Gửi thành công!');
-                e.target.reset();
-            } else {
-                alert('Có lỗi xảy ra. Vui lòng thử lại.');
+                console.log('Submitting form data:', submissionData);
+
+                // Submit to backend
+                const response = await fetch(CONFIG.apiUrl + '/api/forms/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(submissionData),
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    // Show success message
+                    showMessage('success', result.message || 'Gửi thành công! Cảm ơn bạn đã liên hệ.');
+
+                    // Reset form
+                    form.reset();
+
+                    // Optional: Redirect or track conversion
+                    if (window.gtag) {
+                        gtag('event', 'form_submission', {
+                            form_id: formId || 'contact_form',
+                            page_id: CONFIG.pageId
+                        });
+                    }
+                } else {
+                    throw new Error(result.message || 'Gửi thất bại');
+                }
+
+            } catch (error) {
+                console.error('Form submission error:', error);
+                showMessage('error', 'Có lỗi xảy ra. Vui lòng thử lại sau. (' + error.message + ')');
+            } finally {
+                // Re-enable submit button
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Gửi';
+                }
             }
         };
+
+        /**
+         * Show success/error message
+         */
+        function showMessage(type, message) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'form-message ' + type;
+            msgDiv.textContent = message;
+
+            const form = document.querySelector('form');
+            if (form) {
+                form.insertBefore(msgDiv, form.firstChild);
+
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    msgDiv.remove();
+                }, 5000);
+            } else {
+                alert(message);
+            }
+        }
+
+        /**
+         * Render landing page components
+         * TODO: Add full component rendering logic from helpers.js
+         */
+        function renderComponents() {
+            const root = document.getElementById('root');
+
+            if (!CONFIG.components || CONFIG.components.length === 0) {
+                root.innerHTML = '<div style="padding: 40px; text-align: center;"><h1>' + CONFIG.pageName + '</h1><p>Trang đang được cập nhật...</p></div>';
+                return;
+            }
+
+            // Basic rendering - will be enhanced with full component library
+            root.innerHTML = '<div class="landing-container">' + CONFIG.components.map(comp => {
+                // Placeholder rendering - needs full implementation
+                return '<div>' + (comp.content || comp.text || '') + '</div>';
+            }).join('') + '</div>';
+
+            console.log('Components rendered:', CONFIG.components.length);
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderComponents);
+        } else {
+            renderComponents();
+        }
     </script>
 </body>
 </html>`;
@@ -402,6 +659,13 @@ exports.deployPage = async (req, res) => {
         deployment.deployed_url = finalDomain ? `https://${finalDomain}` : `https://${cloudFrontDomain}`;
         await deployment.save();
 
+        // 9. Update Page model with deployed URL
+        page.status = 'ĐÃ XUẤT BẢN';
+        page.url = deployment.deployed_url;
+        page.cloudfrontDomain = deployment.cloudfront_domain;
+        page.updated_at = new Date();
+        await page.save();
+
         // Return success response
         res.json({
             success: true,
@@ -546,5 +810,75 @@ exports.deleteDeployment = async (req, res) => {
     } catch (error) {
         console.error('Delete deployment error:', error);
         res.status(500).json({ message: 'Failed to delete deployment', error: error.message });
+    }
+};
+
+/**
+ * Test form submission for deployed page
+ * POST /api/deployment/:pageId/test-form
+ * Simulates end user submitting a form from deployed page
+ */
+exports.testFormSubmission = async (req, res) => {
+    const { pageId } = req.params;
+    const { form_data } = req.body;
+    const userId = req.user.id;
+
+    try {
+        const deployment = await Deployment.findOne({ page_id: pageId, user_id: userId });
+
+        if (!deployment) {
+            return res.status(404).json({ message: 'No deployment found' });
+        }
+
+        if (deployment.status !== 'deployed') {
+            return res.status(400).json({ message: 'Page not deployed yet' });
+        }
+
+        // Simulate form submission
+        const submissionData = {
+            page_id: pageId,
+            form_data: form_data || {
+                name: 'Test User',
+                email: 'test@example.com',
+                message: 'This is a test form submission'
+            },
+            metadata: {
+                device_type: 'desktop',
+                user_agent: 'Mozilla/5.0 (Test)',
+                screen_resolution: '1920x1080',
+                referrer: 'test',
+                page_url: deployment.deployed_url,
+                submitted_at: new Date().toISOString(),
+                utm_source: 'test',
+                utm_medium: 'api',
+                utm_campaign: 'deployment_test'
+            }
+        };
+
+        // Call form submission endpoint
+        const axios = require('axios');
+        const apiUrl = process.env.API_URL || 'http://localhost:5000';
+
+        const response = await axios.post(`${apiUrl}/api/forms/submit`, submissionData, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        res.json({
+            success: true,
+            message: 'Test form submission completed',
+            deployed_url: deployment.deployed_url,
+            submission: response.data,
+            test_data: submissionData
+        });
+
+    } catch (error) {
+        console.error('Test form submission error:', error);
+        res.status(500).json({
+            message: 'Test form submission failed',
+            error: error.message,
+            details: error.response?.data || null
+        });
     }
 };
