@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
+const auth = require('../middleware/authMiddleware');
 const marketplaceController = require('../controllers/marketplaceController');
 
 /**
@@ -33,7 +33,7 @@ router.delete('/:id', auth, marketplaceController.deleteMarketplacePage);
 
 // Like/Unlike marketplace page
 router.post('/:id/like', auth, marketplaceController.toggleLike);
-
+router.get('/:id/detail', auth, marketplaceController.getPageDetailWithOrder);
 /**
  * Public routes - không cần authentication
  */
@@ -52,5 +52,8 @@ router.get('/', marketplaceController.getMarketplacePages);
 
 // Lấy chi tiết marketplace page (phải đặt cuối cùng)
 router.get('/:id', marketplaceController.getMarketplacePageDetail);
+router.get("/:id/detail-order", auth, marketplaceController.getPageDetailWithOrder);
+router.post('/:id/reviews', auth, marketplaceController.submitReview);
+router.get('/:id/reviews', marketplaceController.getReviews);
 
 module.exports = router;

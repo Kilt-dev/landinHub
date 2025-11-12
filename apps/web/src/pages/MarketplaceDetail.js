@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect, useContext } from "react"
 import { UserContext } from "../context/UserContext"
 import Header from "../components/Header"
@@ -12,6 +10,7 @@ import "aos/dist/aos.css"
 import "../styles/MarketplaceDetail.css"
 import DogLoader from "../components/Loader"
 import { toast } from "react-toastify"
+import { io } from 'socket.io-client';
 import {
     FiEye,
     FiShoppingCart,
@@ -29,7 +28,7 @@ import {
     FiPackage,
     FiTag,
     FiCreditCard,
-    FiLayers,
+    FiLayers, FiXCircle, FiRefreshCw,
 } from "react-icons/fi"
 
 const MarketplaceDetail = () => {
@@ -43,18 +42,77 @@ const MarketplaceDetail = () => {
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("SANDBOX")
     const [isLiked, setIsLiked] = useState(false)
     const [currentImageIndex, setCurrentImageIndex] = useState(0)
-    const [hasPurchased, setHasPurchased] = useState(false)
     const [isSeller, setIsSeller] = useState(false)
     const [downloading, setDownloading] = useState(false)
-
+    const [order, setOrder] = useState(null);
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const hasPurchased = Boolean(order);   // thay vì state riêng
     const navigate = useNavigate()
     const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000"
+    const [rating, setRating] = useState(0);
+    const [comment, setComment] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [refunding, setRefunding] = useState(false);
+    const [reviews, setReviews] = useState([]);
+    const [refundReason, setRefundReason] = useState('');
+    const [refundStatus, setRefundStatus] = useState(null); // 'pending', 'approved', 'rejected'
+    const statusVn = {
+        pending: 'Chờ xác nhận',
+        processing: 'Đang xử lý',
+        delivered: 'Đã nhận hàng',
+        refunded: 'Đã hoàn tiền',
+        cancelled: 'Đã hủy',
+    };
+    const loadReviews = async () => {
+        try {
+            const res = await axios.get(`${API_BASE_URL}/api/marketplace/${id}/reviews`);
+            setReviews(res.data.data || []);
+        } catch (e) {}
+    };
 
+    useEffect(() => {
+        if (id) {
+            loadPageDetail();
+            loadReviews();
+        }
+    }, [id]);
+    useEffect(() => {
+        if (!order) return;
+        const socket = io(API_BASE_URL, { auth: { token: localStorage.getItem('token') } });
+        socket.on('order_refunded', (data) => {
+            if (data.orderId === order.orderId) {
+                toast.success('Đơn hàng đã được hoàn tiền!');
+                loadPageDetail();          // reload
+            }
+        });
+        return () => socket.disconnect();
+    }, [order]);
     const paymentMethods = [
         { value: "SANDBOX", label: "Sandbox (Test)", description: "Môi trường test thanh toán an toàn." },
         { value: "MOMO", label: "Ví điện tử MOMO", description: "Thanh toán nhanh chóng qua ví MOMO." },
         { value: "VNPAY", label: "Cổng thanh toán VNPay", description: "Hỗ trợ nhiều ngân hàng và thẻ quốc tế." },
     ]
+    const handleRequestRefund = async () => {
+        if (!refundReason.trim()) {
+            toast.warn('Vui lòng nhập lý do hoàn tiền');
+            return;
+        }
+        setRefunding(true);
+        try {
+            await axios.patch(
+                `${API_BASE_URL}/api/orders/${orderId}/refund`,   // ← không có /request-refund
+                { reason: refundReason },
+                { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+            );
+            toast.success('Đã gửi yêu cầu hoàn tiền');
+            setRefundReason('');
+            loadPageDetail(); // reload
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Không gửi được yêu cầu');
+        } finally {
+            setRefunding(false);
+        }
+    };
 
     useEffect(() => {
         const initializeAuth = async () => {
@@ -83,37 +141,45 @@ const MarketplaceDetail = () => {
 
     const loadPageDetail = async () => {
         try {
-            setLoading(true)
-            const token = localStorage.getItem("token")
-            const response = await axios.get(`${API_BASE_URL}/api/marketplace/${id}`)
-            setPage(response.data.data)
+            setLoading(true);
+            const token = localStorage.getItem("token");
+            const res = await axios.get(
+                `${API_BASE_URL}/api/marketplace/${id}/detail-order`,
+                { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+            );
 
-            if (token) {
-                const decoded = jwtDecode(token)
-                const userId = decoded.userId
-                setIsLiked(response.data.data.liked_by?.includes(userId))
-                setIsSeller(response.data.data.seller_id?._id === userId)
-                await checkPurchaseStatus()
-            }
+            const payload = res.data.data;
+            setPage(payload);
+            setOrder(payload.order || null);          // ✅
+            setIsSeller(payload.isSeller || false);   // ✅
+            setIsLiked(payload.liked || false);       // ✅
         } catch (err) {
-            setError("Không thể tải chi tiết: " + (err.response?.data?.message || err.message))
+            setError(err.response?.data?.message || err.message);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
-
-    const checkPurchaseStatus = async () => {
+    };
+    const handleSubmitReview = async () => {
+        if (rating === 0) return toast.warn('Vui lòng chọn sao');
+        setSubmitting(true);
         try {
-            const token = localStorage.getItem("token")
-            if (!token) return
-            const response = await axios.get(`${API_BASE_URL}/api/payment/check-purchase/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            })
-            setHasPurchased(response.data.hasPurchased || false)
-        } catch (err) {
-            setHasPurchased(false)
+            await axios.post(
+                `${API_BASE_URL}/api/marketplace/${id}/reviews`,
+                { rating, comment },
+                { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+            );
+            toast.success('Cảm ơn bạn đã đánh giá!');
+            setRating(0);
+            setComment('');
+            // ⬇️ reload dữ liệu mới nhất
+            await loadPageDetail(); // rating, review_count mới
+            await loadReviews();    // danh sách review mới
+        } catch (e) {
+            toast.error(e.response?.data?.message || 'Không gửi được đánh giá');
+        } finally {
+            setSubmitting(false);
         }
-    }
+    };
 
     const handlePurchase = async () => {
         try {
@@ -268,6 +334,9 @@ const MarketplaceDetail = () => {
                                 <div className="category-badge">{page.category}</div>
                                 <h1>{page.title}</h1>
                                 <div className="meta-info">
+                                    <span>
+    <FiStar /> {page.rating.toFixed(1)} ({page.review_count} đánh giá)
+  </span>
                   <span>
                     <FiEye /> {page.views}
                   </span>
@@ -331,6 +400,12 @@ const MarketplaceDetail = () => {
                                         <button onClick={() => handleDownload("iuhpage")} disabled={downloading} className="download-btn">
                                             <FiFileText /> Tải .iuhpage
                                         </button>
+                                        <button
+                                            className="btn-secondary"
+                                            onClick={() => setShowOrderModal(true)}
+                                        >
+                                            <FiFileText /> Xem chi tiết đơn hàng
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -361,6 +436,54 @@ const MarketplaceDetail = () => {
                             )}
                         </div>
                     </div>
+                    {reviews.length > 0 && (
+                        <div className="review-list">
+                            <h4>Đánh giá từ khách hàng</h4>
+                            {reviews.map((r) => (
+                                <div key={r._id} className="review-item">
+                                    <div className="review-head">
+                                        <strong>{r.buyerId?.name || 'Ẩn danh'}</strong>
+                                        <span className="review-date">
+            {new Date(r.createdAt).toLocaleDateString('vi-VN')}
+          </span>
+                                    </div>
+                                    <div className="stars">
+                                        {[1, 2, 3, 4, 5].map((s) => (
+                                            <FiStar
+                                                key={s}
+                                                className={s <= r.rating ? 'filled' : ''}
+                                            />
+                                        ))}
+                                        <i> ({r.rating}/5)</i>
+                                    </div>
+                                    {r.comment && <p className="review-comment">{r.comment}</p>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {order && order.status === 'delivered' && (
+                        <div className="review-box">
+                            <h4>Đánh giá của bạn</h4>
+                            <div className="stars">
+                                {[1, 2, 3, 4, 5].map((s) => (
+                                    <FiStar
+                                        key={s}
+                                        className={s <= rating ? 'filled' : ''}
+                                        onClick={() => setRating(s)}
+                                    />
+                                ))}
+                            </div>
+                            <textarea
+                                placeholder="Nhận xét thêm (không bắt buộc)"
+                                value={comment}
+                                onChange={(e) => setComment(e.target.value)}
+                                rows={3}
+                            />
+                            <button onClick={handleSubmitReview} disabled={submitting}>
+                                {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+                            </button>
+                        </div>
+                    )}
 
                     <div className="info-section features-section" data-aos="fade-up">
                         <h3>
@@ -391,8 +514,48 @@ const MarketplaceDetail = () => {
                     </div>
                 </div>
             </div>
+            {showOrderModal && order && (
+                <div className="modal-overlay" onClick={() => setShowOrderModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>Chi tiết đơn hàng</h3>
+                            <span className="close" onClick={() => setShowOrderModal(false)}>
+                                <FiXCircle />
+                            </span>
+                        </div>
+                        <div className="modal-body">
+                            <p><strong>Mã đơn:</strong> {order.orderId}</p>
+                            <p><strong>Ngày mua:</strong> {new Date(order.createdAt).toLocaleDateString("vi-VN")}</p>
+                            <p><strong>Trạng thái:</strong>
+                                <span className={`status ${order.status}`}>
+    {statusVn[order.status] || order.status}
+  </span>
+                            </p>
+                            <p><strong>Tổng tiền:</strong> {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.price)}</p>
+                            {order.status === 'delivered' && (
+                                <div style={{ marginTop: 12 }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Lý do hoàn tiền (không bắt buộc)"
+                                        value={refundReason}
+                                        onChange={(e) => setRefundReason(e.target.value)}
+                                        style={{ width: '100%', marginBottom: 8 }}
+                                    />
+                                    <button className="btn-danger" onClick={handleRequestRefund} disabled={refunding}>
+                                        <FiRefreshCw /> {refunding ? 'Đang gửi...' : 'Yêu cầu hoàn tiền'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
+
     )
+
 }
+
+
 
 export default MarketplaceDetail

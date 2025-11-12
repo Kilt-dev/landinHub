@@ -7,6 +7,8 @@ const s3CopyService = require('../services/s3CopyService');
 const screenshotService = require('../services/screenshotService');
 const exportService = require('../services/exportService');
 const Order = require('../models/Order');
+const Review = require('../models/MarketplaceReview');
+
 /**
  * Lấy danh sách marketplace pages (public)
  */
@@ -688,54 +690,249 @@ exports.downloadAsIUHPage = async (req, res) => {
         res.status(500).json({ success: false, message: 'Lỗi khi tải xuống .iuhpage', error: error.message });
     }
 };
-/**
- * Get purchased pages - Lấy danh sách các page đã mua
- */
+
+const getValidObjectId = (id) => {
+    if (!id) return null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+        return new mongoose.Types.ObjectId(id);
+    }
+    return null;
+};
+
 exports.getPurchasedPages = async (req, res) => {
     try {
-        const userId = req.user.id;
+        // ✅ LẤY TỪ req.user.id — do middleware authMiddleware gán
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Không tìm thấy thông tin người dùng'
+            });
+        }
+
+        const buyerObjectId = getValidObjectId(userId);
+        if (!buyerObjectId) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID không hợp lệ'
+            });
+        }
+
         const { page = 1, limit = 12, search, category } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const pageNum = parseInt(page, 10) || 1;
+        const limitNum = parseInt(limit, 10) || 12;
+        const skip = (pageNum - 1) * limitNum;
 
-        let query = { buyerId: userId, status: 'delivered' };
-        if (search) {
-            query['marketplacePageId.title'] = { $regex: search, $options: 'i' };
+        const pipeline = [
+            {
+                $match: {
+                    buyerId: buyerObjectId, // ObjectId hợp lệ
+                    status: 'delivered'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'marketplace_pages',
+                    localField: 'marketplacePageId',
+                    foreignField: '_id',
+                    as: 'marketplacePage'
+                }
+            },
+            { $unwind: '$marketplacePage' },
+            {
+                $lookup: {
+                    from: 'pages',
+                    localField: 'createdPageId',
+                    foreignField: '_id',
+                    as: 'createdPage'
+                }
+            },
+            { $unwind: { path: '$createdPage', preserveNullAndEmptyArrays: true } }
+        ];
+
+        // Filter search/category
+        if (search || (category && category !== 'all')) {
+            const matchStage = { $match: {} };
+            if (search) {
+                matchStage.$match.$or = [
+                    { 'marketplacePage.title': { $regex: search, $options: 'i' } },
+                    { 'marketplacePage.description': { $regex: search, $options: 'i' } },
+                    { 'marketplacePage.tags': { $elemMatch: { $regex: search, $options: 'i' } } }
+                ];
+            }
+            if (category && category !== 'all') {
+                matchStage.$match['marketplacePage.category'] = category;
+            }
+            pipeline.push(matchStage);
         }
-        if (category && category !== 'all') {
-            query['marketplacePageId.category'] = category;
-        }
 
-        const totalItems = await Order.countDocuments(query);
+        // Đếm tổng
+        const countPipeline = [...pipeline, { $count: 'total' }];
+        const countResult = await Order.aggregate(countPipeline);
+        const total = countResult.length > 0 ? countResult[0].total : 0;
 
-        const orders = await Order.find(query)
-            .populate({
-                path: 'marketplacePageId',
-                select: 'title description main_screenshot price category',
-                populate: { path: 'seller_id', select: 'name email' }
-            })
-            .populate('createdPageId', 'name status url html_url file_path')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(parseInt(limit));
+        // Phân trang
+        pipeline.push(
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limitNum },
+            {
+                $project: {
+                    _id: 1,
+                    createdAt: 1,
+                    marketplacePage: 1,
+                    createdPage: 1
+                }
+            }
+        );
 
-        const pagesWithPurchaseDate = orders.map(order => ({
-            ...order.marketplacePageId.toObject(),
-            purchased_at: order.createdAt,
-            delivered_page: order.createdPageId
+        const results = await Order.aggregate(pipeline);
+
+        const data = results.map(item => ({
+            ...item.marketplacePage,
+            purchased_at: item.createdAt,
+            delivered_page: item.createdPage || null
         }));
 
         res.json({
             success: true,
-            data: pagesWithPurchaseDate,
+            data,
             pagination: {
-                currentPage: parseInt(page),
-                totalPages: Math.ceil(totalItems / parseInt(limit)),
-                totalItems,
-                itemsPerPage: parseInt(limit)
+                currentPage: pageNum,
+                totalPages: Math.ceil(total / limitNum),
+                totalItems: total,
+                itemsPerPage: limitNum
             }
         });
     } catch (error) {
         console.error('Get Purchased Pages Error:', error);
-        res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách page đã mua', error: error.message });
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy danh sách page đã mua',
+            error: error.message
+        });
+    }
+};
+exports.getPageDetailWithOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        // ✅ LẤY TỪ req.user.id (do authMiddleware của bạn gán)
+        const userId = req.user?.id;
+
+        // 👇 Thêm header để tránh cache (tuỳ chọn nhưng nên có)
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+
+        const page = await MarketplacePage.findById(id)
+            .populate('seller_id', 'name email')
+            .populate('page_id')
+            .lean();
+
+        if (!page) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy page' });
+        }
+
+        let order = null;
+        if (userId) {
+            // ✅ Chuyển userId (string) thành ObjectId để so sánh với buyerId (ObjectId)
+            const buyerObjectId = mongoose.Types.ObjectId.isValid(userId)
+                ? new mongoose.Types.ObjectId(userId)
+                : null;
+
+            if (buyerObjectId) {
+                order = await Order.findOne({
+                    buyerId: buyerObjectId,      // ObjectId
+                    marketplacePageId: id,       // string (UUID)
+                    status: 'delivered'
+                })
+                    .populate('createdPageId')
+                    .lean();
+            }
+        }
+
+        // ✅ Xử lý an toàn khi userId không tồn tại
+        const isSeller = userId
+            ? (page.seller_id?._id?.toString() === userId)
+            : false;
+
+        const liked = userId
+            ? (page.liked_by || []).map(i => i.toString()).includes(userId)
+            : false;
+
+        res.json({
+            success: true,
+            data: {
+                ...page,
+                order,
+                isSeller,
+                liked
+            }
+        });
+    } catch (err) {
+        console.error('getPageDetailWithOrder error:', err);
+        res.status(500).json({ success: false, message: 'Lỗi server', error: err.message });
+    }
+};
+exports.submitReview = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { id } = req.params;
+        const { rating, comment } = req.body;
+        if (!rating || rating < 1 || rating > 5)
+            return res.status(400).json({ success: false, message: 'Rating 1-5' });
+
+        // Kiểm tra đã mua & delivered
+        const order = await Order.findOne({
+            buyerId: userId,
+            marketplacePageId: id,
+            status: 'delivered'
+        });
+        if (!order)
+            return res.status(403).json({ success: false, message: 'Chưa mua hoặc chưa nhận hàng' });
+
+        // Upsert review
+        const review = await Review.findOneAndUpdate(
+            { marketplacePageId: id, buyerId: userId },
+            { rating, comment },
+            { new: true, upsert: true }
+        );
+
+        // Cập nhật lại rating trung bình
+        const stats = await Review.aggregate([
+            { $match: { marketplacePageId: id } },
+            {
+                $group: {
+                    _id: null,
+                    avgRating: { $avg: '$rating' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+        const avg = stats.length ? stats[0].avgRating : 0;
+        const count = stats.length ? stats[0].count : 0;
+        await MarketplacePage.findByIdAndUpdate(id, {
+            rating: parseFloat(avg.toFixed(1)),
+            review_count: count
+        });
+
+        res.json({ success: true, data: review });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+// Lấy danh sách review của page
+exports.getReviews = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const reviews = await Review.find({ marketplacePageId: id })
+            .populate('buyerId', 'name avatar')
+            .sort({ createdAt: -1 })
+            .lean();
+        res.json({ success: true, data: reviews });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 };

@@ -1,39 +1,36 @@
 {
-  "name": "landinghub-monorepo",
-  "private": true,
+  "name": "landinghub-backend",
   "version": "1.0.0",
-  "description": "A monorepo for Landing Hub SaaS platform with web, mobile, and backend",
+  "main": "src/server.js",
   "scripts": {
-    "install:all": "pnpm install",
-    "start:web": "pnpm --filter landinghub-web start",
-    "start:mobile": "pnpm --filter landinghub-mobile start",
-    "start:backend": "pnpm --filter landinghub-backend start",
-    "build:web": "pnpm --filter landinghub-web build",
-    "build:mobile": "pnpm --filter mobile build",
-    "test:all": "pnpm --filter landinghub-web test && pnpm --filter mobile test && pnpm --filter backend test",
-    "clean": "rm -rf node_modules && pnpm install"
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*",
-    "backend"
-  ],
-  "devDependencies": {
-    "autoprefixer": "^10.4.21",
-    "pnpm": "^9.0.0",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.15"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
   "dependencies": {
-    "@react-oauth/google": "^0.12.0",
-    "axios": "^1.6.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "archiver": "^7.0.1",
+    "aws-sdk": "^2.1376.0",
+    "bcryptjs": "^2.4.3",
+    "cheerio": "^1.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "express-validator": "^7.2.1",
+    "google-auth-library": "^9.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "loader": "^2.1.1",
+    "mongoose": "^8.0.0",
+    "multer": "^2.0.2",
+    "multer-s3": "^3.0.1",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.9",
+    "openai": "^5.20.3",
+    "puppeteer": "^24.21.0",
+    "qs": "^6.14.0",
+    "sharp": "^0.34.4",
+    "uuid": "^8.3.2"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/vicute0707/landing-hub.git"
-  },
-  "author": "Nguyen Thi Tuong Vi",
-  "license": "MIT"
+  "devDependencies": {
+    "eslint": "^9.38.0",
+    "nodemon": "^3.0.0"
+  }
 }

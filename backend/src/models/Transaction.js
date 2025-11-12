@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 const TransactionSchema = new mongoose.Schema({
-    _id: {
+    is_deleted: { type: Boolean, default: false, index: true },    _id: {
         type: String,
         default: uuidv4,
         match: [/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, 'Invalid UUID']
@@ -161,7 +161,6 @@ TransactionSchema.index({ seller_id: 1, status: 1 });
 TransactionSchema.index({ marketplace_page_id: 1 });
 TransactionSchema.index({ payment_gateway_transaction_id: 1 });
 TransactionSchema.index({ status: 1, created_at: -1 });
-TransactionSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 TransactionSchema.index({ created_at: -1 });
 
 // Pre-save middleware
@@ -195,10 +194,7 @@ TransactionSchema.virtual('formatted_seller_amount').get(function() {
     }).format(this.seller_amount);
 });
 
-TransactionSchema.virtual('is_expired').get(function() {
-    if (this.status !== 'PENDING') return false;
-    return new Date() > this.expires_at;
-});
+
 
 TransactionSchema.virtual('formatted_created_at').get(function() {
     return this.created_at ? this.created_at.toLocaleString('vi-VN') : null;
@@ -212,7 +208,7 @@ TransactionSchema.methods.markAsPaid = async function(paymentGatewayData = {}) {
     try {
         console.log('markAsPaid called for transaction:', this._id);
 
-        this.status = 'COMPLETED';
+        this.status = 'COMPLETED'
         this.paid_at = new Date();
         this.payment_gateway_response = paymentGatewayData;
         await this.save();
@@ -228,7 +224,7 @@ TransactionSchema.methods.markAsPaid = async function(paymentGatewayData = {}) {
             const marketplacePage = await MarketplacePage.findById(this.marketplace_page_id);
             if (!marketplacePage) {
                 console.error('MarketplacePage not found for ID:', this.marketplace_page_id);
-                throw new Error('MarketplacePage not found');
+                return this;
             }
 
             order = new Order({
@@ -248,6 +244,18 @@ TransactionSchema.methods.markAsPaid = async function(paymentGatewayData = {}) {
 
         if (order.status === 'pending') {
             await order.deliverPage();
+            // 1. Emit real-time cho buyer
+            global._io.to(`user_${order.buyerId}`).emit('order_delivered', {
+                orderId: order.orderId,
+                marketplacePageId: order.marketplacePageId,
+                createdPageId: order.createdPageId
+            });
+
+            global._io.to(`user_${order.sellerId}`).emit('new_sale', {
+                orderId: order.orderId,
+                marketplacePageId: order.marketplacePageId,
+                amount: this.amount
+            });
             console.log('Order delivered:', order.orderId);
         } else {
             console.log('Order already processed:', order.status);
@@ -414,5 +422,40 @@ TransactionSchema.statics.findRefundRequests = function() {
         .populate('marketplace_page_id')
         .sort({ 'refund.requested_at': 1 });
 };
+
+TransactionSchema.methods.autoRefund = async function(reason = 'User request') {
+    if (!['COMPLETED', 'REFUND_PENDING'].includes(this.status))
+        throw new Error('Only completed or pending-refund transactions can be refunded');
+
+    const daysSincePaid = (Date.now() - this.paid_at) / (1000 * 3600 * 24);
+    const canAuto = daysSincePaid < 7 && this.payout_status !== 'COMPLETED';
+
+    if (canAuto) {
+        // hoàn ngay
+        this.status = 'REFUNDED';
+        this.refund = {
+            reason,
+            requested_at: new Date(),
+            processed_at: new Date(),
+            refund_transaction_id: `AUTO_${this._id}`
+        };
+        await this.save();
+
+        // trừ doanh thu marketplacePage
+        await MarketplacePage.findByIdAndUpdate(this.marketplace_page_id, {
+            $inc: { sold_count: -1 }
+        });
+
+        // hoàn tiền ví (giả lửa ví điện tử)
+        await paymentService.refundToBuyer(this.payment_gateway_transaction_id, this.amount);
+
+        return { success: true, auto: true };
+    } else {
+        // chuyển admin duyệt
+        await this.requestRefund(reason);
+        return { success: true, auto: false };
+    }
+};
+
 
 module.exports = mongoose.model('Transaction', TransactionSchema);

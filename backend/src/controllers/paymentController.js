@@ -4,6 +4,7 @@ const MarketplacePage = require('../models/MarketplacePage');
 const Page = require('../models/Page');
 const paymentService = require('../services/payment/paymentService');
 const { v4: uuidv4 } = require('uuid');
+const Order = require('../models/Order'); // Add this line
 
 /**
  * Tạo transaction và payment URL
@@ -542,39 +543,52 @@ exports.getAllTransactionsAdmin = async (req, res) => {
  */
 exports.getPaymentStatsAdmin = async (req, res) => {
     try {
-        const totalRevenue = await Transaction.aggregate([
-            { $match: { status: 'COMPLETED' } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
-        ]);
+        const { start_date, end_date } = req.query;
 
-        const totalPlatformFee = await Transaction.aggregate([
-            { $match: { status: 'COMPLETED' } },
-            { $group: { _id: null, total: { $sum: '$platform_fee' } } }
-        ]);
+        let matchQuery = { status: 'COMPLETED', is_deleted: false };
+        if (start_date || end_date) {
+            matchQuery.created_at = {};
+            if (start_date) matchQuery.created_at.$gte = new Date(start_date);
+            if (end_date) matchQuery.created_at.$lte = new Date(end_date);
+        }
 
-        const completedCount = await Transaction.countDocuments({ status: 'COMPLETED' });
-        const pendingCount = await Transaction.countDocuments({ status: 'PENDING' });
-        const failedCount = await Transaction.countDocuments({ status: 'FAILED' });
+        const [totalRevenue, totalPlatformFee, statusCounts] = await Promise.all([
+            Transaction.aggregate([
+                { $match: matchQuery },
+                { $group: { _id: null, total: { $sum: '$amount' } } }
+            ]),
+            Transaction.aggregate([
+                { $match: matchQuery },
+                { $group: { _id: null, total: { $sum: '$platform_fee' } } }
+            ]),
+            Transaction.aggregate([
+                { $match: { is_deleted: false } },
+                {
+                    $group: {
+                        _id: '$status',
+                        count: { $sum: 1 },
+                        totalAmount: { $sum: '$amount' }
+                    }
+                }
+            ])
+        ]);
 
         res.json({
             success: true,
             data: {
                 totalRevenue: totalRevenue[0]?.total || 0,
                 totalPlatformFee: totalPlatformFee[0]?.total || 0,
-                completedCount,
-                pendingCount,
-                failedCount
+                statusCounts: statusCounts.reduce((acc, stat) => {
+                    acc[stat._id] = { count: stat.count, totalAmount: stat.totalAmount };
+                    return acc;
+                }, {})
             }
         });
     } catch (error) {
         console.error('Get Payment Stats Admin Error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
-
 /**
  * ADMIN: Export transactions
  */
@@ -706,100 +720,154 @@ exports.checkPurchase = async (req, res) => {
 exports.getUserStats = async (req, res) => {
     try {
         const userId = req.user.id;
-
-        console.log('getUserStats userId:', userId);
-
-        // Convert to ObjectId for aggregation pipeline
         const userObjectId = new mongoose.Types.ObjectId(userId);
 
-        // Tổng chi tiêu (as buyer)
-        const totalSpent = await Transaction.aggregate([
-            { $match: { buyer_id: userObjectId, status: 'COMPLETED' } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
+        // Buyer stats
+        const buyerStats = await Transaction.aggregate([
+            { $match: { buyer_id: userObjectId, status: 'COMPLETED', is_deleted: false } },
+            {
+                $group: {
+                    _id: null,
+                    totalSpent: { $sum: '$amount' },
+                    purchaseCount: { $sum: 1 },
+                    avgPurchase: { $avg: '$amount' }
+                }
+            }
         ]);
 
-        // Tổng doanh thu (as seller) - tổng tiền trước khi trừ phí
-        const totalRevenue = await Transaction.aggregate([
-            { $match: { seller_id: userObjectId, status: 'COMPLETED' } },
-            { $group: { _id: null, total: { $sum: '$amount' } } }
+        // Seller stats
+        const sellerStats = await Transaction.aggregate([
+            { $match: { seller_id: userObjectId, status: 'COMPLETED', is_deleted: false } },
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: '$amount' },
+                    totalEarned: { $sum: '$seller_amount' },
+                    salesCount: { $sum: 1 },
+                    avgSale: { $avg: '$amount' }
+                }
+            }
         ]);
 
-        // Tổng thu nhập thực (as seller) - sau khi trừ phí platform
-        const totalEarned = await Transaction.aggregate([
-            { $match: { seller_id: userObjectId, status: 'COMPLETED' } },
-            { $group: { _id: null, total: { $sum: '$seller_amount' } } }
-        ]);
-
-        // Số tiền chờ chuyển (đã bán thành công nhưng chưa được admin chuyển tiền)
+        // Pending payout
         const pendingPayout = await Transaction.aggregate([
             {
                 $match: {
                     seller_id: userObjectId,
                     status: 'COMPLETED',
-                    payout_status: { $ne: 'COMPLETED' }
+                    payout_status: { $ne: 'COMPLETED' },
+                    is_deleted: false
                 }
             },
             { $group: { _id: null, total: { $sum: '$seller_amount' } } }
         ]);
 
-        // Số tiền đã nhận (đã được admin chuyển)
+        // Completed payout
         const completedPayout = await Transaction.aggregate([
             {
                 $match: {
                     seller_id: userObjectId,
                     status: 'COMPLETED',
-                    payout_status: 'COMPLETED'
+                    payout_status: 'COMPLETED',
+                    is_deleted: false
                 }
             },
             { $group: { _id: null, total: { $sum: '$seller_amount' } } }
         ]);
 
-        const purchaseCount = await Transaction.countDocuments({
-            buyer_id: userId,
-            status: 'COMPLETED'
-        });
+        // Transaction status breakdown
+        const transactionStatus = await Transaction.aggregate([
+            {
+                $match: {
+                    $or: [{ buyer_id: userObjectId }, { seller_id: userObjectId }],
+                    is_deleted: false
+                }
+            },
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 },
+                    totalAmount: { $sum: '$amount' }
+                }
+            }
+        ]);
 
-        const salesCount = await Transaction.countDocuments({
-            seller_id: userId,
-            status: 'COMPLETED'
-        });
+        // Order transactions
+        let orderTransactions = [];
+        try {
+            orderTransactions = await Order.aggregate([
+                {
+                    $match: {
+                        $or: [{ buyerId: userObjectId }, { sellerId: userObjectId }],
+                        is_deleted: false
+                    }
+                },
+                {
+                    $lookup: {
+                        from: 'transactions', // Verify collection name
+                        localField: 'transactionId',
+                        foreignField: '_id',
+                        as: 'transaction'
+                    }
+                },
+                { $unwind: { path: '$transaction', preserveNullAndEmptyArrays: true } },
+                {
+                    $match: {
+                        $or: [
+                            { 'transaction.is_deleted': false },
+                            { transaction: null } // Handle orders without transactions
+                        ]
+                    }
+                },
+                {
+                    $project: {
+                        orderId: 1,
+                        status: 1,
+                        transactionStatus: '$transaction.status',
+                        amount: '$transaction.amount',
+                        payment_method: '$transaction.payment_method',
+                        createdAt: '$transaction.created_at'
+                    }
+                },
+                { $sort: { createdAt: -1 } }
+            ]);
+        } catch (err) {
+            console.error('Order aggregation error:', err);
+            orderTransactions = []; // Fallback to empty array
+        }
 
         res.json({
             success: true,
             data: {
-                // Buyer stats
-                totalSpent: totalSpent[0]?.total || 0,
-                purchaseCount,
-
-                // Seller stats
-                totalRevenue: totalRevenue[0]?.total || 0,  // Tổng doanh thu
-                totalEarned: totalEarned[0]?.total || 0,     // Thu nhập thực (sau trừ phí)
-                salesCount,                                   // Số lượt bán
-                pendingPayout: pendingPayout[0]?.total || 0, // Chờ rút tiền
-                completedPayout: completedPayout[0]?.total || 0, // Đã nhận
-
-                // Overall stats
-                completedCount: purchaseCount + salesCount,
-                pendingCount: await Transaction.countDocuments({
-                    $or: [{ buyer_id: userId }, { seller_id: userId }],
-                    status: 'PENDING'
-                }),
-                failedCount: await Transaction.countDocuments({
-                    $or: [{ buyer_id: userId }, { seller_id: userId }],
-                    status: 'FAILED'
-                })
+                buyerStats: {
+                    totalSpent: buyerStats[0]?.totalSpent || 0,
+                    purchaseCount: buyerStats[0]?.purchaseCount || 0,
+                    avgPurchase: buyerStats[0]?.avgPurchase || 0
+                },
+                sellerStats: {
+                    totalRevenue: sellerStats[0]?.totalRevenue || 0,
+                    totalEarned: sellerStats[0]?.totalEarned || 0,
+                    salesCount: sellerStats[0]?.salesCount || 0,
+                    avgSale: sellerStats[0]?.avgSale || 0,
+                    pendingPayout: pendingPayout[0]?.total || 0,
+                    completedPayout: completedPayout[0]?.total || 0
+                },
+                transactionStatus: transactionStatus.reduce((acc, stat) => {
+                    acc[stat._id] = { count: stat.count, totalAmount: stat.totalAmount };
+                    return acc;
+                }, {}),
+                orderTransactions
             }
         });
     } catch (error) {
         console.error('Get User Stats Error:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Lỗi khi lấy thống kê cá nhân',
+            error: error.message
         });
     }
-};
-
-/**
+};/**
  * USER: Export transactions của user
  */
 exports.exportUserTransactions = async (req, res) => {
@@ -853,7 +921,6 @@ exports.exportUserTransactions = async (req, res) => {
 exports.getRevenueByPeriod = async (req, res) => {
     try {
         const { period = 'day', days = 30 } = req.query;
-
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - parseInt(days));
 
@@ -863,7 +930,7 @@ exports.getRevenueByPeriod = async (req, res) => {
                 groupFormat = '%Y-%m-%d';
                 break;
             case 'week':
-                groupFormat = '%Y-W%U'; // Year-Week
+                groupFormat = '%Y-W%U';
                 break;
             case 'month':
                 groupFormat = '%Y-%m';
@@ -876,6 +943,7 @@ exports.getRevenueByPeriod = async (req, res) => {
             {
                 $match: {
                     status: 'COMPLETED',
+                    is_deleted: false,
                     created_at: { $gte: startDate }
                 }
             },
@@ -893,19 +961,64 @@ exports.getRevenueByPeriod = async (req, res) => {
             { $sort: { _id: 1 } }
         ]);
 
+        // Tạo dữ liệu cho biểu đồ
+        const labels = revenueData.map(data => data._id);
+        const platformFees = revenueData.map(data => data.platformFee);
+        const totalRevenues = revenueData.map(data => data.totalRevenue);
+        const transactionCounts = revenueData.map(data => data.transactionCount);
+
         res.json({
             success: true,
-            data: revenueData
+            data: {
+                revenueData,
+                chart: {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                label: 'Phí nền tảng',
+                                data: platformFees,
+                                borderColor: '#4CAF50',
+                                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                                fill: true
+                            },
+                            {
+                                label: 'Tổng doanh thu',
+                                data: totalRevenues,
+                                borderColor: '#2196F3',
+                                backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                                fill: true
+                            },
+                            {
+                                label: 'Số giao dịch',
+                                data: transactionCounts,
+                                borderColor: '#FF9800',
+                                backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                                fill: true
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Số tiền (VND)' }
+                            },
+                            x: {
+                                title: { display: true, text: period === 'day' ? 'Ngày' : period === 'week' ? 'Tuần' : 'Tháng' }
+                            }
+                        }
+                    }
+                }
+            }
         });
     } catch (error) {
         console.error('Get Revenue By Period Error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message
-        });
+        res.status(500).json({ success: false, message: error.message });
     }
 };
-
 /**
  * ADMIN: Top sellers
  */

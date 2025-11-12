@@ -49,10 +49,8 @@
 }
 
 .my-sales-content {
-    margin-left: 170px;
+    margin-left: 110px;
     flex-grow: 1;
-    padding-left: 80px; /* Đồng bộ với templates-content */
-    height: calc(100vh - 70px);
     overflow-y: auto;
 }
 
