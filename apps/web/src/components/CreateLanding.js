@@ -6,11 +6,10 @@ import Canvas from '../components/create-page/Canvas';
 import ComponentLibrary from '../components/create-page/ComponentLibrary';
 import PropertiesPanel from '../components/create-page/PropertiesPanel';
 import ElementPropertiesPanel from '../components/create-page/properties/ElementPropertiesPanel';
-import ButtonPropertiesPanel from './create-page/properties/ButtonPropertiesPanel';
+import ButtonPropertiesPanhttps://github.com/vicute0707/landing-hub/pull/40/conflict?name=apps%252Fweb%252Fsrc%252Fcomponents%252Fcreate-page%252Fhelpers.js&ancestor_oid=b929a1703d7cbcc7325a8ed00a83f33960f28445&base_oid=7e95b199e8d106c3c744f5488dcc1c2e6abf95b4&head_oid=3a5a0d6f7274d6a48572605d2b6964b61b621651el from './create-page/properties/ButtonPropertiesPanel';
 import IconPropertiesPanel from './create-page/properties/IconPropertiesPanel';
 import ImagePropertiesPanel from './create-page/properties/ImagePropertiesPanel';
-import IframePropertiesPanel from './create-page/properties/IframePropertiesPanel';
-import AdvancedPropertiesPanel from './create-page/properties/AdvancedPropertiesPanel';
+import FormPropertiesPanel from './create-page/properties/FormPropertiesPanel';
 import Toolbar from './create-page/Toolbar';
 import ResponsiveToolbar from './create-page/ResponsiveToolbar';
 import SectionPopup from '../components/create-page/SectionPopup';
@@ -1620,21 +1619,9 @@ const CreateLanding = () => {
                 />
             );
         }
-        if (type === 'iframe') {
+        if (type === 'form') {
             return (
-                <IframePropertiesPanel
-                    selectedElement={selectedElement}
-                    onUpdateElement={handleEditElement}
-                    isCollapsed={isPropertiesCollapsed}
-                    onToggle={() => setIsPropertiesCollapsed(!isPropertiesCollapsed)}
-                    className="w-80 bg-white shadow-lg p-4"
-                />
-            );
-        }
-        // Advanced Components
-        if (['countdown', 'carousel', 'accordion', 'tabs', 'progress', 'rating', 'social-proof', 'social-proof-stats'].includes(type)) {
-            return (
-                <AdvancedPropertiesPanel
+                <FormPropertiesPanel
                     selectedElement={selectedElement}
                     onUpdateElement={handleEditElement}
                     isCollapsed={isPropertiesCollapsed}
