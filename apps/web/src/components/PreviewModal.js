@@ -133,7 +133,7 @@ const PreviewModal = ({ selectedTemplate, setShowPreviewModal, setPreviewHtml, p
                                             srcDoc={previewHtml}
                                             className="modal1-iframe"
                                             title="Desktop Preview"
-                                            sandbox="allow-scripts allow-same-origin allow-popups"
+                                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
                                             style={{
                                                 width: "100%",
                                                 height: "100%",

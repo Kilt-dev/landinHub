@@ -809,8 +809,15 @@ export const renderComponentContent = (
         }
 
         case 'form': {
+            // Form submission state management
+            const [isSubmitting, setIsSubmitting] = React.useState(false);
+            const [submitStatus, setSubmitStatus] = React.useState(null); // 'success' | 'error' | null
+            const [submitMessage, setSubmitMessage] = React.useState('');
+            const formRef = React.useRef(null);
+
             const renderFormField = (field, index) => {
                 const fieldType = field.type || 'text';
+                const fieldName = field.name || `field-${index}`;
                 const fieldStyles = {
                     width: '100%',
                     padding: field.padding || '12px 16px',
@@ -832,10 +839,11 @@ export const renderComponentContent = (
                                 </label>
                             )}
                             <textarea
+                                name={fieldName}
                                 placeholder={field.placeholder || field.label || 'Nhập...'}
                                 rows={field.rows || 4}
                                 required={field.required}
-                                disabled={isCanvas}
+                                disabled={isCanvas || isSubmitting}
                                 style={{
                                     ...fieldStyles,
                                     resize: 'vertical',
@@ -852,9 +860,9 @@ export const renderComponentContent = (
                         <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                             <input
                                 type="checkbox"
-                                name={field.name || `field-${index}`}
+                                name={fieldName}
                                 required={field.required}
-                                disabled={isCanvas}
+                                disabled={isCanvas || isSubmitting}
                                 style={{
                                     width: '18px',
                                     height: '18px',
@@ -880,8 +888,9 @@ export const renderComponentContent = (
                                 </label>
                             )}
                             <select
+                                name={fieldName}
                                 required={field.required}
-                                disabled={isCanvas}
+                                disabled={isCanvas || isSubmitting}
                                 style={{
                                     ...fieldStyles,
                                     backgroundColor: '#fff',
@@ -912,10 +921,10 @@ export const renderComponentContent = (
                                 <div key={optIndex} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                                     <input
                                         type="radio"
-                                        name={field.name || `field-${index}`}
+                                        name={fieldName}
                                         value={option.value}
                                         required={field.required && optIndex === 0}
-                                        disabled={isCanvas}
+                                        disabled={isCanvas || isSubmitting}
                                         style={{
                                             width: '18px',
                                             height: '18px',
@@ -942,25 +951,102 @@ export const renderComponentContent = (
                         )}
                         <input
                             type={fieldType}
+                            name={fieldName}
                             placeholder={field.placeholder || field.label || 'Nhập...'}
                             required={field.required}
-                            disabled={isCanvas}
+                            disabled={isCanvas || isSubmitting}
                             style={fieldStyles}
                         />
                     </div>
                 );
             };
 
+            // Handle form submission
+            const handleFormSubmit = async (e) => {
+                e.preventDefault();
+
+                // Don't submit in canvas mode
+                if (isCanvas) {
+                    return false;
+                }
+
+                // Get API URL from form configuration
+                const apiUrl = componentData.events?.onSubmit?.apiUrl;
+                if (!apiUrl) {
+                    console.warn('Form submission: No API URL configured');
+                    setSubmitStatus('error');
+                    setSubmitMessage(componentData.errorMessage || 'Không có URL API được cấu hình.');
+                    return;
+                }
+
+                // Collect form data
+                const formElement = formRef.current;
+                const formData = new FormData(formElement);
+                const data = {};
+                for (let [key, value] of formData.entries()) {
+                    // Handle checkbox special case (collect all checked values)
+                    if (formElement.querySelector(`[name="${key}"][type="checkbox"]`)) {
+                        if (!data[key]) {
+                            data[key] = formData.getAll(key);
+                        }
+                    } else {
+                        data[key] = value;
+                    }
+                }
+
+                // Set loading state
+                if (componentData.showLoadingState !== false) {
+                    setIsSubmitting(true);
+                }
+                setSubmitStatus(null);
+                setSubmitMessage('');
+
+                try {
+                    // Make API call
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (response.ok) {
+                        // Success
+                        setSubmitStatus('success');
+                        setSubmitMessage(componentData.successMessage || 'Cảm ơn bạn đã gửi thông tin!');
+
+                        // Reset form if configured
+                        if (componentData.resetAfterSubmit) {
+                            formElement.reset();
+                        }
+
+                        // Clear success message after 5 seconds
+                        setTimeout(() => {
+                            setSubmitStatus(null);
+                            setSubmitMessage('');
+                        }, 5000);
+                    } else {
+                        // Error response from server
+                        const errorData = await response.json().catch(() => ({}));
+                        setSubmitStatus('error');
+                        setSubmitMessage(errorData.message || componentData.errorMessage || 'Có lỗi xảy ra, vui lòng thử lại.');
+                    }
+                } catch (error) {
+                    // Network or other error
+                    console.error('Form submission error:', error);
+                    setSubmitStatus('error');
+                    setSubmitMessage(componentData.errorMessage || 'Có lỗi xảy ra, vui lòng thử lại.');
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
             return (
                 <form
+                    ref={formRef}
                     id={parentId}
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        if (isCanvas) {
-                            // In canvas mode, don't actually submit
-                            return false;
-                        }
-                    }}
+                    onSubmit={handleFormSubmit}
                     style={{
                         display: 'flex',
                         flexDirection: componentData.direction || 'column',
@@ -981,44 +1067,109 @@ export const renderComponentContent = (
                             {componentData.title}
                         </h3>
                     )}
+
+                    {/* Render form fields */}
                     {Array.isArray(componentData.fields) && componentData.fields.length > 0 ? (
                         componentData.fields.map((field, index) => renderFormField(field, index))
                     ) : (
-                        !children.some((child) => child?.type === 'input') && (
-                            <input
-                                type={componentData.inputType || 'text'}
-                                placeholder={componentData.placeholder || 'Nhập...'}
-                                disabled={isCanvas}
-                                style={{
-                                    width: '100%',
-                                    padding: componentData.inputPadding || '12px 16px',
-                                    borderRadius: componentData.inputBorderRadius || '8px',
-                                    border: componentData.inputBorder || '1px solid #d1d5db',
-                                    fontSize: componentData.inputFontSize || '16px',
-                                    outline: 'none',
-                                }}
-                            />
-                        )
+                        <>
+                            {/* Empty form placeholder in canvas mode */}
+                            {isCanvas && children.length === 0 && (
+                                <div
+                                    style={{
+                                        padding: '24px',
+                                        textAlign: 'center',
+                                        backgroundColor: '#f9fafb',
+                                        border: '2px dashed #d1d5db',
+                                        borderRadius: '8px',
+                                        color: '#6b7280',
+                                    }}
+                                >
+                                    <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: '500' }}>
+                                        Form rỗng
+                                    </div>
+                                    <div style={{ fontSize: '13px' }}>
+                                        Nhấp vào form và mở Properties Panel để thêm các trường
+                                    </div>
+                                </div>
+                            )}
+                            {/* Default input for non-empty children or non-canvas mode */}
+                            {(!isCanvas || children.length > 0) && !children.some((child) => child?.type === 'input') && (
+                                <input
+                                    type={componentData.inputType || 'text'}
+                                    name="defaultInput"
+                                    placeholder={componentData.placeholder || 'Nhập...'}
+                                    disabled={isCanvas || isSubmitting}
+                                    style={{
+                                        width: '100%',
+                                        padding: componentData.inputPadding || '12px 16px',
+                                        borderRadius: componentData.inputBorderRadius || '8px',
+                                        border: componentData.inputBorder || '1px solid #d1d5db',
+                                        fontSize: componentData.inputFontSize || '16px',
+                                        outline: 'none',
+                                    }}
+                                />
+                            )}
+                        </>
                     )}
+
+                    {/* Submit message display */}
+                    {submitMessage && (
+                        <div
+                            style={{
+                                padding: '12px 16px',
+                                borderRadius: '8px',
+                                backgroundColor: submitStatus === 'success' ? '#d1fae5' : '#fee2e2',
+                                border: `1px solid ${submitStatus === 'success' ? '#10b981' : '#ef4444'}`,
+                                color: submitStatus === 'success' ? '#065f46' : '#991b1b',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                            }}
+                        >
+                            {submitMessage}
+                        </div>
+                    )}
+
+                    {/* Submit button */}
                     {!children.some((child) => child?.type === 'button') && (
                         <button
                             type="submit"
-                            disabled={isCanvas}
+                            disabled={isCanvas || isSubmitting}
                             style={{
                                 background: componentData.buttonBackground || '#2563eb',
                                 color: componentData.buttonColor || '#fff',
                                 padding: componentData.buttonPadding || '12px 24px',
                                 borderRadius: componentData.buttonBorderRadius || '8px',
                                 border: componentData.buttonBorder || 'none',
-                                cursor: isCanvas ? 'default' : 'pointer',
+                                cursor: (isCanvas || isSubmitting) ? 'default' : 'pointer',
                                 fontSize: componentData.buttonFontSize || '16px',
                                 fontWeight: componentData.buttonFontWeight || '600',
                                 transition: 'all 0.3s ease',
+                                opacity: isSubmitting ? 0.6 : 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
                             }}
                         >
-                            {componentData.buttonText || 'Gửi'}
+                            {isSubmitting && componentData.showLoadingState !== false && (
+                                <span
+                                    style={{
+                                        display: 'inline-block',
+                                        width: '16px',
+                                        height: '16px',
+                                        border: '2px solid rgba(255, 255, 255, 0.3)',
+                                        borderTopColor: '#fff',
+                                        borderRadius: '50%',
+                                        animation: 'spin 0.8s linear infinite',
+                                    }}
+                                />
+                            )}
+                            {isSubmitting ? (componentData.buttonLoadingText || 'Đang gửi...') : (componentData.buttonText || 'Gửi')}
                         </button>
                     )}
+
+                    {/* Child components */}
                     {children.map((child, index) =>
                         React.cloneElement(
                             renderComponentContent(
