@@ -1616,6 +1616,489 @@ export const elements = {
         //     ],
         // },
         {
+            "id": "form",
+            "name": "Form",
+            "lucideIcon": FormInput,
+            "templates": [
+                {
+                    "id": "form-contact-modern",
+                    "name": "Form Liên hệ Modern",
+                    "lucideIcon": FormInput,
+                    "description": "Form liên hệ hiện đại với đầy đủ các trường",
+                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760968232/form_contact.png",
+                    "json": {
+                        "type": "form",
+                        "componentData": {
+                            "title": "Liên hệ với chúng tôi",
+                            "direction": "column",
+                            "gap": "16px",
+                            "fields": [
+                                { "type": "text", "placeholder": "Họ và tên", "label": "Họ và tên", "required": true },
+                                { "type": "email", "placeholder": "Email", "label": "Email", "required": true },
+                                { "type": "tel", "placeholder": "Số điện thoại", "label": "Số điện thoại" },
+                                { "type": "textarea", "placeholder": "Nội dung tin nhắn", "label": "Tin nhắn", "rows": 4 }
+                            ],
+                            "buttonText": "Gửi tin nhắn",
+                            "buttonBackground": "#2563eb",
+                            "buttonColor": "#fff",
+                            "dataSource": { "type": "static" },
+                            "events": { "onSubmit": { "type": "submitForm", "apiUrl": "/api/contact" } },
+                            "animation": { "type": "fadeInUp", "duration": 800, "delay": 0 }
+                        },
+                        "size": { "width": 400, "height": 450 },
+                        "mobileSize": { "width": 340, "height": 420 },
+                        "tabletSize": { "width": 370, "height": 435 },
+                        "styles": {
+                            "background": "#ffffff",
+                            "padding": "32px",
+                            "borderRadius": "16px",
+                            "boxShadow": "0 4px 6px rgba(0, 0, 0, 0.1)"
+                        }
+                    }
+                },
+                {
+                    "id": "form-newsletter",
+                    "name": "Form Đăng ký Newsletter",
+                    "lucideIcon": FormInput,
+                    "description": "Form đăng ký nhận tin nhanh gọn",
+                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760968232/form_newsletter.png",
+                    "json": {
+                        "type": "form",
+                        "componentData": {
+                            "title": "Đăng ký nhận tin",
+                            "direction": "row",
+                            "gap": "12px",
+                            "fields": [
+                                { "type": "email", "placeholder": "Nhập email của bạn", "label": "Email", "required": true }
+                            ],
+                            "buttonText": "Đăng ký",
+                            "buttonBackground": "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            "buttonColor": "#fff",
+                            "buttonPadding": "12px 32px",
+                            "dataSource": { "type": "static" },
+                            "events": { "onSubmit": { "type": "submitForm", "apiUrl": "/api/newsletter" } },
+                            "animation": { "type": "slideInLeft", "duration": 1000, "delay": 200 }
+                        },
+                        "size": { "width": 400, "height": 80 },
+                        "mobileSize": { "width": 340, "height": 120 },
+                        "tabletSize": { "width": 370, "height": 90 },
+                        "styles": {
+                            "background": "transparent",
+                            "padding": "0"
+                        },
+                        "responsiveStyles": {
+                            "mobile": {
+                                "flexDirection": "column",
+                                "gap": "8px"
+                            }
+                        }
+                    }
+                },
+                {
+                    "id": "form-login",
+                    "name": "Form Đăng nhập",
+                    "lucideIcon": FormInput,
+                    "description": "Form đăng nhập với remember me",
+                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760968232/form_login.png",
+                    "json": {
+                        "type": "form",
+                        "componentData": {
+                            "title": "Đăng nhập",
+                            "direction": "column",
+                            "gap": "16px",
+                            "fields": [
+                                { "type": "email", "placeholder": "Email", "label": "Email", "required": true },
+                                { "type": "password", "placeholder": "Mật khẩu", "label": "Mật khẩu", "required": true },
+                                { "type": "checkbox", "label": "Ghi nhớ đăng nhập", "name": "remember" }
+                            ],
+                            "buttonText": "Đăng nhập",
+                            "buttonBackground": "#10b981",
+                            "buttonColor": "#fff",
+                            "buttonPadding": "12px 24px",
+                            "buttonBorderRadius": "8px",
+                            "dataSource": { "type": "static" },
+                            "events": { "onSubmit": { "type": "submitForm", "apiUrl": "/api/login" } },
+                            "animation": { "type": "zoomIn", "duration": 600, "delay": 0 }
+                        },
+                        "size": { "width": 380, "height": 320 },
+                        "mobileSize": { "width": 340, "height": 300 },
+                        "tabletSize": { "width": 360, "height": 310 },
+                        "styles": {
+                            "background": "#f9fafb",
+                            "padding": "32px",
+                            "borderRadius": "12px",
+                            "border": "1px solid #e5e7eb"
+                        }
+                    }
+                },
+                {
+                    "id": "form-registration",
+                    "name": "Form Đăng ký",
+                    "lucideIcon": FormInput,
+                    "description": "Form đăng ký tài khoản đầy đủ",
+                    "previewImage": "https://res.cloudinary.com/dubthm5m6/image/upload/v1760968232/form_register.png",
+                    "json": {
+                        "type": "form",
+                        "componentData": {
+                            "title": "Tạo tài khoản",
+                            "direction": "column",
+                            "gap": "16px",
+                            "fields": [
+                                { "type": "text", "placeholder": "Họ và tên", "label": "Họ và tên", "required": true },
+                                { "type": "email", "placeholder": "Email", "label": "Email", "required": true },
+                                { "type": "password", "placeholder": "Mật khẩu", "label": "Mật khẩu", "required": true },
+                                { "type": "password", "placeholder": "Xác nhận mật khẩu", "label": "Xác nhận mật khẩu", "required": true },
+                                { "type": "checkbox", "label": "Tôi đồng ý với điều khoản sử dụng", "name": "terms", "required": true }
+                            ],
+                            "buttonText": "Đăng ký ngay",
+                            "buttonBackground": "#f59e0b",
+                            "buttonColor": "#fff",
+                            "buttonPadding": "14px 28px",
+                            "buttonBorderRadius": "8px",
+                            "buttonFontWeight": "600",
+                            "dataSource": { "type": "static" },
+                            "events": { "onSubmit": { "type": "submitForm", "apiUrl": "/api/register" } },
+                            "animation": { "type": "fadeIn", "duration": 800, "delay": 100 }
+                        },
+                        "size": { "width": 400, "height": 480 },
+                        "mobileSize": { "width": 340, "height": 460 },
+                        "tabletSize": { "width": 370, "height": 470 },
+                        "styles": {
+                            "background": "#ffffff",
+                            "padding": "32px",
+                            "borderRadius": "16px",
+                            "boxShadow": "0 10px 25px rgba(0, 0, 0, 0.1)"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "input",
+            "name": "Input Field",
+            "lucideIcon": FormInput,
+            "templates": [
+                {
+                    "id": "input-text",
+                    "name": "Text Input",
+                    "lucideIcon": FormInput,
+                    "description": "Ô nhập text đơn giản",
+                    "previewImage": "",
+                    "json": {
+                        "type": "input",
+                        "componentData": {
+                            "inputType": "text",
+                            "placeholder": "Nhập text...",
+                            "label": "Text",
+                            "required": false
+                        },
+                        "size": { "width": 300, "height": 48 },
+                        "mobileSize": { "width": 280, "height": 48 },
+                        "styles": {
+                            "padding": "12px 16px",
+                            "borderRadius": "8px",
+                            "border": "1px solid #d1d5db",
+                            "fontSize": "16px",
+                            "fontFamily": "inherit",
+                            "outline": "none",
+                            "transition": "all 0.3s ease",
+                            ":focus": {
+                                "border": "1px solid #2563eb",
+                                "boxShadow": "0 0 0 3px rgba(37, 99, 235, 0.1)"
+                            }
+                        }
+                    }
+                },
+                {
+                    "id": "input-email",
+                    "name": "Email Input",
+                    "lucideIcon": FormInput,
+                    "description": "Ô nhập email",
+                    "previewImage": "",
+                    "json": {
+                        "type": "input",
+                        "componentData": {
+                            "inputType": "email",
+                            "placeholder": "email@example.com",
+                            "label": "Email",
+                            "required": true
+                        },
+                        "size": { "width": 300, "height": 48 },
+                        "mobileSize": { "width": 280, "height": 48 },
+                        "styles": {
+                            "padding": "12px 16px",
+                            "borderRadius": "8px",
+                            "border": "1px solid #d1d5db",
+                            "fontSize": "16px",
+                            "fontFamily": "inherit",
+                            "outline": "none",
+                            "transition": "all 0.3s ease",
+                            ":focus": {
+                                "border": "1px solid #10b981",
+                                "boxShadow": "0 0 0 3px rgba(16, 185, 129, 0.1)"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "textarea",
+            "name": "Textarea",
+            "lucideIcon": FileText,
+            "templates": [
+                {
+                    "id": "textarea-standard",
+                    "name": "Textarea chuẩn",
+                    "lucideIcon": FileText,
+                    "description": "Ô nhập text nhiều dòng",
+                    "previewImage": "",
+                    "json": {
+                        "type": "textarea",
+                        "componentData": {
+                            "placeholder": "Nhập nội dung...",
+                            "label": "Nội dung",
+                            "rows": 4,
+                            "required": false
+                        },
+                        "size": { "width": 350, "height": 120 },
+                        "mobileSize": { "width": 300, "height": 120 },
+                        "styles": {
+                            "padding": "12px 16px",
+                            "borderRadius": "8px",
+                            "border": "1px solid #d1d5db",
+                            "fontSize": "16px",
+                            "fontFamily": "inherit",
+                            "outline": "none",
+                            "resize": "vertical",
+                            "transition": "all 0.3s ease",
+                            ":focus": {
+                                "border": "1px solid #2563eb",
+                                "boxShadow": "0 0 0 3px rgba(37, 99, 235, 0.1)"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "select",
+            "name": "Select Dropdown",
+            "lucideIcon": ChevronDown,
+            "templates": [
+                {
+                    "id": "select-standard",
+                    "name": "Select chuẩn",
+                    "lucideIcon": ChevronDown,
+                    "description": "Dropdown select box",
+                    "previewImage": "",
+                    "json": {
+                        "type": "select",
+                        "componentData": {
+                            "label": "Chọn tùy chọn",
+                            "options": [
+                                { "value": "", "label": "-- Chọn --" },
+                                { "value": "option1", "label": "Tùy chọn 1" },
+                                { "value": "option2", "label": "Tùy chọn 2" },
+                                { "value": "option3", "label": "Tùy chọn 3" }
+                            ],
+                            "required": false
+                        },
+                        "size": { "width": 300, "height": 48 },
+                        "mobileSize": { "width": 280, "height": 48 },
+                        "styles": {
+                            "padding": "12px 16px",
+                            "borderRadius": "8px",
+                            "border": "1px solid #d1d5db",
+                            "fontSize": "16px",
+                            "fontFamily": "inherit",
+                            "outline": "none",
+                            "backgroundColor": "#fff",
+                            "cursor": "pointer",
+                            "transition": "all 0.3s ease",
+                            ":focus": {
+                                "border": "1px solid #2563eb",
+                                "boxShadow": "0 0 0 3px rgba(37, 99, 235, 0.1)"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "checkbox",
+            "name": "Checkbox",
+            "lucideIcon": Square,
+            "templates": [
+                {
+                    "id": "checkbox-standard",
+                    "name": "Checkbox chuẩn",
+                    "lucideIcon": Square,
+                    "description": "Checkbox để chọn nhiều lựa chọn",
+                    "previewImage": "",
+                    "json": {
+                        "type": "checkbox",
+                        "componentData": {
+                            "label": "Tôi đồng ý với điều khoản",
+                            "checked": false,
+                            "name": "agree",
+                            "required": false
+                        },
+                        "size": { "width": 250, "height": 32 },
+                        "mobileSize": { "width": 250, "height": 32 },
+                        "styles": {
+                            "display": "flex",
+                            "alignItems": "center",
+                            "gap": "8px",
+                            "cursor": "pointer",
+                            "fontSize": "16px",
+                            "color": "#374151"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "radio",
+            "name": "Radio Button",
+            "lucideIcon": Square,
+            "templates": [
+                {
+                    "id": "radio-group",
+                    "name": "Radio Group",
+                    "lucideIcon": Square,
+                    "description": "Nhóm radio button để chọn một lựa chọn",
+                    "previewImage": "",
+                    "json": {
+                        "type": "radio",
+                        "componentData": {
+                            "label": "Chọn giới tính",
+                            "name": "gender",
+                            "options": [
+                                { "value": "male", "label": "Nam" },
+                                { "value": "female", "label": "Nữ" },
+                                { "value": "other", "label": "Khác" }
+                            ],
+                            "required": false
+                        },
+                        "size": { "width": 300, "height": 100 },
+                        "mobileSize": { "width": 280, "height": 100 },
+                        "styles": {
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "gap": "12px",
+                            "fontSize": "16px",
+                            "color": "#374151"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "accordion",
+            "name": "Accordion",
+            "lucideIcon": Menu,
+            "templates": [
+                {
+                    "id": "accordion-faq",
+                    "name": "Accordion FAQ",
+                    "lucideIcon": Menu,
+                    "description": "Accordion cho câu hỏi thường gặp",
+                    "previewImage": "",
+                    "json": {
+                        "type": "accordion",
+                        "componentData": {
+                            "title": "Câu hỏi thường gặp",
+                            "items": [
+                                {
+                                    "id": "faq1",
+                                    "title": "Làm thế nào để bắt đầu?",
+                                    "content": "Bạn có thể bắt đầu bằng cách đăng ký tài khoản miễn phí và làm theo hướng dẫn.",
+                                    "expanded": false
+                                },
+                                {
+                                    "id": "faq2",
+                                    "title": "Giá cả như thế nào?",
+                                    "content": "Chúng tôi có nhiều gói giá phù hợp với mọi nhu cầu từ cá nhân đến doanh nghiệp.",
+                                    "expanded": false
+                                },
+                                {
+                                    "id": "faq3",
+                                    "title": "Có hỗ trợ 24/7 không?",
+                                    "content": "Có, chúng tôi cung cấp hỗ trợ khách hàng 24/7 qua chat, email và điện thoại.",
+                                    "expanded": false
+                                }
+                            ],
+                            "allowMultiple": false,
+                            "dataSource": { "type": "static" },
+                            "animation": { "type": "fadeIn", "duration": 600, "delay": 0 }
+                        },
+                        "size": { "width": 400, "height": 300 },
+                        "mobileSize": { "width": 340, "height": 300 },
+                        "tabletSize": { "width": 370, "height": 300 },
+                        "styles": {
+                            "background": "#ffffff",
+                            "padding": "16px",
+                            "borderRadius": "12px",
+                            "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "id": "tabs",
+            "name": "Tabs",
+            "lucideIcon": Table,
+            "templates": [
+                {
+                    "id": "tabs-standard",
+                    "name": "Tabs chuẩn",
+                    "lucideIcon": Table,
+                    "description": "Tabs để tổ chức nội dung",
+                    "previewImage": "",
+                    "json": {
+                        "type": "tabs",
+                        "componentData": {
+                            "title": "Thông tin sản phẩm",
+                            "tabs": [
+                                {
+                                    "id": "tab1",
+                                    "title": "Mô tả",
+                                    "content": "Đây là phần mô tả chi tiết về sản phẩm của chúng tôi.",
+                                    "icon": ""
+                                },
+                                {
+                                    "id": "tab2",
+                                    "title": "Thông số",
+                                    "content": "Thông số kỹ thuật: Kích thước, trọng lượng, màu sắc...",
+                                    "icon": ""
+                                },
+                                {
+                                    "id": "tab3",
+                                    "title": "Đánh giá",
+                                    "content": "Đánh giá từ khách hàng về sản phẩm này.",
+                                    "icon": ""
+                                }
+                            ],
+                            "activeTab": "tab1",
+                            "dataSource": { "type": "static" },
+                            "animation": { "type": "slideIn", "duration": 500, "delay": 0 }
+                        },
+                        "size": { "width": 400, "height": 300 },
+                        "mobileSize": { "width": 340, "height": 280 },
+                        "tabletSize": { "width": 370, "height": 290 },
+                        "styles": {
+                            "background": "#ffffff",
+                            "padding": "16px",
+                            "borderRadius": "12px",
+                            "boxShadow": "0 2px 8px rgba(0, 0, 0, 0.1)"
+                        }
+                    }
+                }
+            ]
+        },
+        {
             "id": "icon",
             "name": "Biểu tượng",
             "lucideIcon": "Star",
