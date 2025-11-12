@@ -4,12 +4,11 @@ import "../../styles/HeaderComponent.css";
 
 const HeaderComponent = ({ onCreateClick, totalPages = 0 }) => {
     return (
-        <div className="content-header">
+        <div className="content-header1">
             <div className="header-texts">
                 <h1 className="header-title">Landing Pages</h1>
                 <p className="header-subtitle">
                     Quản lý, chỉnh sửa và triển khai các landing page của bạn.
-                    Bạn hiện có <strong>{totalPages}</strong> trang đang hoạt động.
                 </p>
             </div>
             <button

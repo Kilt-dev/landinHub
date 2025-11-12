@@ -47,5 +47,4 @@ router.post('/refunds/process', authMiddleware, isAdmin, adminMarketplaceControl
 
 // Reject refund
 router.post('/refunds/reject', authMiddleware, isAdmin, adminMarketplaceController.rejectRefund);
-
 module.exports = router;

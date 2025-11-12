@@ -970,3 +970,121 @@ body {
         width: 100%;
     }
 }
+/* ============================================
+   ORDERS TABLE - MODERN MINIMAL
+   ============================================ */
+
+.orders-table-container {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    color: #111827;
+}
+
+.orders-table thead {
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.orders-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.orders-table tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.2s ease;
+}
+
+.orders-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.orders-table td {
+    padding: 14px 16px;
+    vertical-align: middle;
+    color: #4b5563;
+}
+
+.orders-table td strong {
+    color: #111827;
+}
+
+.orders-table .cell-right {
+    text-align: right;
+}
+
+.orders-table .cell-center {
+    text-align: center;
+}
+
+.orders-table .cell-price {
+    font-weight: 600;
+    color: #111827;
+}
+
+/* Badge trạng thái */
+.orders-table .status-badge123 {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+/* Responsive: stacked cards on mobile */
+@media (max-width: 768px) {
+    .orders-table thead {
+        display: none;
+    }
+
+    .orders-table,
+    .orders-table tbody,
+    .orders-table tr,
+    .orders-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .orders-table tr {
+        margin-bottom: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        background-color: #ffffff;
+        padding: 16px;
+    }
+
+    .orders-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .orders-table td:last-child {
+        border-bottom: none;
+    }
+
+    .orders-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+}

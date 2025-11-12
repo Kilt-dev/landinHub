@@ -109,20 +109,33 @@ const Marketplace = () => {
     const fetchPurchasedPageIds = async () => {
         try {
             const token = localStorage.getItem('token');
+            if (!token) return;
+
             const response = await axios.get(
                 `${API_BASE_URL}/api/marketplace/my/purchased?limit=1000`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
-            const purchases = response.data.data || [];
-            const ids = purchases.map(p => p._id);
+
+            const purchasedItems = response.data.data || [];
+
+            const ids = purchasedItems.map(item => item._id).filter(id => id);
+
+            // Lưu ngày mua theo _id của MarketplacePage
             const dates = {};
-            purchases.forEach(p => {
-                dates[p._id] = new Date(p.purchased_at || Date.now()).toLocaleDateString('vi-VN');
+            purchasedItems.forEach(item => {
+                if (item._id) {
+                    dates[item._id] = new Date(item.purchased_at || Date.now()).toLocaleDateString('vi-VN');
+                }
             });
+
             setPurchasedPageIds(ids);
             setPurchasedDates(dates);
+            console.log('✅ Đã tải xong page đã mua:', ids);
         } catch (err) {
-            console.error('Fetch purchased pages error:', err);
+            console.error('❌ Lỗi khi tải danh sách page đã mua:', err);
+            // Không set error để không làm gãy UI, chỉ log
+            setPurchasedPageIds([]);
+            setPurchasedDates({});
         }
     };
 
@@ -230,45 +243,7 @@ const Marketplace = () => {
         navigate(`/marketplace/${pageId}`);
     };
 
-    // Animation: Bay vào giỏ
-    const handleAddToCart = (e, page) => {
-        e.stopPropagation();
-        const button = e.currentTarget;
-        const img = button.closest('.marketplace-card')?.querySelector('.card-image img');
-        const cart = cartRef.current;
 
-        if (!img || !cart) return;
-
-        const clone = img.cloneNode();
-        const rect = img.getBoundingClientRect();
-        const cartRect = cart.getBoundingClientRect();
-
-        Object.assign(clone.style, {
-            position: 'fixed',
-            width: `${rect.width}px`,
-            height: `${rect.height}px`,
-            left: `${rect.left}px`,
-            top: `${rect.top}px`,
-            objectFit: 'cover',
-            borderRadius: '10px',
-            zIndex: '9999',
-            transition: 'all 0.8s cubic-bezier(0.25, 0.8, 0.25, 1)',
-            pointerEvents: 'none'
-        });
-
-        document.body.appendChild(clone);
-
-        setTimeout(() => {
-            clone.style.transform = `translate(${cartRect.left + cartRect.width / 2 - rect.left - rect.width / 2}px, ${cartRect.top + cartRect.height / 2 - rect.top - rect.height / 2}px) scale(0.2)`;
-            clone.style.opacity = '0.7';
-        }, 50);
-
-        setTimeout(() => {
-            clone.remove();
-            cart.style.transform = 'scale(1.2)';
-            setTimeout(() => cart.style.transform = 'scale(1)', 150);
-        }, 800);
-    };
 
     const formatPrice = (price) => {
         if (price === 0) return 'Miễn phí';

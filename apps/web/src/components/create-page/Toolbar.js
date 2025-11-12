@@ -22,7 +22,9 @@ const Toolbar = ({
                      onShowAddSectionGuide,
                      onToggleVisibility, // Thêm handlers cho layer actions
                      onToggleLock,
-                     onDeleteElement
+                     onDeleteElement,
+                     onAIContentGenerator, // AI Content Generator
+                     onAIPageAnalyzer // AI Page Analyzer
                  }) => {
     const [showLayers, setShowLayers] = useState(false);
     const fileInputRef = React.useRef(null);
@@ -58,6 +60,23 @@ const Toolbar = ({
                     >
                         <i className="fas fa-plus"></i> Thêm Section
                     </button>
+
+                    {/* AI Features */}
+                    <button
+                        onClick={onAIContentGenerator}
+                        className="lpb-toolbar-action-btn lpb-ai-btn"
+                        title="AI Content Generator"
+                    >
+                        <i className="fas fa-magic"></i> AI Nội dung
+                    </button>
+                    <button
+                        onClick={onAIPageAnalyzer}
+                        className="lpb-toolbar-action-btn lpb-ai-btn"
+                        title="AI Page Analyzer"
+                    >
+                        <i className="fas fa-brain"></i> AI Phân tích
+                    </button>
+
                     <button onClick={handleImportClick} className="lpb-toolbar-action-btn" title="Import .iuhpage">
                         <i className="fas fa-file-import"></i> Import
                     </button>

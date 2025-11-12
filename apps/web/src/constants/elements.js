@@ -2,7 +2,7 @@ import {
     Type, FileText, Square, FormInput, Image,
     Video, Star, Minus, ShoppingCart, LayoutGrid,
     SlidersHorizontal, Folder, ChevronDown, Table,
-    BarChart, Menu
+    BarChart, Menu, Monitor, Box, Link2
 } from 'lucide-react';
 
 export const elements = {
@@ -2509,6 +2509,590 @@ export const elements = {
                         }
                     }
                 }
+            ]
+        },
+        {
+            id: 'iframe',
+            name: 'Iframe',
+            lucideIcon: Monitor,
+            templates: [
+                {
+                    id: 'iframe-basic',
+                    name: 'Iframe cơ bản',
+                    lucideIcon: Monitor,
+                    description: 'Iframe để nhúng nội dung từ trang web khác, video YouTube, Google Maps, v.v.',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/iframe_preview.jpg',
+                    json: {
+                        type: 'iframe',
+                        componentData: {
+                            title: 'Iframe',
+                            src: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+                            allowFullscreen: true,
+                            frameBorder: 0,
+                            allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'fadeIn', duration: 800, delay: 0 }
+                        },
+                        size: { width: 560, height: 315 },
+                        mobileSize: { width: 340, height: 191 },
+                        tabletSize: { width: 480, height: 270 },
+                        styles: {
+                            border: 'none',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        },
+                        responsiveStyles: {
+                            mobile: {
+                                width: '100%',
+                                maxWidth: '340px',
+                                borderRadius: '4px'
+                            },
+                            tablet: {
+                                width: '100%',
+                                maxWidth: '480px',
+                                borderRadius: '6px'
+                            }
+                        }
+                    },
+                },
+                {
+                    id: 'iframe-youtube',
+                    name: 'YouTube Video',
+                    lucideIcon: Video,
+                    description: 'Iframe tối ưu để nhúng video YouTube với responsive',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/youtube_iframe.jpg',
+                    json: {
+                        type: 'iframe',
+                        componentData: {
+                            title: 'YouTube Video',
+                            src: 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=0&controls=1&modestbranding=1',
+                            allowFullscreen: true,
+                            frameBorder: 0,
+                            allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'zoomIn', duration: 1000, delay: 0 }
+                        },
+                        size: { width: 640, height: 360 },
+                        mobileSize: { width: 340, height: 191 },
+                        tabletSize: { width: 560, height: 315 },
+                        styles: {
+                            border: 'none',
+                            borderRadius: '12px',
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+                        },
+                        responsiveStyles: {
+                            mobile: {
+                                width: '100%',
+                                borderRadius: '8px',
+                                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)'
+                            },
+                            tablet: {
+                                width: '100%',
+                                borderRadius: '10px'
+                            }
+                        }
+                    },
+                },
+                {
+                    id: 'iframe-google-maps',
+                    name: 'Google Maps',
+                    lucideIcon: Box,
+                    description: 'Iframe để nhúng Google Maps với vị trí tùy chỉnh',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/maps_iframe.jpg',
+                    json: {
+                        type: 'iframe',
+                        componentData: {
+                            title: 'Google Maps',
+                            src: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3919.3245676097956!2d106.68441631533464!3d10.786785792313986!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752f1b7c3ed289%3A0xa06651894598e488!2sBen%20Thanh%20Market!5e0!3m2!1sen!2s!4v1234567890123!5m2!1sen!2s',
+                            allowFullscreen: true,
+                            frameBorder: 0,
+                            loading: 'lazy',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'fadeInUp', duration: 1000, delay: 200 }
+                        },
+                        size: { width: 600, height: 450 },
+                        mobileSize: { width: 340, height: 255 },
+                        tabletSize: { width: 500, height: 375 },
+                        styles: {
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                        },
+                        responsiveStyles: {
+                            mobile: {
+                                width: '100%',
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '6px'
+                            },
+                            tablet: {
+                                width: '100%',
+                                borderRadius: '8px'
+                            }
+                        }
+                    },
+                },
+                {
+                    id: 'iframe-form-embed',
+                    name: 'Form Nhúng',
+                    lucideIcon: FormInput,
+                    description: 'Iframe để nhúng form từ Google Forms, Typeform, v.v.',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/form_iframe.jpg',
+                    json: {
+                        type: 'iframe',
+                        componentData: {
+                            title: 'Form Nhúng',
+                            src: 'https://docs.google.com/forms/d/e/1FAIpQLSf.../viewform?embedded=true',
+                            allowFullscreen: false,
+                            frameBorder: 0,
+                            dataSource: { type: 'static' },
+                            animation: { type: 'slideInUp', duration: 1000, delay: 0 }
+                        },
+                        size: { width: 640, height: 800 },
+                        mobileSize: { width: 340, height: 600 },
+                        tabletSize: { width: 520, height: 700 },
+                        styles: {
+                            border: 'none',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                        },
+                        responsiveStyles: {
+                            mobile: {
+                                width: '100%',
+                                height: '600px',
+                                borderRadius: '4px'
+                            },
+                            tablet: {
+                                width: '100%',
+                                height: '700px'
+                            }
+                        }
+                    },
+                },
+            ]
+        },
+        {
+            id: 'shapes',
+            name: 'Hình dạng / Frames',
+            lucideIcon: Square,
+            templates: [
+                {
+                    id: 'shape-square',
+                    name: 'Hình vuông',
+                    lucideIcon: Square,
+                    description: 'Hình vuông cơ bản với màu tùy chỉnh',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/square_shape.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Hình vuông',
+                            fill: '#3b82f6',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'zoomIn', duration: 600, delay: 0 }
+                        },
+                        size: { width: 100, height: 100 },
+                        mobileSize: { width: 60, height: 60 },
+                        tabletSize: { width: 80, height: 80 },
+                        styles: {
+                            fill: '#3b82f6',
+                            borderRadius: '0',
+                        },
+                        responsiveStyles: {
+                            mobile: { width: '60px', height: '60px' },
+                            tablet: { width: '80px', height: '80px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-rectangle',
+                    name: 'Hình chữ nhật',
+                    lucideIcon: Box,
+                    description: 'Hình chữ nhật ngang hoặc dọc',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/rectangle_shape.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Hình chữ nhật',
+                            fill: '#8b5cf6',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'fadeIn', duration: 800, delay: 0 }
+                        },
+                        size: { width: 200, height: 100 },
+                        mobileSize: { width: 160, height: 80 },
+                        tabletSize: { width: 180, height: 90 },
+                        styles: {
+                            fill: '#8b5cf6',
+                            borderRadius: '0',
+                        },
+                        responsiveStyles: {
+                            mobile: { width: '160px', height: '80px' },
+                            tablet: { width: '180px', height: '90px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-rounded-square',
+                    name: 'Hình vuông bo góc',
+                    lucideIcon: Square,
+                    description: 'Hình vuông với góc bo tròn',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/rounded_square.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Hình vuông bo góc',
+                            fill: '#ec4899',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'bounceIn', duration: 1000, delay: 0 }
+                        },
+                        size: { width: 120, height: 120 },
+                        mobileSize: { width: 80, height: 80 },
+                        tabletSize: { width: 100, height: 100 },
+                        styles: {
+                            fill: '#ec4899',
+                            borderRadius: '16px',
+                        },
+                        responsiveStyles: {
+                            mobile: { borderRadius: '12px' },
+                            tablet: { borderRadius: '14px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-circle',
+                    name: 'Hình tròn',
+                    lucideIcon: Star,
+                    description: 'Hình tròn hoàn hảo',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/circle_shape.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Hình tròn',
+                            fill: '#10b981',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'pulse', duration: 1500, delay: 0, repeat: true }
+                        },
+                        size: { width: 100, height: 100 },
+                        mobileSize: { width: 60, height: 60 },
+                        tabletSize: { width: 80, height: 80 },
+                        styles: {
+                            fill: '#10b981',
+                            borderRadius: '50%',
+                        },
+                        responsiveStyles: {
+                            mobile: { width: '60px', height: '60px' },
+                            tablet: { width: '80px', height: '80px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-line-horizontal',
+                    name: 'Đường kẻ ngang',
+                    lucideIcon: Minus,
+                    description: 'Đường kẻ ngang để chia section',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/line_horizontal.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Đường kẻ ngang',
+                            fill: '#6366f1',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'slideInLeft', duration: 1000, delay: 0 }
+                        },
+                        size: { width: 300, height: 4 },
+                        mobileSize: { width: 200, height: 3 },
+                        tabletSize: { width: 250, height: 3 },
+                        styles: {
+                            fill: '#6366f1',
+                            borderRadius: '2px',
+                        },
+                        responsiveStyles: {
+                            mobile: { width: '200px', height: '3px' },
+                            tablet: { width: '250px', height: '3px' }
+                        }
+                    },
+                },
+                {
+                    id: 'shape-gradient-rect',
+                    name: 'Hình gradient',
+                    lucideIcon: Box,
+                    description: 'Hình chữ nhật với gradient màu',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/gradient_rect.png',
+                    json: {
+                        type: 'square',
+                        componentData: {
+                            title: 'Gradient Rectangle',
+                            fill: 'url(#gradient1)',
+                            dataSource: { type: 'static' },
+                            animation: { type: 'fadeInUp', duration: 1000, delay: 0 },
+                            gradient: {
+                                id: 'gradient1',
+                                type: 'linear',
+                                x1: '0%',
+                                y1: '0%',
+                                x2: '100%',
+                                y2: '100%',
+                                stops: [
+                                    { offset: '0%', color: '#667eea' },
+                                    { offset: '100%', color: '#764ba2' }
+                                ]
+                            }
+                        },
+                        size: { width: 250, height: 150 },
+                        mobileSize: { width: 200, height: 120 },
+                        tabletSize: { width: 225, height: 135 },
+                        styles: {
+                            borderRadius: '12px',
+                        },
+                        responsiveStyles: {
+                            mobile: { borderRadius: '8px' },
+                            tablet: { borderRadius: '10px' }
+                        }
+                    },
+                },
+            ]
+        },
+        {
+            id: 'form',
+            name: 'Form',
+            lucideIcon: FormInput,
+            templates: [
+                {
+                    id: 'form-contact-basic',
+                    name: 'Form liên hệ cơ bản',
+                    lucideIcon: FormInput,
+                    description: 'Form liên hệ với các trường cơ bản: tên, email, tin nhắn',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/form_contact.png',
+                    json: {
+                        type: 'form',
+                        componentData: {
+                            title: 'Liên hệ với chúng tôi',
+                            fields: [
+                                {
+                                    name: 'name',
+                                    type: 'text',
+                                    placeholder: 'Họ và tên của bạn',
+                                    label: 'Họ và tên',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'email',
+                                    type: 'email',
+                                    placeholder: 'email@example.com',
+                                    label: 'Email',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'phone',
+                                    type: 'tel',
+                                    placeholder: '0123 456 789',
+                                    label: 'Số điện thoại',
+                                    required: false,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'message',
+                                    type: 'textarea',
+                                    placeholder: 'Nhập tin nhắn của bạn...',
+                                    label: 'Tin nhắn',
+                                    required: false,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px',
+                                    rows: 4
+                                }
+                            ],
+                            buttonText: 'Gửi ngay',
+                            buttonBackground: '#667eea',
+                            buttonColor: '#ffffff',
+                            buttonPadding: '12px 32px',
+                            buttonBorderRadius: '8px',
+                            buttonBorder: 'none',
+                            buttonFontSize: '16px',
+                            buttonFontWeight: '600',
+                            direction: 'column',
+                            gap: '16px',
+                            successMessage: 'Cảm ơn bạn đã gửi thông tin! Chúng tôi sẽ liên hệ lại sớm nhất.',
+                            errorMessage: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
+                            redirectUrl: '',
+                            showLabels: true,
+                            labelPosition: 'top'
+                        },
+                        size: { width: 500, height: 480 },
+                        mobileSize: { width: 340, height: 520 },
+                        tabletSize: { width: 450, height: 500 },
+                        styles: {
+                            backgroundColor: '#ffffff',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        },
+                        responsiveStyles: {
+                            mobile: { padding: '16px' },
+                            tablet: { padding: '20px' }
+                        }
+                    },
+                },
+                {
+                    id: 'form-newsletter',
+                    name: 'Form đăng ký nhận tin',
+                    lucideIcon: FormInput,
+                    description: 'Form đăng ký newsletter đơn giản với email',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/form_newsletter.png',
+                    json: {
+                        type: 'form',
+                        componentData: {
+                            title: 'Đăng ký nhận tin tức',
+                            fields: [
+                                {
+                                    name: 'email',
+                                    type: 'email',
+                                    placeholder: 'Nhập email của bạn',
+                                    label: 'Email',
+                                    required: true,
+                                    padding: '14px 16px',
+                                    borderRadius: '8px',
+                                    border: '2px solid #e5e7eb',
+                                    fontSize: '15px'
+                                }
+                            ],
+                            buttonText: 'Đăng ký',
+                            buttonBackground: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            buttonColor: '#ffffff',
+                            buttonPadding: '14px 40px',
+                            buttonBorderRadius: '8px',
+                            buttonBorder: 'none',
+                            buttonFontSize: '15px',
+                            buttonFontWeight: '600',
+                            direction: 'row',
+                            gap: '12px',
+                            successMessage: 'Cảm ơn bạn đã đăng ký! Hãy kiểm tra email để xác nhận.',
+                            errorMessage: 'Không thể đăng ký. Vui lòng thử lại.',
+                            showLabels: false,
+                            labelPosition: 'top'
+                        },
+                        size: { width: 500, height: 80 },
+                        mobileSize: { width: 340, height: 120 },
+                        tabletSize: { width: 450, height: 90 },
+                        styles: {
+                            backgroundColor: 'transparent',
+                            padding: '0',
+                        }
+                    },
+                },
+                {
+                    id: 'form-registration',
+                    name: 'Form đăng ký đầy đủ',
+                    lucideIcon: FormInput,
+                    description: 'Form đăng ký với nhiều trường thông tin',
+                    previewImage: 'https://res.cloudinary.com/dubthm5m6/image/upload/v1760126448/form_registration.png',
+                    json: {
+                        type: 'form',
+                        componentData: {
+                            title: 'Đăng ký tài khoản',
+                            fields: [
+                                {
+                                    name: 'fullname',
+                                    type: 'text',
+                                    placeholder: 'Họ và tên',
+                                    label: 'Họ và tên',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'email',
+                                    type: 'email',
+                                    placeholder: 'Email',
+                                    label: 'Email',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'phone',
+                                    type: 'tel',
+                                    placeholder: 'Số điện thoại',
+                                    label: 'Số điện thoại',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'company',
+                                    type: 'text',
+                                    placeholder: 'Tên công ty',
+                                    label: 'Công ty',
+                                    required: false,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px'
+                                },
+                                {
+                                    name: 'interest',
+                                    type: 'select',
+                                    label: 'Bạn quan tâm đến',
+                                    required: true,
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #e5e7eb',
+                                    fontSize: '14px',
+                                    options: ['Sản phẩm', 'Dịch vụ', 'Hợp tác', 'Khác']
+                                },
+                                {
+                                    name: 'terms',
+                                    type: 'checkbox',
+                                    label: 'Tôi đồng ý với điều khoản sử dụng',
+                                    required: true,
+                                    fontSize: '13px'
+                                }
+                            ],
+                            buttonText: 'Đăng ký ngay',
+                            buttonBackground: '#10b981',
+                            buttonColor: '#ffffff',
+                            buttonPadding: '12px 32px',
+                            buttonBorderRadius: '8px',
+                            buttonBorder: 'none',
+                            buttonFontSize: '16px',
+                            buttonFontWeight: '600',
+                            direction: 'column',
+                            gap: '16px',
+                            successMessage: 'Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm.',
+                            errorMessage: 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.',
+                            showLabels: true,
+                            labelPosition: 'top'
+                        },
+                        size: { width: 500, height: 600 },
+                        mobileSize: { width: 340, height: 680 },
+                        tabletSize: { width: 450, height: 640 },
+                        styles: {
+                            backgroundColor: '#f9fafb',
+                            padding: '24px',
+                            borderRadius: '12px',
+                            border: '1px solid #e5e7eb',
+                        },
+                        responsiveStyles: {
+                            mobile: { padding: '16px' },
+                            tablet: { padding: '20px' }
+                        }
+                    },
+                },
             ]
         },
     ],
