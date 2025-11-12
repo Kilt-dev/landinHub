@@ -13,6 +13,7 @@ const LandingList = ({
                          handleEditPage,
                          handlePublishPage,
                          handleDeletePage, // ✅ DÙNG CÓ SẴN
+                         handleDeployPage, // ☁️ Deploy to AWS
                          formatDate,
                          onRefreshPages,
                      }) => {
@@ -246,6 +247,48 @@ const LandingList = ({
                                     >
                                         <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
                                         <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </button>
+
+                                <button
+                                    className="action-btn deploy-btn"
+                                    style={{
+                                        position: 'absolute',
+                                        top: '10px',
+                                        right: '50px',
+                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        borderRadius: '50%',
+                                        padding: '8px',
+                                        boxShadow: '0 2px 4px rgba(102, 126, 234, 0.3)',
+                                        cursor: 'pointer',
+                                        border: 'none',
+                                        transition: 'all 0.2s ease',
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeployPage(pageId);
+                                    }}
+                                    title="Deploy lên AWS CloudFront"
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.1)';
+                                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(102, 126, 234, 0.4)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                        e.currentTarget.style.boxShadow = '0 2px 4px rgba(102, 126, 234, 0.3)';
+                                    }}
+                                >
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="#ffffff"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
                                     </svg>
                                 </button>
                             </div>

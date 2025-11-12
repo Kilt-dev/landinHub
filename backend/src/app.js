@@ -11,8 +11,37 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('MongoDB connected'))
     .catch(err => console.error('MongoDB connection error:', err));
 
-app.use(cors({ origin: process.env.REACT_APP_API_URL || 'http://localhost:3000',
-    credentials: true,}));
+// CORS Configuration - Allow multiple origins including CloudFront domains
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps, Postman, etc.)
+        if (!origin) return callback(null, true);
+
+        const allowedOrigins = [
+            process.env.FRONTEND_URL || 'http://localhost:3000',
+            process.env.REACT_APP_API_URL || 'http://localhost:3000',
+            'http://localhost:3000',
+            'http://localhost:5000',
+        ];
+
+        // Allow CloudFront domains (*.cloudfront.net)
+        if (origin.includes('.cloudfront.net') ||
+            origin.includes('.landinghub.app') ||
+            allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            console.warn('CORS blocked origin:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Content-Length', 'X-Request-Id'],
+    maxAge: 86400, // 24 hours
+};
+
+app.use(cors(corsOptions));
 
 
 
@@ -32,5 +61,6 @@ app.use('/api/payment', require('./routes/payment'));
 app.use('/api/payout', require('./routes/payout'));
 app.use('/api/admin/marketplace', require('./routes/adminMarketplace'));
 app.use('/api/forms', require('./routes/formSubmissions'));
+app.use('/api/deployment', require('./routes/deployment'));
 
 module.exports = app;

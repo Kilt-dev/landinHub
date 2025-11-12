@@ -167,6 +167,10 @@ const PageContent = () => {
         navigate(`/pages/preview?id=${pageId}`);
     };
 
+    const handleDeployPage = (pageId) => {
+        navigate(`/pages/${pageId}/deploy`);
+    };
+
     const formatDate = (date) => {
         if (!date) {
             console.warn('Date is null or undefined:', date);
@@ -229,6 +233,7 @@ const PageContent = () => {
                     handleEditPage={handleEditPage}
                     handlePublishPage={handlePublishPage}
                     handleDeletePage={handleDeletePage}
+                    handleDeployPage={handleDeployPage}
                     formatDate={formatDate}
                     onRefreshPages={fetchLandingPages}
                 />
