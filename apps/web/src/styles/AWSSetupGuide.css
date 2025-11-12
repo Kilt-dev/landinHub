@@ -1,0 +1,512 @@
+/* AWS Setup Guide Styles */
+
+.aws-guide-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    line-height: 1.6;
+    color: #374151;
+}
+
+/* Header */
+.guide-header {
+    text-align: center;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.guide-header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 12px 0;
+}
+
+.guide-header p {
+    font-size: 18px;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* Table of Contents */
+.toc {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 40px;
+}
+
+.toc h3 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.toc ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.toc li {
+    margin-bottom: 8px;
+}
+
+.toc a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-size: 15px;
+    transition: color 0.2s ease;
+}
+
+.toc a:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+/* Guide Sections */
+.guide-section {
+    margin-bottom: 56px;
+}
+
+.guide-section h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 24px 0;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.guide-section h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 24px 0 12px 0;
+}
+
+.guide-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin: 16px 0 8px 0;
+}
+
+.guide-section p {
+    margin: 12px 0;
+    font-size: 15px;
+}
+
+.guide-section ul,
+.guide-section ol {
+    margin: 12px 0;
+    padding-left: 24px;
+}
+
+.guide-section li {
+    margin: 8px 0;
+    font-size: 15px;
+}
+
+.guide-section a {
+    color: #3b82f6;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.guide-section a:hover {
+    text-decoration: underline;
+}
+
+/* Info Boxes */
+.info-box,
+.warning-box,
+.important-box {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.info-box {
+    background: #eff6ff;
+    border: 1px solid #3b82f6;
+    color: #1e40af;
+}
+
+.warning-box {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+    display: flex;
+    gap: 12px;
+}
+
+.warning-box svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.important-box {
+    background: #fee2e2;
+    border: 2px solid #ef4444;
+    color: #991b1b;
+}
+
+.important-box h4 {
+    margin: 0 0 12px 0;
+    color: #991b1b;
+}
+
+.important-box ul {
+    margin: 8px 0;
+}
+
+/* Steps */
+.step {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 16px 0;
+}
+
+.step h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* Code Blocks */
+.code-block {
+    background: #1f2937;
+    color: #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    overflow-x: auto;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.code-block pre {
+    margin: 0;
+    white-space: pre;
+}
+
+.code-block code {
+    font-family: inherit;
+}
+
+code {
+    background: #f3f4f6;
+    color: #dc2626;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* Buttons */
+.btn-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: #3b82f6;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-copy:hover {
+    background: #2563eb;
+}
+
+/* Checklist */
+.checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 20px 0;
+}
+
+.checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.checklist-item svg {
+    color: #10b981;
+    flex-shrink: 0;
+}
+
+/* Architecture Diagram */
+.architecture-diagram {
+    background: #1f2937;
+    color: #e5e7eb;
+    padding: 24px;
+    border-radius: 12px;
+    margin: 24px 0;
+    overflow-x: auto;
+}
+
+.architecture-diagram pre {
+    margin: 0;
+    font-family: 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Pricing Table */
+.pricing-table {
+    margin: 24px 0;
+}
+
+.pricing-table h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+    margin: 24px 0 12px 0;
+}
+
+.pricing-table table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.pricing-table thead {
+    background: #f3f4f6;
+}
+
+.pricing-table th,
+.pricing-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.pricing-table th {
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+}
+
+.pricing-table td {
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.pricing-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.estimate-box {
+    background: #d1fae5;
+    border: 1px solid #10b981;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.estimate-box h4 {
+    margin: 0 0 12px 0;
+    color: #065f46;
+}
+
+.estimate-box p {
+    color: #065f46;
+    margin: 8px 0;
+}
+
+.estimate-box ul {
+    margin: 8px 0;
+}
+
+.estimate-box li {
+    color: #065f46;
+}
+
+.estimate-box strong {
+    color: #064e3b;
+}
+
+/* FAQ */
+.faq {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.faq-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.faq-item h4 {
+    margin: 0 0 12px 0;
+    color: #111827;
+}
+
+.faq-item p {
+    margin: 8px 0;
+}
+
+.faq-item strong {
+    color: #374151;
+}
+
+/* Next Steps */
+.next-steps {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 40px;
+    color: white;
+}
+
+.next-steps h2 {
+    color: white;
+    border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+.next-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.next-step-card {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s ease;
+}
+
+.next-step-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.next-step-card h3 {
+    margin: 0 0 8px 0;
+    color: white;
+}
+
+.next-step-card p {
+    margin: 0 0 16px 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+}
+
+.next-step-card a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.next-step-card a:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Support Box */
+.support-box {
+    background: #f9fafb;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 32px;
+    margin-top: 40px;
+    text-align: center;
+}
+
+.support-box h3 {
+    margin: 0 0 16px 0;
+    font-size: 24px;
+    color: #111827;
+}
+
+.support-box p {
+    margin: 8px 0 16px 0;
+    color: #6b7280;
+}
+
+.support-box ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.support-box li {
+    font-size: 15px;
+    color: #374151;
+}
+
+.support-box a {
+    color: #3b82f6;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .aws-guide-container {
+        padding: 24px 16px;
+    }
+
+    .guide-header h1 {
+        font-size: 28px;
+    }
+
+    .guide-section h2 {
+        font-size: 24px;
+    }
+
+    .next-steps-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pricing-table table {
+        font-size: 12px;
+    }
+
+    .pricing-table th,
+    .pricing-table td {
+        padding: 8px 12px;
+    }
+}
