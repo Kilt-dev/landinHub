@@ -1,44 +1,53 @@
 import React, { useState } from 'react';
 import {
-    ChevronRight, ChevronLeft, Plus, Trash2, GripVertical,
+    ChevronRight, ChevronLeft, Plus, Trash2, GripVertical, Copy,
     Type, Mail, Phone, Calendar, Hash, CheckSquare, Circle,
-    List, AlignLeft, Settings, Palette, Zap, Eye
+    List, AlignLeft, Settings, Palette, Zap, Eye, Save, Code
 } from 'lucide-react';
 import '../../../styles/ElementPropertiesPanel.css';
 
 // Field type configurations
 const FIELD_TYPES = [
-    { value: 'text', label: 'Text', icon: Type },
-    { value: 'email', label: 'Email', icon: Mail },
-    { value: 'tel', label: 'Phone', icon: Phone },
-    { value: 'number', label: 'Number', icon: Hash },
-    { value: 'date', label: 'Date', icon: Calendar },
-    { value: 'password', label: 'Password', icon: Type },
-    { value: 'textarea', label: 'Textarea', icon: AlignLeft },
-    { value: 'select', label: 'Select', icon: List },
-    { value: 'checkbox', label: 'Checkbox', icon: CheckSquare },
-    { value: 'radio', label: 'Radio', icon: Circle },
+    { value: 'text', label: 'Text', icon: Type, placeholder: 'Enter text...' },
+    { value: 'email', label: 'Email', icon: Mail, placeholder: 'email@example.com' },
+    { value: 'tel', label: 'Phone', icon: Phone, placeholder: '+84 123 456 789' },
+    { value: 'number', label: 'Number', icon: Hash, placeholder: '0' },
+    { value: 'date', label: 'Date', icon: Calendar, placeholder: 'dd/mm/yyyy' },
+    { value: 'password', label: 'Password', icon: Type, placeholder: '••••••••' },
+    { value: 'textarea', label: 'Textarea', icon: AlignLeft, placeholder: 'Enter message...' },
+    { value: 'select', label: 'Dropdown', icon: List, placeholder: 'Select an option' },
+    { value: 'checkbox', label: 'Checkbox', icon: CheckSquare, placeholder: '' },
+    { value: 'radio', label: 'Radio', icon: Circle, placeholder: '' },
 ];
 
 const COLOR_PRESETS = [
-    '#2563eb', '#3b82f6', '#06b6d4', '#10b981', '#22c55e',
-    '#84cc16', '#eab308', '#f59e0b', '#ef4444', '#dc2626',
-    '#ec4899', '#a855f7', '#8b5cf6', '#1f2937', '#374151'
+    { color: '#2563eb', name: 'Blue' },
+    { color: '#3b82f6', name: 'Light Blue' },
+    { color: '#06b6d4', name: 'Cyan' },
+    { color: '#10b981', name: 'Green' },
+    { color: '#22c55e', name: 'Lime' },
+    { color: '#84cc16', name: 'Yellow Green' },
+    { color: '#eab308', name: 'Yellow' },
+    { color: '#f59e0b', name: 'Orange' },
+    { color: '#ef4444', name: 'Red' },
+    { color: '#ec4899', name: 'Pink' },
+    { color: '#a855f7', name: 'Purple' },
+    { color: '#8b5cf6', name: 'Violet' },
 ];
 
 const GRADIENT_PRESETS = [
-    { name: 'None', value: '#2563eb' },
-    { name: 'Purple-Pink', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-    { name: 'Blue-Cyan', value: 'linear-gradient(135deg, #2563eb 0%, #06b6d4 100%)' },
-    { name: 'Green-Lime', value: 'linear-gradient(135deg, #10b981 0%, #84cc16 100%)' },
-    { name: 'Orange-Yellow', value: 'linear-gradient(135deg, #f59e0b 0%, #eab308 100%)' },
-    { name: 'Red-Pink', value: 'linear-gradient(135deg, #ef4444 0%, #ec4899 100%)' },
+    { name: 'Blue Gradient', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+    { name: 'Ocean Gradient', value: 'linear-gradient(135deg, #2563eb 0%, #06b6d4 100%)' },
+    { name: 'Green Gradient', value: 'linear-gradient(135deg, #10b981 0%, #84cc16 100%)' },
+    { name: 'Sunset Gradient', value: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)' },
+    { name: 'Pink Gradient', value: 'linear-gradient(135deg, #ef4444 0%, #ec4899 100%)' },
+    { name: 'Purple Gradient', value: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' },
 ];
 
 const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, onToggle }) => {
     const [activeTab, setActiveTab] = useState('fields');
     const [expandedFieldIndex, setExpandedFieldIndex] = useState(null);
-    const [draggedIndex, setDraggedIndex] = useState(null);
+    const [showAddFieldMenu, setShowAddFieldMenu] = useState(false);
 
     if (isCollapsed) {
         return (
@@ -54,7 +63,10 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
         return (
             <div className="element-properties-panel">
                 <div className="panel-header">
-                    <h3 className="panel-title">Thuộc tính Form</h3>
+                    <h3 className="panel-title">
+                        <Settings size={16} style={{ marginRight: '8px' }} />
+                        Form Properties
+                    </h3>
                     <button onClick={onToggle} className="toggle-button" title="Đóng">
                         <ChevronRight size={18} />
                     </button>
@@ -72,17 +84,19 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
 
     // ==================== FIELD MANAGEMENT FUNCTIONS ====================
 
-    const addField = (fieldType = 'text') => {
+    const addField = (fieldType) => {
+        const fieldConfig = FIELD_TYPES.find(ft => ft.value === fieldType);
         const newField = {
             type: fieldType,
-            label: getDefaultLabel(fieldType),
-            placeholder: getDefaultPlaceholder(fieldType),
+            label: fieldConfig?.label || 'Field',
+            placeholder: fieldConfig?.placeholder || 'Enter...',
             required: false,
             ...(fieldType === 'textarea' && { rows: 4 }),
             ...(fieldType === 'select' && {
                 options: [
                     { value: '', label: '-- Chọn --' },
                     { value: 'option1', label: 'Tùy chọn 1' },
+                    { value: 'option2', label: 'Tùy chọn 2' },
                 ]
             }),
             ...(fieldType === 'radio' && {
@@ -97,9 +111,11 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
         const updatedFields = [...fields, newField];
         updateFormData({ fields: updatedFields });
         setExpandedFieldIndex(updatedFields.length - 1);
+        setShowAddFieldMenu(false);
     };
 
     const removeField = (index) => {
+        if (!window.confirm('Xóa field này?')) return;
         const updatedFields = fields.filter((_, i) => i !== index);
         updateFormData({ fields: updatedFields });
         if (expandedFieldIndex === index) {
@@ -115,11 +131,9 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
 
     const moveField = (fromIndex, toIndex) => {
         if (toIndex < 0 || toIndex >= fields.length) return;
-
         const updatedFields = [...fields];
         const [movedField] = updatedFields.splice(fromIndex, 1);
         updatedFields.splice(toIndex, 0, movedField);
-
         updateFormData({ fields: updatedFields });
         setExpandedFieldIndex(toIndex);
     };
@@ -127,46 +141,12 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
     const duplicateField = (index) => {
         const fieldToDuplicate = { ...fields[index] };
         if (fieldToDuplicate.name) {
-            fieldToDuplicate.name = `${fieldToDuplicate.name}-copy-${Date.now()}`;
+            fieldToDuplicate.name = `${fieldToDuplicate.name}-copy`;
         }
         const updatedFields = [...fields];
         updatedFields.splice(index + 1, 0, fieldToDuplicate);
         updateFormData({ fields: updatedFields });
         setExpandedFieldIndex(index + 1);
-    };
-
-    // ==================== HELPER FUNCTIONS ====================
-
-    const getDefaultLabel = (type) => {
-        const labels = {
-            text: 'Text Field',
-            email: 'Email',
-            tel: 'Phone Number',
-            number: 'Number',
-            date: 'Date',
-            password: 'Password',
-            textarea: 'Message',
-            select: 'Select Option',
-            checkbox: 'I agree',
-            radio: 'Choose one',
-        };
-        return labels[type] || 'Field';
-    };
-
-    const getDefaultPlaceholder = (type) => {
-        const placeholders = {
-            text: 'Enter text...',
-            email: 'email@example.com',
-            tel: '+84 123 456 789',
-            number: '0',
-            date: 'dd/mm/yyyy',
-            password: '••••••••',
-            textarea: 'Enter your message...',
-            select: 'Choose an option',
-            checkbox: '',
-            radio: '',
-        };
-        return placeholders[type] || 'Enter...';
     };
 
     const updateFormData = (updates) => {
@@ -197,32 +177,6 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
         onUpdateElement(updatedElement);
     };
 
-    // ==================== DRAG & DROP HANDLERS ====================
-
-    const handleDragStart = (e, index) => {
-        setDraggedIndex(index);
-        e.dataTransfer.effectAllowed = 'move';
-    };
-
-    const handleDragOver = (e, index) => {
-        e.preventDefault();
-        if (draggedIndex === null || draggedIndex === index) return;
-
-        e.dataTransfer.dropEffect = 'move';
-    };
-
-    const handleDrop = (e, dropIndex) => {
-        e.preventDefault();
-        if (draggedIndex === null || draggedIndex === dropIndex) return;
-
-        moveField(draggedIndex, dropIndex);
-        setDraggedIndex(null);
-    };
-
-    const handleDragEnd = () => {
-        setDraggedIndex(null);
-    };
-
     // ==================== RENDER OPTION EDITOR ====================
 
     const renderOptionEditor = (field, fieldIndex) => {
@@ -230,8 +184,8 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
 
         const addOption = () => {
             const newOption = {
-                value: `option${options.length + 1}`,
-                label: `Option ${options.length + 1}`
+                value: `option${options.length}`,
+                label: `Tùy chọn ${options.length}`
             };
             updateField(fieldIndex, {
                 options: [...options, newOption]
@@ -245,91 +199,122 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
         };
 
         const removeOption = (optIndex) => {
+            if (options.length <= 1) {
+                alert('Phải có ít nhất 1 option!');
+                return;
+            }
             const updatedOptions = options.filter((_, i) => i !== optIndex);
             updateField(fieldIndex, { options: updatedOptions });
         };
 
         return (
-            <div className="field-options-editor" style={{ marginTop: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: '500', color: '#6b7280' }}>
+            <div style={{ marginTop: '12px' }}>
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '8px'
+                }}>
+                    <label style={{
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: '#374151'
+                    }}>
                         Options
                     </label>
                     <button
                         onClick={addOption}
                         style={{
-                            padding: '4px 8px',
+                            padding: '4px 10px',
                             fontSize: '12px',
-                            background: '#2563eb',
+                            background: '#10b981',
                             color: '#fff',
                             border: 'none',
-                            borderRadius: '4px',
+                            borderRadius: '6px',
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '4px',
+                            fontWeight: '500',
+                            transition: 'background 0.2s'
                         }}
+                        onMouseOver={(e) => e.target.style.background = '#059669'}
+                        onMouseOut={(e) => e.target.style.background = '#10b981'}
                     >
-                        <Plus size={14} /> Add
+                        <Plus size={12} /> Add Option
                     </button>
                 </div>
-                {options.map((option, optIndex) => (
-                    <div
-                        key={optIndex}
-                        style={{
-                            display: 'flex',
-                            gap: '8px',
-                            marginBottom: '8px',
-                            padding: '8px',
-                            background: '#f9fafb',
-                            borderRadius: '6px'
-                        }}
-                    >
-                        <div style={{ flex: 1 }}>
-                            <input
-                                type="text"
-                                value={option.label}
-                                onChange={(e) => updateOption(optIndex, { label: e.target.value })}
-                                placeholder="Label"
-                                style={{
-                                    width: '100%',
-                                    padding: '6px 8px',
-                                    fontSize: '13px',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: '4px',
-                                    marginBottom: '4px'
-                                }}
-                            />
-                            <input
-                                type="text"
-                                value={option.value}
-                                onChange={(e) => updateOption(optIndex, { value: e.target.value })}
-                                placeholder="Value"
-                                style={{
-                                    width: '100%',
-                                    padding: '6px 8px',
-                                    fontSize: '13px',
-                                    border: '1px solid #d1d5db',
-                                    borderRadius: '4px'
-                                }}
-                            />
-                        </div>
-                        <button
-                            onClick={() => removeOption(optIndex)}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {options.map((option, optIndex) => (
+                        <div
+                            key={optIndex}
                             style={{
-                                padding: '4px',
-                                background: '#ef4444',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                height: 'fit-content'
+                                display: 'flex',
+                                gap: '6px',
+                                padding: '10px',
+                                background: '#f9fafb',
+                                borderRadius: '8px',
+                                border: '1px solid #e5e7eb'
                             }}
                         >
-                            <Trash2 size={14} />
-                        </button>
-                    </div>
-                ))}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <input
+                                    type="text"
+                                    value={option.label}
+                                    onChange={(e) => updateOption(optIndex, { label: e.target.value })}
+                                    placeholder="Label hiển thị"
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        fontSize: '13px',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '6px',
+                                        outline: 'none'
+                                    }}
+                                />
+                                <input
+                                    type="text"
+                                    value={option.value}
+                                    onChange={(e) => updateOption(optIndex, { value: e.target.value })}
+                                    placeholder="Value gửi lên"
+                                    style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        fontSize: '13px',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '6px',
+                                        outline: 'none',
+                                        fontFamily: 'monospace',
+                                        color: '#6b7280'
+                                    }}
+                                />
+                            </div>
+                            <button
+                                onClick={() => removeOption(optIndex)}
+                                style={{
+                                    padding: '8px',
+                                    background: '#fef2f2',
+                                    color: '#ef4444',
+                                    border: '1px solid #fecaca',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    height: 'fit-content',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseOver={(e) => {
+                                    e.target.style.background = '#ef4444';
+                                    e.target.style.color = '#fff';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.target.style.background = '#fef2f2';
+                                    e.target.style.color = '#ef4444';
+                                }}
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     };
@@ -338,71 +323,164 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
 
     const renderFieldsTab = () => (
         <div className="panel-section">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1f2937' }}>
-                    Form Fields ({fields.length})
-                </h4>
-                <div style={{ position: 'relative' }}>
-                    <button
-                        onClick={() => {
-                            const fieldType = prompt('Enter field type (text, email, tel, number, date, password, textarea, select, checkbox, radio):', 'text');
-                            if (fieldType && FIELD_TYPES.some(ft => ft.value === fieldType)) {
-                                addField(fieldType);
-                            } else if (fieldType) {
-                                alert('Invalid field type');
-                            }
-                        }}
-                        style={{
-                            padding: '6px 12px',
-                            fontSize: '13px',
-                            background: '#2563eb',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontWeight: '500'
-                        }}
-                    >
-                        <Plus size={16} /> Add Field
-                    </button>
+            {/* Header with Add Button */}
+            <div style={{
+                marginBottom: '16px',
+                paddingBottom: '12px',
+                borderBottom: '2px solid #e5e7eb'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <h4 style={{
+                        margin: 0,
+                        fontSize: '15px',
+                        fontWeight: '600',
+                        color: '#111827',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                    }}>
+                        <List size={16} />
+                        Form Fields
+                        <span style={{
+                            background: '#f3f4f6',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            color: '#6b7280'
+                        }}>
+                            {fields.length}
+                        </span>
+                    </h4>
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            onClick={() => setShowAddFieldMenu(!showAddFieldMenu)}
+                            style={{
+                                padding: '8px 14px',
+                                fontSize: '13px',
+                                background: '#2563eb',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontWeight: '600',
+                                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseOver={(e) => {
+                                e.target.style.background = '#1d4ed8';
+                                e.target.style.boxShadow = '0 4px 8px rgba(37, 99, 235, 0.3)';
+                            }}
+                            onMouseOut={(e) => {
+                                e.target.style.background = '#2563eb';
+                                e.target.style.boxShadow = '0 2px 4px rgba(37, 99, 235, 0.2)';
+                            }}
+                        >
+                            <Plus size={16} /> Add Field
+                        </button>
+
+                        {/* Add Field Menu */}
+                        {showAddFieldMenu && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    marginTop: '8px',
+                                    background: '#fff',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+                                    zIndex: 1000,
+                                    minWidth: '200px',
+                                    overflow: 'hidden'
+                                }}
+                            >
+                                {FIELD_TYPES.map(fieldType => {
+                                    const Icon = fieldType.icon;
+                                    return (
+                                        <button
+                                            key={fieldType.value}
+                                            onClick={() => addField(fieldType.value)}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 14px',
+                                                fontSize: '13px',
+                                                background: '#fff',
+                                                color: '#374151',
+                                                border: 'none',
+                                                borderBottom: '1px solid #f3f4f6',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                textAlign: 'left',
+                                                transition: 'all 0.15s'
+                                            }}
+                                            onMouseOver={(e) => {
+                                                e.target.style.background = '#f9fafb';
+                                                e.target.style.color = '#2563eb';
+                                            }}
+                                            onMouseOut={(e) => {
+                                                e.target.style.background = '#fff';
+                                                e.target.style.color = '#374151';
+                                            }}
+                                        >
+                                            <Icon size={16} />
+                                            {fieldType.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
+                <p style={{
+                    margin: 0,
+                    fontSize: '12px',
+                    color: '#6b7280'
+                }}>
+                    Quản lý tất cả fields trong form của bạn
+                </p>
             </div>
 
+            {/* Empty State */}
             {fields.length === 0 ? (
                 <div style={{
-                    padding: '32px 16px',
+                    padding: '48px 24px',
                     textAlign: 'center',
                     color: '#9ca3af',
-                    background: '#f9fafb',
-                    borderRadius: '8px',
-                    border: '2px dashed #e5e7eb'
+                    background: 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+                    borderRadius: '12px',
+                    border: '2px dashed #d1d5db'
                 }}>
-                    <AlignLeft size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
-                    <p style={{ margin: 0, fontSize: '13px' }}>No fields yet</p>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '12px' }}>Click "Add Field" to start</p>
+                    <AlignLeft size={48} style={{ margin: '0 auto 16px', opacity: 0.3, strokeWidth: 1.5 }} />
+                    <p style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: '600', color: '#6b7280' }}>
+                        Chưa có field nào
+                    </p>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#9ca3af' }}>
+                        Click "Add Field" để thêm field đầu tiên
+                    </p>
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                // Field List
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {fields.map((field, index) => {
                         const isExpanded = expandedFieldIndex === index;
-                        const FieldIcon = FIELD_TYPES.find(ft => ft.value === field.type)?.icon || Type;
+                        const fieldConfig = FIELD_TYPES.find(ft => ft.value === field.type);
+                        const FieldIcon = fieldConfig?.icon || Type;
 
                         return (
                             <div
                                 key={index}
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, index)}
-                                onDragOver={(e) => handleDragOver(e, index)}
-                                onDrop={(e) => handleDrop(e, index)}
-                                onDragEnd={handleDragEnd}
                                 style={{
-                                    border: '1px solid #e5e7eb',
-                                    borderRadius: '8px',
-                                    background: draggedIndex === index ? '#f3f4f6' : '#fff',
-                                    opacity: draggedIndex === index ? 0.5 : 1,
+                                    border: isExpanded ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                                    borderRadius: '10px',
+                                    background: '#fff',
+                                    boxShadow: isExpanded ? '0 4px 12px rgba(37, 99, 235, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
                                     transition: 'all 0.2s'
                                 }}
                             >
@@ -411,22 +489,49 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '8px',
-                                        padding: '12px',
+                                        gap: '10px',
+                                        padding: '14px',
                                         cursor: 'pointer',
-                                        background: isExpanded ? '#f9fafb' : 'transparent'
+                                        background: isExpanded ? '#eff6ff' : 'transparent',
+                                        borderTopLeftRadius: '10px',
+                                        borderTopRightRadius: '10px'
                                     }}
                                     onClick={() => setExpandedFieldIndex(isExpanded ? null : index)}
                                 >
-                                    <GripVertical size={16} style={{ color: '#9ca3af', cursor: 'grab' }} />
-                                    <FieldIcon size={16} style={{ color: '#6b7280' }} />
+                                    <div style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: isExpanded ? '#dbeafe' : '#f3f4f6',
+                                        borderRadius: '8px',
+                                        color: isExpanded ? '#2563eb' : '#6b7280'
+                                    }}>
+                                        <FieldIcon size={18} />
+                                    </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: '13px', fontWeight: '500', color: '#1f2937' }}>
-                                            {field.label || getDefaultLabel(field.type)}
+                                        <div style={{
+                                            fontSize: '14px',
+                                            fontWeight: '600',
+                                            color: '#111827',
+                                            marginBottom: '2px'
+                                        }}>
+                                            {field.label || fieldConfig?.label || 'Field'}
+                                            {field.required && (
+                                                <span style={{
+                                                    color: '#ef4444',
+                                                    marginLeft: '4px',
+                                                    fontSize: '16px'
+                                                }}>*</span>
+                                            )}
                                         </div>
-                                        <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-                                            {field.type}
-                                            {field.required && <span style={{ color: '#ef4444', marginLeft: '4px' }}>*</span>}
+                                        <div style={{
+                                            fontSize: '12px',
+                                            color: '#6b7280',
+                                            fontWeight: '500'
+                                        }}>
+                                            {fieldConfig?.label || field.type}
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', gap: '4px' }}>
@@ -436,34 +541,51 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                                 duplicateField(index);
                                             }}
                                             style={{
-                                                padding: '4px',
+                                                padding: '6px',
                                                 background: '#f3f4f6',
                                                 border: 'none',
-                                                borderRadius: '4px',
+                                                borderRadius: '6px',
                                                 cursor: 'pointer',
-                                                color: '#6b7280'
+                                                color: '#6b7280',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseOver={(e) => {
+                                                e.target.style.background = '#e5e7eb';
+                                                e.target.style.color = '#374151';
+                                            }}
+                                            onMouseOut={(e) => {
+                                                e.target.style.background = '#f3f4f6';
+                                                e.target.style.color = '#6b7280';
                                             }}
                                             title="Duplicate"
                                         >
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                            </svg>
+                                            <Copy size={14} />
                                         </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                if (window.confirm('Delete this field?')) {
-                                                    removeField(index);
-                                                }
+                                                removeField(index);
                                             }}
                                             style={{
-                                                padding: '4px',
+                                                padding: '6px',
                                                 background: '#fef2f2',
                                                 border: 'none',
-                                                borderRadius: '4px',
+                                                borderRadius: '6px',
                                                 cursor: 'pointer',
-                                                color: '#ef4444'
+                                                color: '#ef4444',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseOver={(e) => {
+                                                e.target.style.background = '#ef4444';
+                                                e.target.style.color = '#fff';
+                                            }}
+                                            onMouseOut={(e) => {
+                                                e.target.style.background = '#fef2f2';
+                                                e.target.style.color = '#ef4444';
                                             }}
                                             title="Delete"
                                         >
@@ -475,13 +597,19 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                 {/* Field Editor */}
                                 {isExpanded && (
                                     <div style={{
-                                        padding: '12px',
+                                        padding: '16px',
                                         borderTop: '1px solid #e5e7eb',
                                         background: '#fafbfc'
                                     }}>
                                         {/* Field Type */}
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
+                                        <div className="property-group" style={{ marginBottom: '14px' }}>
+                                            <label style={{
+                                                display: 'block',
+                                                fontSize: '13px',
+                                                fontWeight: '600',
+                                                color: '#374151',
+                                                marginBottom: '8px'
+                                            }}>
                                                 Field Type
                                             </label>
                                             <select
@@ -489,8 +617,6 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                                 onChange={(e) => {
                                                     const newType = e.target.value;
                                                     const updates = { type: newType };
-
-                                                    // Add type-specific defaults
                                                     if (newType === 'textarea' && !field.rows) {
                                                         updates.rows = 4;
                                                     }
@@ -503,16 +629,16 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                                     if (newType === 'radio' && !field.name) {
                                                         updates.name = `radio-${Date.now()}`;
                                                     }
-
                                                     updateField(index, updates);
                                                 }}
                                                 style={{
                                                     width: '100%',
-                                                    padding: '8px',
+                                                    padding: '10px 12px',
                                                     fontSize: '13px',
                                                     border: '1px solid #d1d5db',
-                                                    borderRadius: '6px',
-                                                    background: '#fff'
+                                                    borderRadius: '8px',
+                                                    background: '#fff',
+                                                    outline: 'none'
                                                 }}
                                             >
                                                 {FIELD_TYPES.map(ft => (
@@ -522,42 +648,56 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                         </div>
 
                                         {/* Label */}
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
+                                        <div className="property-group" style={{ marginBottom: '14px' }}>
+                                            <label style={{
+                                                display: 'block',
+                                                fontSize: '13px',
+                                                fontWeight: '600',
+                                                color: '#374151',
+                                                marginBottom: '8px'
+                                            }}>
                                                 Label
                                             </label>
                                             <input
                                                 type="text"
                                                 value={field.label || ''}
                                                 onChange={(e) => updateField(index, { label: e.target.value })}
-                                                placeholder="Field label"
+                                                placeholder="Tên hiển thị"
                                                 style={{
                                                     width: '100%',
-                                                    padding: '8px',
+                                                    padding: '10px 12px',
                                                     fontSize: '13px',
                                                     border: '1px solid #d1d5db',
-                                                    borderRadius: '6px'
+                                                    borderRadius: '8px',
+                                                    outline: 'none'
                                                 }}
                                             />
                                         </div>
 
-                                        {/* Placeholder (for input fields) */}
+                                        {/* Placeholder */}
                                         {!['checkbox', 'radio'].includes(field.type) && (
-                                            <div style={{ marginBottom: '12px' }}>
-                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
+                                            <div className="property-group" style={{ marginBottom: '14px' }}>
+                                                <label style={{
+                                                    display: 'block',
+                                                    fontSize: '13px',
+                                                    fontWeight: '600',
+                                                    color: '#374151',
+                                                    marginBottom: '8px'
+                                                }}>
                                                     Placeholder
                                                 </label>
                                                 <input
                                                     type="text"
                                                     value={field.placeholder || ''}
                                                     onChange={(e) => updateField(index, { placeholder: e.target.value })}
-                                                    placeholder="Field placeholder"
+                                                    placeholder="Text gợi ý"
                                                     style={{
                                                         width: '100%',
-                                                        padding: '8px',
+                                                        padding: '10px 12px',
                                                         fontSize: '13px',
                                                         border: '1px solid #d1d5db',
-                                                        borderRadius: '6px'
+                                                        borderRadius: '8px',
+                                                        outline: 'none'
                                                     }}
                                                 />
                                             </div>
@@ -565,9 +705,15 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
 
                                         {/* Textarea Rows */}
                                         {field.type === 'textarea' && (
-                                            <div style={{ marginBottom: '12px' }}>
-                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
-                                                    Rows
+                                            <div className="property-group" style={{ marginBottom: '14px' }}>
+                                                <label style={{
+                                                    display: 'block',
+                                                    fontSize: '13px',
+                                                    fontWeight: '600',
+                                                    color: '#374151',
+                                                    marginBottom: '8px'
+                                                }}>
+                                                    Number of Rows
                                                 </label>
                                                 <input
                                                     type="number"
@@ -577,35 +723,62 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                                     onChange={(e) => updateField(index, { rows: parseInt(e.target.value) || 4 })}
                                                     style={{
                                                         width: '100%',
-                                                        padding: '8px',
+                                                        padding: '10px 12px',
                                                         fontSize: '13px',
                                                         border: '1px solid #d1d5db',
-                                                        borderRadius: '6px'
+                                                        borderRadius: '8px',
+                                                        outline: 'none'
                                                     }}
                                                 />
                                             </div>
                                         )}
 
-                                        {/* Options (for select/radio) */}
+                                        {/* Options Editor */}
                                         {(field.type === 'select' || field.type === 'radio') && renderOptionEditor(field, index)}
 
-                                        {/* Required Checkbox */}
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                        {/* Required Toggle */}
+                                        <div className="property-group" style={{ marginTop: '14px', marginBottom: '14px' }}>
+                                            <label style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                cursor: 'pointer',
+                                                padding: '10px',
+                                                background: field.required ? '#dbeafe' : '#f9fafb',
+                                                borderRadius: '8px',
+                                                border: field.required ? '1px solid #93c5fd' : '1px solid #e5e7eb',
+                                                transition: 'all 0.2s'
+                                            }}>
                                                 <input
                                                     type="checkbox"
                                                     checked={field.required || false}
                                                     onChange={(e) => updateField(index, { required: e.target.checked })}
-                                                    style={{ width: '16px', height: '16px' }}
+                                                    style={{
+                                                        width: '18px',
+                                                        height: '18px',
+                                                        cursor: 'pointer'
+                                                    }}
                                                 />
-                                                <span style={{ fontSize: '13px', color: '#374151' }}>Required field</span>
+                                                <span style={{
+                                                    fontSize: '13px',
+                                                    color: '#374151',
+                                                    fontWeight: '500'
+                                                }}>
+                                                    Required field (bắt buộc)
+                                                </span>
                                             </label>
                                         </div>
 
-                                        {/* Name (for checkbox/radio) */}
+                                        {/* Name Attribute */}
                                         {(field.type === 'checkbox' || field.type === 'radio') && (
-                                            <div style={{ marginBottom: '12px' }}>
-                                                <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', color: '#6b7280', marginBottom: '6px' }}>
+                                            <div className="property-group" style={{ marginBottom: '14px' }}>
+                                                <label style={{
+                                                    display: 'block',
+                                                    fontSize: '13px',
+                                                    fontWeight: '600',
+                                                    color: '#374151',
+                                                    marginBottom: '8px'
+                                                }}>
                                                     Name Attribute
                                                 </label>
                                                 <input
@@ -615,29 +788,38 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                                     placeholder="field-name"
                                                     style={{
                                                         width: '100%',
-                                                        padding: '8px',
+                                                        padding: '10px 12px',
                                                         fontSize: '13px',
                                                         border: '1px solid #d1d5db',
-                                                        borderRadius: '6px'
+                                                        borderRadius: '8px',
+                                                        outline: 'none',
+                                                        fontFamily: 'monospace'
                                                     }}
                                                 />
                                             </div>
                                         )}
 
-                                        {/* Move buttons */}
-                                        <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                                        {/* Move Buttons */}
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: '8px',
+                                            marginTop: '16px',
+                                            paddingTop: '16px',
+                                            borderTop: '1px solid #e5e7eb'
+                                        }}>
                                             <button
                                                 onClick={() => moveField(index, index - 1)}
                                                 disabled={index === 0}
                                                 style={{
                                                     flex: 1,
-                                                    padding: '6px',
+                                                    padding: '8px',
                                                     fontSize: '12px',
                                                     background: index === 0 ? '#f3f4f6' : '#fff',
                                                     color: index === 0 ? '#9ca3af' : '#374151',
                                                     border: '1px solid #d1d5db',
-                                                    borderRadius: '4px',
-                                                    cursor: index === 0 ? 'not-allowed' : 'pointer'
+                                                    borderRadius: '6px',
+                                                    cursor: index === 0 ? 'not-allowed' : 'pointer',
+                                                    fontWeight: '500'
                                                 }}
                                             >
                                                 ↑ Move Up
@@ -647,13 +829,14 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                                                 disabled={index === fields.length - 1}
                                                 style={{
                                                     flex: 1,
-                                                    padding: '6px',
+                                                    padding: '8px',
                                                     fontSize: '12px',
                                                     background: index === fields.length - 1 ? '#f3f4f6' : '#fff',
                                                     color: index === fields.length - 1 ? '#9ca3af' : '#374151',
                                                     border: '1px solid #d1d5db',
-                                                    borderRadius: '4px',
-                                                    cursor: index === fields.length - 1 ? 'not-allowed' : 'pointer'
+                                                    borderRadius: '6px',
+                                                    cursor: index === fields.length - 1 ? 'not-allowed' : 'pointer',
+                                                    fontWeight: '500'
                                                 }}
                                             >
                                                 ↓ Move Down
@@ -678,7 +861,7 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                     type="text"
                     value={formData.title || ''}
                     onChange={(e) => updateFormData({ title: e.target.value })}
-                    placeholder="Enter form title"
+                    placeholder="Enter form title..."
                 />
             </div>
 
@@ -718,19 +901,22 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
 
             {/* Button Background */}
             <div className="property-group">
-                <label>Button Background</label>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
-                    {COLOR_PRESETS.map(color => (
+                <label>Button Background Color</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px', marginBottom: '8px' }}>
+                    {COLOR_PRESETS.map(preset => (
                         <div
-                            key={color}
-                            onClick={() => updateFormData({ buttonBackground: color })}
+                            key={preset.color}
+                            onClick={() => updateFormData({ buttonBackground: preset.color })}
+                            title={preset.name}
                             style={{
-                                width: '32px',
-                                height: '32px',
-                                background: color,
-                                borderRadius: '6px',
+                                width: '36px',
+                                height: '36px',
+                                background: preset.color,
+                                borderRadius: '8px',
                                 cursor: 'pointer',
-                                border: formData.buttonBackground === color ? '2px solid #000' : '2px solid transparent'
+                                border: formData.buttonBackground === preset.color ? '3px solid #000' : '2px solid #e5e7eb',
+                                transition: 'all 0.2s',
+                                boxShadow: formData.buttonBackground === preset.color ? '0 4px 8px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.1)'
                             }}
                         />
                     ))}
@@ -739,22 +925,36 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                     type="text"
                     value={formData.buttonBackground || '#2563eb'}
                     onChange={(e) => updateFormData({ buttonBackground: e.target.value })}
-                    placeholder="#2563eb"
-                    style={{ marginTop: '8px' }}
+                    placeholder="#2563eb or gradient..."
                 />
             </div>
 
             {/* Button Gradient */}
             <div className="property-group">
-                <label>Button Gradient</label>
-                <select
-                    value={formData.buttonBackground || '#2563eb'}
-                    onChange={(e) => updateFormData({ buttonBackground: e.target.value })}
-                >
+                <label>Button Gradient Presets</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                     {GRADIENT_PRESETS.map(preset => (
-                        <option key={preset.name} value={preset.value}>{preset.name}</option>
+                        <button
+                            key={preset.name}
+                            onClick={() => updateFormData({ buttonBackground: preset.value })}
+                            style={{
+                                width: '100%',
+                                padding: '12px',
+                                background: preset.value,
+                                border: formData.buttonBackground === preset.value ? '2px solid #000' : '1px solid #e5e7eb',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                color: '#fff',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            {preset.name}
+                        </button>
                     ))}
-                </select>
+                </div>
             </div>
 
             {/* Button Text Color */}
@@ -789,6 +989,12 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                     placeholder="8px"
                 />
             </div>
+
+            <div style={{
+                height: '1px',
+                background: '#e5e7eb',
+                margin: '20px 0'
+            }} />
 
             {/* Form Background */}
             <div className="property-group">
@@ -844,7 +1050,7 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
         <div className="panel-section">
             {/* Form Action */}
             <div className="property-group">
-                <label>Form Action URL</label>
+                <label>Form Action URL (API Endpoint)</label>
                 <input
                     type="text"
                     value={formData.events?.onSubmit?.apiUrl || ''}
@@ -859,21 +1065,9 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                     })}
                     placeholder="/api/contact"
                 />
-                <small style={{ display: 'block', marginTop: '4px', color: '#6b7280', fontSize: '12px' }}>
-                    API endpoint to send form data
+                <small style={{ display: 'block', marginTop: '6px', color: '#6b7280', fontSize: '12px' }}>
+                    URL để gửi form data (POST request)
                 </small>
-            </div>
-
-            {/* Form Method */}
-            <div className="property-group">
-                <label>Form Method</label>
-                <select
-                    value={formData.method || 'POST'}
-                    onChange={(e) => updateFormData({ method: e.target.value })}
-                >
-                    <option value="POST">POST</option>
-                    <option value="GET">GET</option>
-                </select>
             </div>
 
             {/* Success Message */}
@@ -883,7 +1077,7 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                     type="text"
                     value={formData.successMessage || ''}
                     onChange={(e) => updateFormData({ successMessage: e.target.value })}
-                    placeholder="Thank you for your submission!"
+                    placeholder="Cảm ơn bạn đã gửi thông tin!"
                 />
             </div>
 
@@ -894,52 +1088,76 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                     type="text"
                     value={formData.errorMessage || ''}
                     onChange={(e) => updateFormData({ errorMessage: e.target.value })}
-                    placeholder="Something went wrong. Please try again."
+                    placeholder="Có lỗi xảy ra, vui lòng thử lại."
                 />
             </div>
 
-            {/* Show Required Indicator */}
-            <div className="property-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                    <input
-                        type="checkbox"
-                        checked={formData.showRequiredIndicator !== false}
-                        onChange={(e) => updateFormData({ showRequiredIndicator: e.target.checked })}
-                        style={{ width: '16px', height: '16px' }}
-                    />
-                    <span>Show Required (*) Indicators</span>
-                </label>
-            </div>
+            <div style={{
+                height: '1px',
+                background: '#e5e7eb',
+                margin: '20px 0'
+            }} />
 
             {/* Enable Validation */}
             <div className="property-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                     <input
                         type="checkbox"
                         checked={formData.enableValidation !== false}
                         onChange={(e) => updateFormData({ enableValidation: e.target.checked })}
-                        style={{ width: '16px', height: '16px' }}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     <span>Enable HTML5 Validation</span>
                 </label>
+                <small style={{ display: 'block', marginTop: '6px', color: '#6b7280', fontSize: '12px' }}>
+                    Bật validation tự động cho email, số điện thoại, v.v.
+                </small>
             </div>
 
             {/* Reset After Submit */}
             <div className="property-group">
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                     <input
                         type="checkbox"
                         checked={formData.resetAfterSubmit || false}
                         onChange={(e) => updateFormData({ resetAfterSubmit: e.target.checked })}
-                        style={{ width: '16px', height: '16px' }}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     <span>Reset Form After Submit</span>
                 </label>
+                <small style={{ display: 'block', marginTop: '6px', color: '#6b7280', fontSize: '12px' }}>
+                    Xóa hết dữ liệu sau khi gửi thành công
+                </small>
+            </div>
+
+            {/* Show Loading */}
+            <div className="property-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                    <input
+                        type="checkbox"
+                        checked={formData.showLoadingState !== false}
+                        onChange={(e) => updateFormData({ showLoadingState: e.target.checked })}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span>Show Loading State</span>
+                </label>
+                <small style={{ display: 'block', marginTop: '6px', color: '#6b7280', fontSize: '12px' }}>
+                    Hiển thị trạng thái đang gửi khi submit
+                </small>
             </div>
         </div>
     );
 
     // ==================== MAIN RENDER ====================
+
+    // Click outside to close menu
+    React.useEffect(() => {
+        const handleClickOutside = () => setShowAddFieldMenu(false);
+        if (showAddFieldMenu) {
+            document.addEventListener('click', handleClickOutside);
+            return () => document.removeEventListener('click', handleClickOutside);
+        }
+    }, [showAddFieldMenu]);
 
     return (
         <div className="element-properties-panel">
@@ -959,7 +1177,7 @@ const FormPropertiesPanel = ({ selectedElement, onUpdateElement, isCollapsed, on
                     className={`tab ${activeTab === 'fields' ? 'active' : ''}`}
                     onClick={() => setActiveTab('fields')}
                 >
-                    <AlignLeft size={14} />
+                    <List size={14} />
                     Fields
                 </button>
                 <button
