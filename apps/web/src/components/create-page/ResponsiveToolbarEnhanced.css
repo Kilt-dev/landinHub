@@ -1,0 +1,399 @@
+/* ========================================
+   RESPONSIVE TOOLBAR ENHANCED
+   ======================================== */
+
+.responsive-toolbar-enhanced {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 24px;
+    background: #ffffff;
+    border-bottom: 2px solid #e5e7eb;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    position: relative;
+}
+
+/* ========================================
+   TOOLBAR SECTIONS
+   ======================================== */
+
+.toolbar-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toolbar-center {
+    flex: 1;
+    justify-content: center;
+}
+
+.toolbar-actions {
+    margin-left: auto;
+}
+
+/* ========================================
+   VIEW MODE BUTTONS
+   ======================================== */
+
+.view-mode-group {
+    display: flex;
+    gap: 4px;
+    background: #f3f4f6;
+    padding: 4px;
+    border-radius: 10px;
+}
+
+.view-mode-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.view-mode-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--mode-color);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.view-mode-btn.active::before {
+    opacity: 0.1;
+}
+
+.view-mode-btn:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.view-mode-btn.active {
+    background: #ffffff;
+    color: var(--mode-color);
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.mode-icon {
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+
+.view-mode-btn.active .mode-icon {
+    transform: scale(1.1);
+}
+
+.mode-label {
+    white-space: nowrap;
+}
+
+.mode-width {
+    font-size: 10px;
+    opacity: 0.6;
+    background: currentColor;
+    color: #ffffff;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+/* ========================================
+   SYNC INDICATOR
+   ======================================== */
+
+.sync-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #ecfdf5;
+    border: 1px solid #6ee7b7;
+    border-radius: 6px;
+    color: #059669;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sync-indicator svg {
+    animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ========================================
+   CURRENT VIEW INFO
+   ======================================== */
+
+.current-view-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+.view-label {
+    font-size: 12px;
+    color: #9ca3af;
+    font-weight: 500;
+}
+
+.view-name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.view-dim {
+    font-size: 11px;
+    padding: 2px 6px;
+    background: #e5e7eb;
+    color: #6b7280;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+/* ========================================
+   MOBILE TIPS
+   ======================================== */
+
+.mobile-tips {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-radius: 6px;
+    margin-left: 12px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.tip-icon {
+    font-size: 14px;
+    animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+}
+
+.tip-text {
+    font-size: 11px;
+    color: #92400e;
+    font-weight: 600;
+}
+
+/* ========================================
+   TOOLBAR ACTIONS
+   ======================================== */
+
+.toolbar-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toolbar-action-btn:hover {
+    background: #ffffff;
+    border-color: #d1d5db;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+}
+
+.toolbar-action-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.toolbar-action-btn.preview-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-color: #059669;
+    color: #ffffff;
+}
+
+.toolbar-action-btn.preview-btn:hover {
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.zoom-text {
+    font-family: monospace;
+    font-size: 12px;
+    min-width: 40px;
+    text-align: center;
+}
+
+/* ========================================
+   DEVICE INFO PANEL
+   ======================================== */
+
+.device-info-panel {
+    position: absolute;
+    top: 100%;
+    right: 24px;
+    margin-top: 8px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    padding: 16px;
+    min-width: 300px;
+    z-index: 100;
+    animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.info-label {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+    font-family: monospace;
+}
+
+/* ========================================
+   MOBILE WARNINGS
+   ======================================== */
+
+.mobile-warnings {
+    padding: 12px;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 6px;
+}
+
+.mobile-warnings h4 {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #166534;
+}
+
+.mobile-warnings ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.mobile-warnings li {
+    font-size: 11px;
+    color: #166534;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1024px) {
+    .responsive-toolbar-enhanced {
+        padding: 8px 16px;
+    }
+
+    .mode-label {
+        display: none;
+    }
+
+    .current-view-info {
+        display: none;
+    }
+
+    .mobile-tips .tip-text {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .responsive-toolbar-enhanced {
+        gap: 8px;
+    }
+
+    .sync-indicator span {
+        display: none;
+    }
+
+    .toolbar-action-btn span {
+        display: none;
+    }
+
+    .toolbar-action-btn {
+        padding: 8px;
+    }
+
+    .device-info-panel {
+        right: 8px;
+        left: 8px;
+        min-width: auto;
+    }
+}
