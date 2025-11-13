@@ -1253,6 +1253,16 @@ const CreateLanding = () => {
         setShowPreview(true);
     }, [pageData, ensureMobilePositions]);
 
+    // Deploy to AWS CloudFront
+    const handleDeploy = useCallback(() => {
+        if (!pageId) {
+            toast.error('Không tìm thấy ID trang.');
+            return;
+        }
+        // Navigate to deployment settings page
+        navigate(`/pages/${pageId}/deploy`);
+    }, [pageId, navigate]);
+
     // AI Content Generator
     const handleAIContentGenerator = useCallback(() => {
         // Determine element type from selected element
@@ -1668,6 +1678,7 @@ const CreateLanding = () => {
                             onSave={handleSave}
                             onAutoSave={handleAutoSave}
                             onPreview={handlePreview}
+                            onDeploy={handleDeploy}
                             onImport={handleImportIUHPage}
                             onGenerateCode={handleGenerateCode}
                             viewMode={viewMode}

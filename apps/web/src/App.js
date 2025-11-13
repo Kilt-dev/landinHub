@@ -56,8 +56,9 @@ function App() {
                             <Route path="/" element={<Navigate to="/auth" replace />} />
                             {/* Protected routes */}
                             <Route path="/pages" element={<Pages />} />
-                            <Route path="/pages/create" element={<CreateLandingPage />} />
+                            {/* Deployment route - must be before :pageId routes */}
                             <Route path="/pages/:pageId/deploy" element={<DeploymentSettings />} />
+                            <Route path="/pages/create" element={<CreateLandingPage />} />
                             <Route path="/create-landing" element={<Navigate to="/pages/create" replace />} />
                             <Route path="/templates" element={<Templates />} />
                             <Route path="/market" element={<Marketplace />} />

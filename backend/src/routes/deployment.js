@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const deploymentController = require('../controllers/deploymentController');
-const authMiddleware = require('../middleware/auth');
+const authMiddleware = require('../middleware/authMiddleware');
 
 /**
  * Deployment Routes
@@ -36,5 +36,12 @@ router.post('/:pageId/invalidate', deploymentController.invalidateDeployment);
  * DELETE /api/deployment/:pageId
  */
 router.delete('/:pageId', deploymentController.deleteDeployment);
+
+/**
+ * Test form submission for deployed page
+ * POST /api/deployment/:pageId/test-form
+ * For testing purposes - simulates end user form submission
+ */
+router.post('/:pageId/test-form', deploymentController.testFormSubmission);
 
 module.exports = router;
