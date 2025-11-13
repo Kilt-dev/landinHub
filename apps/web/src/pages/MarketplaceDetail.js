@@ -11,6 +11,7 @@ import "../styles/MarketplaceDetail.css"
 import DogLoader from "../components/Loader"
 import { toast } from "react-toastify"
 import { io } from 'socket.io-client';
+import MarketplacePreviewModal from "../components/MarketplacePreviewModal"
 import {
     FiEye,
     FiShoppingCart,
@@ -56,6 +57,7 @@ const MarketplaceDetail = () => {
     const [reviews, setReviews] = useState([]);
     const [refundReason, setRefundReason] = useState('');
     const [refundStatus, setRefundStatus] = useState(null); // 'pending', 'approved', 'rejected'
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
     const statusVn = {
         pending: 'Chờ xác nhận',
         processing: 'Đang xử lý',
@@ -363,6 +365,12 @@ const MarketplaceDetail = () => {
                                 {discount > 0 && <div className="discount-badge">-{discount}%</div>}
                             </div>
                             <div className="action-buttons-secondary">
+                                <button
+                                    className="demo-btn action-btn"
+                                    onClick={() => setShowPreviewModal(true)}
+                                >
+                                    <FiEye /> Xem Preview
+                                </button>
                                 {page.demo_url && (
                                     <a href={page.demo_url} target="_blank" rel="noopener noreferrer" className="demo-btn action-btn">
                                         <FiExternalLink /> Xem Demo
@@ -549,6 +557,13 @@ const MarketplaceDetail = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {showPreviewModal && page && (
+                <MarketplacePreviewModal
+                    page={page}
+                    onClose={() => setShowPreviewModal(false)}
+                />
             )}
         </div>
 
