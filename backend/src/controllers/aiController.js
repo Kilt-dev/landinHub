@@ -62,7 +62,14 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
         return null;
     }
 
-    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash']; // Try 2.0 first, fallback to 1.5
+    // Try multiple model variants in order of preference
+    const models = [
+        'gemini-2.0-flash-exp',      // Latest experimental
+        'gemini-1.5-flash-latest',   // Stable latest
+        'gemini-1.5-flash-001',      // Versioned stable
+        'gemini-1.5-flash',          // Base name
+        'gemini-1.5-pro-latest'      // Pro version fallback
+    ];
 
     for (const modelName of models) {
         try {
