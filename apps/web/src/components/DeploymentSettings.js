@@ -193,17 +193,56 @@ const DeploymentSettings = () => {
 
                     {deploymentInfo.cloudFrontDomain && (
                         <div className="deployment-urls">
-                            <div className="url-item">
-                                <label>CloudFront URL:</label>
-                                <div className="url-display">
-                                    <a href={`https://${deploymentInfo.cloudFrontDomain}`} target="_blank" rel="noopener noreferrer">
-                                        {deploymentInfo.cloudFrontDomain}
-                                    </a>
-                                    <button onClick={() => copyToClipboard(deploymentInfo.cloudFrontDomain)}>
-                                        <Copy size={16} />
-                                    </button>
+                            {/* Primary URL - Subdomain or CloudFront */}
+                            {deploymentInfo.url && (
+                                <div className="url-item" style={{ background: '#f0fdf4', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                                    <label style={{ fontSize: '16px', fontWeight: '600', color: '#059669' }}>🎉 Trang đã Live tại:</label>
+                                    <div className="url-display" style={{ marginTop: '8px' }}>
+                                        <a href={deploymentInfo.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '16px', fontWeight: '500' }}>
+                                            {deploymentInfo.url}
+                                        </a>
+                                        <button onClick={() => copyToClipboard(deploymentInfo.url)}>
+                                            <Copy size={16} />
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+
+                            {/* CloudFront Direct URL (with path) */}
+                            {deploymentInfo.s3ObjectKey && (
+                                <div className="url-item">
+                                    <label>CloudFront Direct URL:</label>
+                                    <div className="url-display">
+                                        <a href={`https://${deploymentInfo.cloudFrontDomain}/${deploymentInfo.s3ObjectKey}`} target="_blank" rel="noopener noreferrer">
+                                            {deploymentInfo.cloudFrontDomain}/{deploymentInfo.s3ObjectKey}
+                                        </a>
+                                        <button onClick={() => copyToClipboard(`https://${deploymentInfo.cloudFrontDomain}/${deploymentInfo.s3ObjectKey}`)}>
+                                            <Copy size={16} />
+                                        </button>
+                                    </div>
+                                    <small style={{ display: 'block', marginTop: '4px', color: '#666' }}>
+                                        ✅ URL này luôn hoạt động (không cần CloudFront Function)
+                                    </small>
+                                </div>
+                            )}
+
+                            {/* Subdomain URL - with warning if CloudFront Function not setup */}
+                            {deploymentInfo.subdomain && (
+                                <div className="url-item">
+                                    <label>Subdomain URL:</label>
+                                    <div className="url-display">
+                                        <a href={`https://${deploymentInfo.subdomain}.landinghub.vn`} target="_blank" rel="noopener noreferrer">
+                                            {deploymentInfo.subdomain}.landinghub.vn
+                                        </a>
+                                        <button onClick={() => copyToClipboard(`https://${deploymentInfo.subdomain}.landinghub.vn`)}>
+                                            <Copy size={16} />
+                                        </button>
+                                    </div>
+                                    <small style={{ display: 'block', marginTop: '4px', color: '#f59e0b' }}>
+                                        ⚠️ Cần deploy CloudFront Function để subdomain hoạt động. Xem hướng dẫn trong repo.
+                                    </small>
+                                </div>
+                            )}
 
                             {domainSettings.customDomain && (
                                 <div className="url-item">
@@ -272,10 +311,10 @@ const DeploymentSettings = () => {
                                 onChange={(e) => setDomainSettings({...domainSettings, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
                                 placeholder="my-landing"
                             />
-                            <span className="subdomain-suffix">.landinghub.app</span>
+                            <span className="subdomain-suffix">.landinghub.vn</span>
                         </div>
                         <small>
-                            Để trống để tự động tạo (ví dụ: {pageData?.slug || 'page-123'}.landinghub.app)
+                            Để trống để tự động tạo (ví dụ: {pageData?.slug || 'page-123'}.landinghub.vn)
                         </small>
                     </div>
                 )}
