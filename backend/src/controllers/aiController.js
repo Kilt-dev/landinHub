@@ -63,7 +63,7 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
     }
 
     try {
-        const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
         const result = await model.generateContent({
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -375,6 +375,102 @@ const extractAllText = (elements) => {
 
     extract(elements);
     return text.trim();
+};
+
+/**
+ * Fallback: Local AI content generation using templates
+ */
+const getLocalAIContent = (context, type, options) => {
+    const templates = {
+        heading: [
+            `${context} - Giải Pháp Hoàn Hảo Cho Bạn`,
+            `Khám Phá ${context} Ngay Hôm Nay`,
+            `${context}: Nhanh, Hiệu Quả, Chuyên Nghiệp`
+        ],
+        paragraph: [
+            `${context} mang đến cho bạn trải nghiệm tuyệt vời với chất lượng hàng đầu. Chúng tôi cam kết mang lại giá trị tốt nhất cho khách hàng với dịch vụ chuyên nghiệp và tận tâm.`,
+            `Với ${context}, bạn sẽ nhận được sự hỗ trợ tốt nhất từ đội ngũ chuyên gia giàu kinh nghiệm. Hãy để chúng tôi đồng hành cùng bạn trên con đường thành công.`
+        ],
+        button: [
+            'Bắt Đầu Ngay',
+            'Tìm Hiểu Thêm',
+            'Đăng Ký Miễn Phí',
+            'Liên Hệ Ngay'
+        ]
+    };
+
+    const items = templates[type] || templates.paragraph;
+    return items[Math.floor(Math.random() * items.length)];
+};
+
+/**
+ * Fallback: Local page analysis
+ */
+const getLocalPageAnalysis = (pageData) => {
+    const elements = pageData.elements || [];
+    const sections = elements.filter(el => el.type === 'section');
+    const forms = elements.filter(el => el.type === 'form');
+    const buttons = countElementsByType(elements, 'button');
+
+    // Simple scoring algorithm
+    const structureScore = Math.min(10, sections.length * 2); // Max 10
+    const contentScore = Math.min(10, (buttons * 2 + forms.length * 3)); // CTAs + Forms
+    const designScore = 7; // Default
+    const conversionScore = Math.min(10, forms.length * 5); // Forms are key
+
+    const overallScore = Math.round((structureScore + contentScore + designScore + conversionScore) / 4 * 10);
+
+    return {
+        overall_score: overallScore,
+        scores: {
+            structure: structureScore,
+            content: contentScore,
+            design: designScore,
+            conversion: conversionScore
+        },
+        strengths: [
+            sections.length >= 3 && 'Có cấu trúc sections rõ ràng',
+            forms.length > 0 && 'Có form thu thập thông tin',
+            buttons >= 3 && 'Có đủ call-to-action buttons'
+        ].filter(Boolean),
+        weaknesses: [
+            sections.length < 3 && 'Cần thêm sections để tăng nội dung',
+            forms.length === 0 && 'Thiếu form để thu thập leads',
+            buttons < 3 && 'Cần thêm CTAs để tăng conversion'
+        ].filter(Boolean),
+        suggestions: [
+            {
+                type: 'critical',
+                title: 'Thêm Form Thu Thập Leads',
+                description: 'Landing page cần ít nhất 1 form để chuyển đổi visitors thành leads. Đặt form ở section cuối hoặc trong popup.'
+            },
+            {
+                type: 'improvement',
+                title: 'Tối Ưu Call-to-Action',
+                description: 'Thêm buttons CTAs rõ ràng với text hấp dẫn: "Đăng ký ngay", "Nhận ưu đãi", "Tìm hiểu thêm"'
+            },
+            {
+                type: 'improvement',
+                title: 'Cải Thiện Visual Hierarchy',
+                description: 'Sử dụng heading lớn, colors tương phản và spacing hợp lý để dẫn dắt người xem.'
+            }
+        ]
+    };
+};
+
+/**
+ * Helper: Count elements by type recursively
+ */
+const countElementsByType = (elements, type) => {
+    let count = 0;
+    const countRecursive = (els) => {
+        els.forEach(el => {
+            if (el.type === type) count++;
+            if (el.children) countRecursive(el.children);
+        });
+    };
+    countRecursive(elements);
+    return count;
 };
 
 module.exports = exports;
