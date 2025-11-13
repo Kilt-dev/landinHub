@@ -79,18 +79,18 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', 
             <div className="ai-content-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="ai-modal-header">
                     <div>
-                        <h3>🤖 Trợ Lý AI Tạo Nội Dung</h3>
+                        <h3>Trợ Lý Tạo Nội Dung</h3>
                         <p className="ai-modal-subtitle">Tạo nội dung chuyên nghiệp chỉ trong vài giây</p>
                     </div>
-                    <button className="ai-modal-close" onClick={handleClose}>✕</button>
+                    <button className="ai-modal-close" onClick={handleClose}>×</button>
                 </div>
 
                 <div className="ai-modal-body">
                     {/* Context Input */}
                     <div className="ai-form-group">
                         <label>
-                            📝 Bạn muốn viết gì?
-                            {selectedText && <span className="ai-label-hint"> (Đã chọn text)</span>}
+                            Bạn muốn viết gì?
+                            {selectedText && <span className="ai-label-hint">Đã chọn text</span>}
                         </label>
                         <input
                             type="text"
@@ -100,7 +100,7 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', 
                             className="ai-input"
                         />
                         <small className="ai-input-hint">
-                            💡 Mẹo: Mô tả càng rõ ràng, nội dung AI tạo ra càng chính xác
+                            Mẹo: Mô tả càng rõ ràng, nội dung tạo ra càng chính xác
                         </small>
                     </div>
 
@@ -146,28 +146,17 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', 
                         {isGenerating ? (
                             <>
                                 <div className="ai-spinner"></div>
-                                Đang tạo...
+                                Đang tạo nội dung...
                             </>
                         ) : (
-                            <>✨ Tạo nội dung với AI</>
+                            <>Tạo Nội Dung</>
                         )}
                     </button>
 
                     {/* Generated Content */}
                     {generatedContent && (
                         <div className="ai-result">
-                            <div className="ai-result-header">
-                                <label>✨ Nội dung AI đã tạo:</label>
-                                {aiSource && (
-                                    <span className={`ai-source-badge ai-source-${aiSource}`}>
-                                        {aiSource === 'cache' && '⚡ Từ bộ nhớ đệm'}
-                                        {aiSource === 'groq' && '🚀 Groq AI'}
-                                        {aiSource === 'gemini' && '🌟 Gemini AI'}
-                                        {aiSource === 'deepseek' && '🤖 DeepSeek AI'}
-                                        {aiSource === 'template' && '📝 Mẫu có sẵn'}
-                                    </span>
-                                )}
-                            </div>
+                            <label>Nội dung đã tạo</label>
                             <textarea
                                 value={generatedContent}
                                 onChange={(e) => setGeneratedContent(e.target.value)}
@@ -175,8 +164,7 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', 
                                 rows="6"
                             />
                             <p className="ai-hint">
-                                💡 <strong>Mẹo:</strong> Bạn có thể chỉnh sửa nội dung trước khi chèn vào trang.
-                                {aiSource === 'cache' && ' Nội dung này được tải từ bộ nhớ đệm, rất nhanh!'}
+                                Bạn có thể chỉnh sửa nội dung trước khi chèn vào trang
                             </p>
                         </div>
                     )}
