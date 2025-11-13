@@ -740,6 +740,229 @@ const calculateConversionScore = (elements) => {
 };
 
 /**
+ * Nielsen & Molich Heuristic Evaluation (1990)
+ * Academic usability evaluation framework
+ * 10 heuristics, each scored 0-5 (0=poor, 5=excellent)
+ * Total maximum score: 50 points
+ *
+ * Reference: Nielsen, J., & Molich, R. (1990). Heuristic evaluation of user interfaces.
+ * Proc. ACM CHI'90 Conf. (Seattle, WA, 1-5 April), 249-256.
+ */
+const calculateHeuristicScore = (elements, textContent) => {
+    const buttons = countElementsByType(elements, 'button');
+    const forms = elements.filter(el => el.type === 'form').length;
+    const headings = countElementsByType(elements, 'heading');
+    const sections = elements.filter(el => el.type === 'section').length;
+    const images = countElementsByType(elements, 'image');
+    const links = countElementsByType(elements, 'link');
+    const wordCount = textContent.split(/\s+/).filter(w => w.length > 0).length;
+
+    const heuristics = {
+        // H1: Visibility of system status
+        // Does page show clear progress indicators, feedback elements?
+        visibilityOfSystemStatus: Math.min(5,
+            (buttons > 0 ? 2 : 0) + // CTAs show clear actions
+            (forms > 0 ? 2 : 0) + // Forms indicate input states
+            (headings > 0 ? 1 : 0) // Headings show page structure
+        ),
+
+        // H2: Match between system and the real world
+        // Does content use familiar language, real-world conventions?
+        matchRealWorld: Math.min(5,
+            (wordCount >= 50 ? 2 : 0) + // Sufficient descriptive text
+            (wordCount <= 1000 ? 2 : 0) + // Not overwhelming
+            (headings >= 2 ? 1 : 0) // Clear section titles
+        ),
+
+        // H3: User control and freedom
+        // Can users navigate freely? Are there exit points?
+        userControlFreedom: Math.min(5,
+            (links > 0 ? 2 : 0) + // Navigation links
+            (buttons > 0 ? 2 : 0) + // Action buttons
+            (sections >= 2 ? 1 : 0) // Multiple sections to navigate
+        ),
+
+        // H4: Consistency and standards
+        // Are design patterns consistent throughout?
+        consistencyStandards: Math.min(5,
+            (sections > 0 ? 2 : 0) + // Structured layout
+            (headings >= sections ? 2 : 0) + // Each section has heading
+            (buttons > 0 ? 1 : 0) // Consistent CTAs
+        ),
+
+        // H5: Error prevention
+        // Does design prevent user errors?
+        errorPrevention: Math.min(5,
+            (forms > 0 ? 3 : 0) + // Forms can validate input
+            (buttons >= 1 ? 2 : 0) // Clear action buttons reduce mistakes
+        ),
+
+        // H6: Recognition rather than recall
+        // Is information visible rather than requiring memory?
+        recognitionOverRecall: Math.min(5,
+            (headings >= 3 ? 2 : 0) + // Clear section labels
+            (images > 0 ? 2 : 0) + // Visual aids
+            (buttons > 0 ? 1 : 0) // Visible action options
+        ),
+
+        // H7: Flexibility and efficiency of use
+        // Does page support both novice and expert users?
+        flexibilityEfficiency: Math.min(5,
+            (buttons >= 2 ? 2 : 0) + // Multiple action paths
+            (links > 0 ? 2 : 0) + // Quick navigation
+            (sections >= 3 ? 1 : 0) // Organized content
+        ),
+
+        // H8: Aesthetic and minimalist design
+        // Is design clean without unnecessary elements?
+        aestheticMinimalist: Math.min(5,
+            (wordCount >= 100 && wordCount <= 600 ? 3 : wordCount < 100 ? 1 : 0) + // Optimal content
+            (images >= 1 && images <= 5 ? 2 : images === 0 ? 0 : 1) // Balanced visuals
+        ),
+
+        // H9: Help users recognize, diagnose, and recover from errors
+        // Are error messages clear and constructive?
+        errorRecovery: Math.min(5,
+            (forms > 0 ? 3 : 0) + // Forms can show validation messages
+            (buttons > 0 ? 2 : 0) // Clear action outcomes
+        ),
+
+        // H10: Help and documentation
+        // Is help available when needed?
+        helpDocumentation: Math.min(5,
+            (links > 0 ? 2 : 0) + // Links to more info
+            (wordCount >= 150 ? 2 : 1) + // Sufficient guidance text
+            (forms > 0 ? 1 : 0) // Form labels provide help
+        )
+    };
+
+    // Calculate total and average
+    const scores = Object.values(heuristics);
+    const totalScore = scores.reduce((sum, score) => sum + score, 0);
+    const averageScore = totalScore / 10;
+    const percentageScore = (totalScore / 50) * 100; // Convert to percentage
+
+    return {
+        total: totalScore, // 0-50
+        average: Math.round(averageScore * 10) / 10, // 0-5
+        percentage: Math.round(percentageScore), // 0-100%
+        heuristics: heuristics,
+        interpretation: getHeuristicInterpretation(percentageScore)
+    };
+};
+
+/**
+ * Get interpretation of heuristic score
+ */
+const getHeuristicInterpretation = (percentage) => {
+    if (percentage >= 80) return 'Xuất sắc - Đạt tiêu chuẩn usability cao';
+    if (percentage >= 60) return 'Tốt - Đáp ứng hầu hết nguyên tắc usability';
+    if (percentage >= 40) return 'Trung bình - Cần cải thiện một số điểm';
+    if (percentage >= 20) return 'Yếu - Cần cải thiện đáng kể';
+    return 'Kém - Cần thiết kế lại theo nguyên tắc usability';
+};
+
+/**
+ * Get detailed heuristic recommendations
+ */
+const getHeuristicRecommendations = (heuristicResult) => {
+    const recommendations = [];
+    const h = heuristicResult.heuristics;
+
+    if (h.visibilityOfSystemStatus < 3) {
+        recommendations.push({
+            heuristic: 'H1: Visibility of System Status',
+            score: h.visibilityOfSystemStatus,
+            priority: 'high',
+            suggestion: 'Thêm feedback rõ ràng: loading indicators, button states, form validation messages để người dùng hiểu trạng thái hệ thống.'
+        });
+    }
+
+    if (h.matchRealWorld < 3) {
+        recommendations.push({
+            heuristic: 'H2: Match Real World',
+            score: h.matchRealWorld,
+            priority: 'medium',
+            suggestion: 'Sử dụng ngôn ngữ quen thuộc, tránh thuật ngữ kỹ thuật. Sắp xếp thông tin theo logic thực tế.'
+        });
+    }
+
+    if (h.userControlFreedom < 3) {
+        recommendations.push({
+            heuristic: 'H3: User Control & Freedom',
+            score: h.userControlFreedom,
+            priority: 'high',
+            suggestion: 'Thêm navigation menu, back buttons, và exit options để người dùng tự do di chuyển.'
+        });
+    }
+
+    if (h.consistencyStandards < 3) {
+        recommendations.push({
+            heuristic: 'H4: Consistency & Standards',
+            score: h.consistencyStandards,
+            priority: 'high',
+            suggestion: 'Đảm bảo buttons, colors, typography nhất quán. Mỗi section cần có heading rõ ràng.'
+        });
+    }
+
+    if (h.errorPrevention < 3) {
+        recommendations.push({
+            heuristic: 'H5: Error Prevention',
+            score: h.errorPrevention,
+            priority: 'medium',
+            suggestion: 'Thêm form validation, confirmation dialogs, và constraints để ngăn người dùng mắc lỗi.'
+        });
+    }
+
+    if (h.recognitionOverRecall < 3) {
+        recommendations.push({
+            heuristic: 'H6: Recognition over Recall',
+            score: h.recognitionOverRecall,
+            priority: 'medium',
+            suggestion: 'Hiển thị options rõ ràng thay vì yêu cầu nhớ. Thêm icons, labels và visual cues.'
+        });
+    }
+
+    if (h.flexibilityEfficiency < 3) {
+        recommendations.push({
+            heuristic: 'H7: Flexibility & Efficiency',
+            score: h.flexibilityEfficiency,
+            priority: 'low',
+            suggestion: 'Cung cấp shortcuts, multiple paths, và progressive disclosure cho cả novice và expert users.'
+        });
+    }
+
+    if (h.aestheticMinimalist < 3) {
+        recommendations.push({
+            heuristic: 'H8: Aesthetic & Minimalist',
+            score: h.aestheticMinimalist,
+            priority: 'medium',
+            suggestion: 'Loại bỏ thông tin không cần thiết. Tập trung vào nội dung chính, sử dụng whitespace hiệu quả.'
+        });
+    }
+
+    if (h.errorRecovery < 3) {
+        recommendations.push({
+            heuristic: 'H9: Error Recovery',
+            score: h.errorRecovery,
+            priority: 'medium',
+            suggestion: 'Cung cấp error messages rõ ràng với hướng dẫn khắc phục cụ thể, không dùng mã lỗi kỹ thuật.'
+        });
+    }
+
+    if (h.helpDocumentation < 3) {
+        recommendations.push({
+            heuristic: 'H10: Help & Documentation',
+            score: h.helpDocumentation,
+            priority: 'low',
+            suggestion: 'Thêm tooltips, help links, FAQ section, và contextual help khi người dùng cần.'
+        });
+    }
+
+    return recommendations;
+};
+
+/**
  * Advanced Local Page Analysis with Academic Metrics
  */
 const getLocalPageAnalysis = (pageData) => {
@@ -754,6 +977,10 @@ const getLocalPageAnalysis = (pageData) => {
     const contentDepth = calculateContentDepth(elements, textContent);
     const visualHierarchy = calculateVisualHierarchy(elements);
     const conversion = calculateConversionScore(elements);
+
+    // Nielsen & Molich Heuristic Evaluation
+    const heuristicEvaluation = calculateHeuristicScore(elements, textContent);
+    const heuristicRecommendations = getHeuristicRecommendations(heuristicEvaluation);
 
     // Normalize scores
     const structureScore = Math.round(contentDepth);
@@ -780,17 +1007,39 @@ const getLocalPageAnalysis = (pageData) => {
             visualHierarchy: Math.round(visualHierarchy * 10),
             wordCount: textContent.split(/\s+/).filter(w => w.length > 0).length
         },
+        // Nielsen & Molich Heuristic Evaluation Results
+        heuristicEvaluation: {
+            totalScore: heuristicEvaluation.total,
+            averageScore: heuristicEvaluation.average,
+            percentageScore: heuristicEvaluation.percentage,
+            interpretation: heuristicEvaluation.interpretation,
+            details: {
+                h1_visibilityOfSystemStatus: heuristicEvaluation.heuristics.visibilityOfSystemStatus,
+                h2_matchRealWorld: heuristicEvaluation.heuristics.matchRealWorld,
+                h3_userControlFreedom: heuristicEvaluation.heuristics.userControlFreedom,
+                h4_consistencyStandards: heuristicEvaluation.heuristics.consistencyStandards,
+                h5_errorPrevention: heuristicEvaluation.heuristics.errorPrevention,
+                h6_recognitionOverRecall: heuristicEvaluation.heuristics.recognitionOverRecall,
+                h7_flexibilityEfficiency: heuristicEvaluation.heuristics.flexibilityEfficiency,
+                h8_aestheticMinimalist: heuristicEvaluation.heuristics.aestheticMinimalist,
+                h9_errorRecovery: heuristicEvaluation.heuristics.errorRecovery,
+                h10_helpDocumentation: heuristicEvaluation.heuristics.helpDocumentation
+            },
+            recommendations: heuristicRecommendations
+        },
         strengths: [
             sections.length >= 3 && 'Cấu trúc sections hợp lý',
             forms.length > 0 && 'Có công cụ thu thập thông tin',
             buttons >= 3 && 'Đủ nút kêu gọi hành động',
-            readability > 60 && 'Nội dung dễ đọc, dễ hiểu'
+            readability > 60 && 'Nội dung dễ đọc, dễ hiểu',
+            heuristicEvaluation.percentage >= 60 && 'Đạt tiêu chuẩn usability tốt'
         ].filter(Boolean),
         weaknesses: [
             sections.length < 3 && 'Cần thêm phần nội dung',
             forms.length === 0 && 'Thiếu form thu thập khách hàng tiềm năng',
             buttons < 3 && 'Cần thêm nút kêu gọi hành động',
-            readability < 40 && 'Nội dung quá phức tạp, khó hiểu'
+            readability < 40 && 'Nội dung quá phức tạp, khó hiểu',
+            heuristicEvaluation.percentage < 40 && 'Chưa đạt tiêu chuẩn usability cơ bản'
         ].filter(Boolean),
         suggestions: [
             {
