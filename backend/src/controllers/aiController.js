@@ -1,13 +1,22 @@
 const { OpenAI } = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
-// Initialize OpenAI client for DeepSeek
+// Initialize Groq client (Primary AI provider - Fast & Free)
+let groq = null;
+if (process.env.GROQ_API_KEY) {
+    groq = new Groq({
+        apiKey: process.env.GROQ_API_KEY
+    });
+}
+
+// Initialize OpenAI client for DeepSeek (Backup)
 const openai = new OpenAI({
     baseURL: 'https://api.deepseek.com',
     apiKey: process.env.DEEPSEEK_API_KEY
 });
 
-// Initialize Google Gemini client
+// Initialize Google Gemini client (Backup)
 let gemini = null;
 if (process.env.GOOGLE_API_KEY) {
     gemini = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
@@ -53,6 +62,47 @@ const callDeepSeekAPI = async (prompt, retries = 3, maxTokens = 1000) => {
 };
 
 /**
+ * Helper: Call Groq API (Primary - Fast & Free)
+ * Returns null if API fails or not configured
+ */
+const callGroqAPI = async (prompt, maxTokens = 1000) => {
+    if (!groq || !process.env.GROQ_API_KEY) {
+        console.warn('GROQ_API_KEY not configured, skipping Groq');
+        return null;
+    }
+
+    try {
+        console.log('Trying Groq AI...');
+
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            model: 'llama-3.3-70b-versatile', // Fast, smart, free
+            temperature: 0.7,
+            max_tokens: maxTokens,
+        });
+
+        const text = completion.choices[0]?.message?.content;
+
+        if (!text || text.trim().length === 0) {
+            console.warn('Groq returned empty text');
+            return null;
+        }
+
+        console.log(`✅ Groq AI successful (${text.length} chars)`);
+        return { text };
+
+    } catch (err) {
+        console.error('Groq API failed:', err.message);
+        return null;
+    }
+};
+
+/**
  * Helper: Call Google Gemini API with retry logic
  * Returns null if API fails or not configured
  */
@@ -62,13 +112,11 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
         return null;
     }
 
-    // Try multiple model variants in order of preference
+    // Try multiple model variants in order of preference (Free Tier compatible)
     const models = [
-        'gemini-2.0-flash-exp',      // Latest experimental
-        'gemini-1.5-flash-latest',   // Stable latest
-        'gemini-1.5-flash-001',      // Versioned stable
-        'gemini-1.5-flash',          // Base name
-        'gemini-1.5-pro-latest'      // Pro version fallback
+        'gemini-2.5-flash',          // Free: 10 RPM, 250k TPM, 250 RPD
+        'gemini-2.0-flash',          // Free: 15 RPM, 1M TPM, 200 RPD
+        'gemini-1.5-flash'           // Deprecated but may still work
     ];
 
     for (const modelName of models) {
@@ -153,29 +201,32 @@ exports.generateContent = async (req, res) => {
         let content;
         let source = 'template';
 
-        // Try DeepSeek first
-        const deepseekResponse = await callDeepSeekAPI(prompt, 3, maxTokens);
-        if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
-            content = deepseekResponse.choices[0].message.content.trim();
-            source = 'deepseek';
-            console.log(`✅ DeepSeek AI generated content (${content.length} chars)`);
+        // Try Groq first (Primary - Fast & Free)
+        const groqResponse = await callGroqAPI(prompt, maxTokens);
+        if (groqResponse && groqResponse.text) {
+            content = groqResponse.text.trim();
+            source = 'groq';
         } else {
             // Fallback to Gemini
-            console.log('DeepSeek unavailable, trying Gemini...');
+            console.log('Groq unavailable, trying Gemini...');
             const geminiResponse = await callGeminiAPI(prompt, maxTokens);
-
-            console.log('geminiResponse received:', geminiResponse ? 'YES' : 'NO');
-            console.log('geminiResponse.text exists:', geminiResponse?.text ? 'YES' : 'NO');
-            console.log('geminiResponse.text value:', geminiResponse?.text);
 
             if (geminiResponse && geminiResponse.text) {
                 content = geminiResponse.text.trim();
                 source = 'gemini';
-                console.log(`✅ Gemini AI generated content (${content.length} chars)`);
             } else {
-                // Final fallback to local templates
-                console.log('All AI providers unavailable, using local templates');
-                content = getLocalAIContent(context, type, options);
+                // Fallback to DeepSeek
+                console.log('Gemini unavailable, trying DeepSeek...');
+                const deepseekResponse = await callDeepSeekAPI(prompt, 3, maxTokens);
+
+                if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
+                    content = deepseekResponse.choices[0].message.content.trim();
+                    source = 'deepseek';
+                } else {
+                    // Final fallback to local templates
+                    console.log('All AI providers unavailable, using local templates');
+                    content = getLocalAIContent(context, type, options);
+                }
             }
         }
 
@@ -260,25 +311,23 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
         let analysis;
         let source = 'template';
 
-        // Try DeepSeek first
-        const deepseekResponse = await callDeepSeekAPI(analysisPrompt, 3, 1500);
-        if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
-            const responseText = deepseekResponse.choices[0].message.content.trim();
-
+        // Try Groq first (Primary - Fast & Free)
+        const groqResponse = await callGroqAPI(analysisPrompt, 1500);
+        if (groqResponse && groqResponse.text) {
             try {
-                const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || [null, responseText];
-                const jsonText = jsonMatch[1] || responseText;
+                const jsonMatch = groqResponse.text.match(/```json\s*([\s\S]*?)\s*```/) || [null, groqResponse.text];
+                const jsonText = jsonMatch[1] || groqResponse.text;
                 analysis = JSON.parse(jsonText);
-                source = 'deepseek';
-                console.log(`✅ DeepSeek analysis completed: score = ${analysis.overall_score}`);
+                source = 'groq';
+                console.log(`✅ Groq analysis completed: score = ${analysis.overall_score}`);
             } catch (parseError) {
-                console.error('Failed to parse DeepSeek response, trying Gemini...');
+                console.error('Failed to parse Groq response, trying Gemini...');
             }
         }
 
-        // Fallback to Gemini if DeepSeek failed
+        // Fallback to Gemini
         if (!analysis) {
-            console.log('DeepSeek unavailable, trying Gemini for analysis...');
+            console.log('Groq unavailable, trying Gemini for analysis...');
             const geminiResponse = await callGeminiAPI(analysisPrompt, 1500);
 
             if (geminiResponse && geminiResponse.text) {
@@ -289,7 +338,27 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
                     source = 'gemini';
                     console.log(`✅ Gemini analysis completed: score = ${analysis.overall_score}`);
                 } catch (parseError) {
-                    console.error('Failed to parse Gemini response, using local analysis');
+                    console.error('Failed to parse Gemini response, trying DeepSeek...');
+                }
+            }
+        }
+
+        // Fallback to DeepSeek
+        if (!analysis) {
+            console.log('Gemini unavailable, trying DeepSeek for analysis...');
+            const deepseekResponse = await callDeepSeekAPI(analysisPrompt, 3, 1500);
+
+            if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
+                const responseText = deepseekResponse.choices[0].message.content.trim();
+
+                try {
+                    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || [null, responseText];
+                    const jsonText = jsonMatch[1] || responseText;
+                    analysis = JSON.parse(jsonText);
+                    source = 'deepseek';
+                    console.log(`✅ DeepSeek analysis completed: score = ${analysis.overall_score}`);
+                } catch (parseError) {
+                    console.error('Failed to parse DeepSeek response, using local analysis');
                 }
             }
         }
