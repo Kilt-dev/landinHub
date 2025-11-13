@@ -65,20 +65,35 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
     try {
         const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-        const result = await model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-                maxOutputTokens: maxTokens,
-                temperature: 0.7,
-            },
-        });
+        const result = await model.generateContent(prompt);
 
         const response = await result.response;
+
+        // Check if response was blocked by safety filters
+        if (!response.candidates || response.candidates.length === 0) {
+            console.warn('Gemini response blocked or empty candidates');
+            return null;
+        }
+
+        const candidate = response.candidates[0];
+
+        // Check finish reason
+        if (candidate.finishReason === 'SAFETY') {
+            console.warn('Gemini content blocked by safety filters');
+            return null;
+        }
+
         const text = response.text();
 
         console.log('Gemini API call successful');
         console.log('Gemini response text length:', text?.length || 0);
         console.log('Gemini response preview:', text?.substring(0, 100));
+
+        if (!text || text.trim().length === 0) {
+            console.warn('Gemini returned empty text');
+            return null;
+        }
+
         return { text };
     } catch (err) {
         console.error('Gemini API failed:', err.message);
