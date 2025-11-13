@@ -405,11 +405,11 @@ const buildHTML = async (pageData) => {
 };
 
 /**
- * Helper: Upload HTML to S3
+ * Helper: Upload HTML to S3 with Gzip compression
  */
 const uploadToS3 = async (html, s3Path) => {
+    const zlib = require('zlib');
     const bucketName = process.env.AWS_S3_BUCKET || 'landing-hub-pages';
-    // Use s3Path as subdomain or pageId for better organization
     const objectKey = `${s3Path}/index.html`;
 
     try {
@@ -441,12 +441,21 @@ const uploadToS3 = async (html, s3Path) => {
             }
         }
 
-        // Upload HTML
+        // OPTIMIZATION: Gzip compress HTML before upload
+        const originalSize = Buffer.byteLength(html, 'utf8');
+        const compressedBody = zlib.gzipSync(html, { level: 9 }); // Max compression
+        const compressedSize = compressedBody.length;
+        const compressionRatio = ((1 - compressedSize / originalSize) * 100).toFixed(1);
+
+        console.log(`📦 Compression: ${originalSize} bytes → ${compressedSize} bytes (${compressionRatio}% smaller)`);
+
+        // Upload compressed HTML
         await s3.putObject({
             Bucket: bucketName,
             Key: objectKey,
-            Body: html,
+            Body: compressedBody,
             ContentType: 'text/html',
+            ContentEncoding: 'gzip', // CRITICAL: Tell CloudFront this is gzipped
             CacheControl: 'max-age=300', // 5 minutes
         }).promise();
 
@@ -455,7 +464,10 @@ const uploadToS3 = async (html, s3Path) => {
         return {
             bucketName,
             objectKey,
-            s3Url
+            s3Url,
+            originalSize,
+            compressedSize,
+            compressionRatio
         };
     } catch (error) {
         throw new Error(`S3 upload failed: ${error.message}`);
@@ -654,8 +666,62 @@ exports.deployPage = async (req, res) => {
             return res.status(404).json({ message: 'Page not found' });
         }
 
-        // 2. Find or create deployment record
+        // 2. Check domain uniqueness
+        const baseDomain = process.env.AWS_ROUTE53_BASE_DOMAIN;
+        let finalDomain = null;
+        let finalSubdomain = subdomain;
+
+        // Auto-generate subdomain if not provided
+        if (!subdomain && !customDomain && baseDomain) {
+            finalSubdomain = page.slug || pageId.substring(0, 8);
+            console.log(`Auto-generated subdomain: ${finalSubdomain}`);
+        }
+
+        // Construct final domain
+        if (customDomain) {
+            finalDomain = customDomain;
+        } else if (finalSubdomain && baseDomain) {
+            finalDomain = `${finalSubdomain}.${baseDomain}`;
+        }
+
+        // CRITICAL: Check if domain already exists for OTHER pages
+        if (finalDomain) {
+            const existingDeployment = await Deployment.findOne({
+                $or: [
+                    { custom_domain: finalDomain },
+                    { subdomain: finalSubdomain }
+                ],
+                page_id: { $ne: pageId } // Exclude current page
+            });
+
+            if (existingDeployment) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Domain "${finalDomain}" đã được sử dụng bởi page khác. Vui lòng chọn tên miền khác.`,
+                    field: customDomain ? 'customDomain' : 'subdomain',
+                    existingPageId: existingDeployment.page_id
+                });
+            }
+        }
+
+        // 3. Find or create deployment record (one per page)
         let deployment = await Deployment.findOne({ page_id: pageId });
+
+        // If re-deploying, clean up old S3 files
+        if (deployment && deployment.s3_object_key) {
+            try {
+                console.log(`Re-deployment detected. Deleting old S3 file: ${deployment.s3_object_key}`);
+                await s3.deleteObject({
+                    Bucket: deployment.s3_bucket || process.env.AWS_S3_BUCKET,
+                    Key: deployment.s3_object_key
+                }).promise();
+                console.log('✅ Old S3 file deleted');
+            } catch (s3Error) {
+                console.warn('Failed to delete old S3 file:', s3Error.message);
+                // Non-blocking, continue deployment
+            }
+        }
+
         if (!deployment) {
             deployment = new Deployment({
                 page_id: pageId,
@@ -669,14 +735,6 @@ exports.deployPage = async (req, res) => {
         // Update domain settings
         deployment.use_custom_domain = !!customDomain;
         deployment.custom_domain = customDomain || null;
-
-        // Auto-generate subdomain if not provided and base domain exists
-        let finalSubdomain = subdomain;
-        if (!subdomain && !customDomain && process.env.AWS_ROUTE53_BASE_DOMAIN) {
-            // Use page slug or generate from pageId
-            finalSubdomain = page.slug || pageId.substring(0, 8);
-            console.log(`Auto-generated subdomain: ${finalSubdomain}`);
-        }
         deployment.subdomain = finalSubdomain || null;
 
         await deployment.save();
