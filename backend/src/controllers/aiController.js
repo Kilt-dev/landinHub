@@ -884,29 +884,77 @@ const calculateHeuristicScore = (elements, textContent) => {
 };
 
 /**
- * Get interpretation of heuristic score
+ * Get interpretation of heuristic score (bilingual)
  */
-const getHeuristicInterpretation = (percentage) => {
-    if (percentage >= 80) return 'Xuất sắc - Đạt tiêu chuẩn usability cao';
-    if (percentage >= 60) return 'Tốt - Đáp ứng hầu hết nguyên tắc usability';
-    if (percentage >= 40) return 'Trung bình - Cần cải thiện một số điểm';
-    if (percentage >= 20) return 'Yếu - Cần cải thiện đáng kể';
-    return 'Kém - Cần thiết kế lại theo nguyên tắc usability';
+const getHeuristicInterpretation = (percentage, language = 'vietnamese') => {
+    const interpretations = {
+        vietnamese: {
+            excellent: 'Xuất sắc - Đạt tiêu chuẩn usability cao',
+            good: 'Tốt - Đáp ứng hầu hết nguyên tắc usability',
+            average: 'Trung bình - Cần cải thiện một số điểm',
+            poor: 'Yếu - Cần cải thiện đáng kể',
+            fail: 'Kém - Cần thiết kế lại theo nguyên tắc usability'
+        },
+        english: {
+            excellent: 'Excellent - Meets high usability standards',
+            good: 'Good - Satisfies most usability principles',
+            average: 'Average - Needs improvement in some areas',
+            poor: 'Poor - Requires significant improvement',
+            fail: 'Fail - Needs redesign following usability principles'
+        }
+    };
+
+    const lang = interpretations[language] || interpretations.vietnamese;
+
+    if (percentage >= 80) return lang.excellent;
+    if (percentage >= 60) return lang.good;
+    if (percentage >= 40) return lang.average;
+    if (percentage >= 20) return lang.poor;
+    return lang.fail;
 };
 
 /**
- * Get detailed heuristic recommendations
+ * Get detailed heuristic recommendations (bilingual)
  */
-const getHeuristicRecommendations = (heuristicResult) => {
+const getHeuristicRecommendations = (heuristicResult, language = 'vietnamese') => {
     const recommendations = [];
     const h = heuristicResult.heuristics;
+
+    const suggestions = {
+        vietnamese: {
+            h1: 'Thêm feedback rõ ràng: loading indicators, button states, form validation messages để người dùng hiểu trạng thái hệ thống.',
+            h2: 'Sử dụng ngôn ngữ quen thuộc, tránh thuật ngữ kỹ thuật. Sắp xếp thông tin theo logic thực tế.',
+            h3: 'Thêm navigation menu, back buttons, và exit options để người dùng tự do di chuyển.',
+            h4: 'Đảm bảo buttons, colors, typography nhất quán. Mỗi section cần có heading rõ ràng.',
+            h5: 'Thêm form validation, confirmation dialogs, và constraints để ngăn người dùng mắc lỗi.',
+            h6: 'Hiển thị options rõ ràng thay vì yêu cầu nhớ. Thêm icons, labels và visual cues.',
+            h7: 'Cung cấp shortcuts, multiple paths, và progressive disclosure cho cả novice và expert users.',
+            h8: 'Loại bỏ thông tin không cần thiết. Tập trung vào nội dung chính, sử dụng whitespace hiệu quả.',
+            h9: 'Cung cấp error messages rõ ràng với hướng dẫn khắc phục cụ thể, không dùng mã lỗi kỹ thuật.',
+            h10: 'Thêm tooltips, help links, FAQ section, và contextual help khi người dùng cần.'
+        },
+        english: {
+            h1: 'Add clear feedback: loading indicators, button states, form validation messages so users understand system status.',
+            h2: 'Use familiar language, avoid technical jargon. Organize information following real-world logic.',
+            h3: 'Add navigation menu, back buttons, and exit options for user freedom of movement.',
+            h4: 'Ensure buttons, colors, typography are consistent. Each section needs clear heading.',
+            h5: 'Add form validation, confirmation dialogs, and constraints to prevent user errors.',
+            h6: 'Display options clearly rather than requiring memory. Add icons, labels and visual cues.',
+            h7: 'Provide shortcuts, multiple paths, and progressive disclosure for both novice and expert users.',
+            h8: 'Remove unnecessary information. Focus on main content, use whitespace effectively.',
+            h9: 'Provide clear error messages with specific recovery instructions, avoid technical error codes.',
+            h10: 'Add tooltips, help links, FAQ section, and contextual help when users need it.'
+        }
+    };
+
+    const lang = suggestions[language] || suggestions.vietnamese;
 
     if (h.visibilityOfSystemStatus < 3) {
         recommendations.push({
             heuristic: 'H1: Visibility of System Status',
             score: h.visibilityOfSystemStatus,
             priority: 'high',
-            suggestion: 'Thêm feedback rõ ràng: loading indicators, button states, form validation messages để người dùng hiểu trạng thái hệ thống.'
+            suggestion: lang.h1
         });
     }
 
@@ -915,7 +963,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H2: Match Real World',
             score: h.matchRealWorld,
             priority: 'medium',
-            suggestion: 'Sử dụng ngôn ngữ quen thuộc, tránh thuật ngữ kỹ thuật. Sắp xếp thông tin theo logic thực tế.'
+            suggestion: lang.h2
         });
     }
 
@@ -924,7 +972,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H3: User Control & Freedom',
             score: h.userControlFreedom,
             priority: 'high',
-            suggestion: 'Thêm navigation menu, back buttons, và exit options để người dùng tự do di chuyển.'
+            suggestion: lang.h3
         });
     }
 
@@ -933,7 +981,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H4: Consistency & Standards',
             score: h.consistencyStandards,
             priority: 'high',
-            suggestion: 'Đảm bảo buttons, colors, typography nhất quán. Mỗi section cần có heading rõ ràng.'
+            suggestion: lang.h4
         });
     }
 
@@ -942,7 +990,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H5: Error Prevention',
             score: h.errorPrevention,
             priority: 'medium',
-            suggestion: 'Thêm form validation, confirmation dialogs, và constraints để ngăn người dùng mắc lỗi.'
+            suggestion: lang.h5
         });
     }
 
@@ -951,7 +999,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H6: Recognition over Recall',
             score: h.recognitionOverRecall,
             priority: 'medium',
-            suggestion: 'Hiển thị options rõ ràng thay vì yêu cầu nhớ. Thêm icons, labels và visual cues.'
+            suggestion: lang.h6
         });
     }
 
@@ -960,7 +1008,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H7: Flexibility & Efficiency',
             score: h.flexibilityEfficiency,
             priority: 'low',
-            suggestion: 'Cung cấp shortcuts, multiple paths, và progressive disclosure cho cả novice và expert users.'
+            suggestion: lang.h7
         });
     }
 
@@ -969,7 +1017,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H8: Aesthetic & Minimalist',
             score: h.aestheticMinimalist,
             priority: 'medium',
-            suggestion: 'Loại bỏ thông tin không cần thiết. Tập trung vào nội dung chính, sử dụng whitespace hiệu quả.'
+            suggestion: lang.h8
         });
     }
 
@@ -978,7 +1026,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H9: Error Recovery',
             score: h.errorRecovery,
             priority: 'medium',
-            suggestion: 'Cung cấp error messages rõ ràng với hướng dẫn khắc phục cụ thể, không dùng mã lỗi kỹ thuật.'
+            suggestion: lang.h9
         });
     }
 
@@ -987,7 +1035,7 @@ const getHeuristicRecommendations = (heuristicResult) => {
             heuristic: 'H10: Help & Documentation',
             score: h.helpDocumentation,
             priority: 'low',
-            suggestion: 'Thêm tooltips, help links, FAQ section, và contextual help khi người dùng cần.'
+            suggestion: lang.h10
         });
     }
 
@@ -995,9 +1043,9 @@ const getHeuristicRecommendations = (heuristicResult) => {
 };
 
 /**
- * Advanced Local Page Analysis with Academic Metrics
+ * Advanced Local Page Analysis with Academic Metrics (Bilingual Support)
  */
-const getLocalPageAnalysis = (pageData) => {
+const getLocalPageAnalysis = (pageData, language = 'vietnamese') => {
     const elements = pageData.elements || [];
     const textContent = extractAllText(elements);
     const sections = elements.filter(el => el.type === 'section');
@@ -1010,9 +1058,12 @@ const getLocalPageAnalysis = (pageData) => {
     const visualHierarchy = calculateVisualHierarchy(elements);
     const conversion = calculateConversionScore(elements);
 
-    // Nielsen & Molich Heuristic Evaluation
+    // Nielsen & Molich Heuristic Evaluation (with language support)
     const heuristicEvaluation = calculateHeuristicScore(elements, textContent);
-    const heuristicRecommendations = getHeuristicRecommendations(heuristicEvaluation);
+    const heuristicRecommendations = getHeuristicRecommendations(heuristicEvaluation, language);
+
+    // Update interpretation with language
+    heuristicEvaluation.interpretation = getHeuristicInterpretation(heuristicEvaluation.percentage, language);
 
     // Normalize scores
     const structureScore = Math.round(contentDepth);
