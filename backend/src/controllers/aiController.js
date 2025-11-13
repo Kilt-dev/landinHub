@@ -667,21 +667,104 @@ const getLocalAIContent = (context, type, options) => {
 };
 
 /**
- * Fallback: Local page analysis
+ * Academic Algorithm: Flesch Reading Ease Score
+ * Formula: 206.835 - 1.015(words/sentences) - 84.6(syllables/words)
+ */
+const calculateReadabilityScore = (text) => {
+    if (!text || text.length < 10) return 60;
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    if (sentences.length === 0 || words.length === 0) return 60;
+
+    const countSyllables = (word) => {
+        word = word.toLowerCase();
+        if (word.length <= 3) return 1;
+        const vowels = word.match(/[aeiouyàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]+/gi);
+        return vowels ? vowels.length : 1;
+    };
+
+    const totalSyllables = words.reduce((sum, w) => sum + countSyllables(w), 0);
+    const score = 206.835 - (1.015 * words.length / sentences.length) - (84.6 * totalSyllables / words.length);
+    return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+/**
+ * Content Depth: Information density analysis
+ */
+const calculateContentDepth = (elements, textContent) => {
+    const wordCount = textContent.split(/\s+/).filter(w => w.length > 0).length;
+    const headings = countElementsByType(elements, 'heading');
+    const paragraphs = countElementsByType(elements, 'paragraph');
+    const lists = countElementsByType(elements, 'list');
+    const images = countElementsByType(elements, 'image');
+
+    const diversity = Math.min(10, headings + paragraphs * 0.5 + lists * 2 + images * 0.3);
+    let volume = 0;
+    if (wordCount < 100) volume = wordCount / 100 * 3;
+    else if (wordCount <= 800) volume = 3 + ((wordCount - 100) / 700 * 7);
+    else volume = Math.max(7, 10 - ((wordCount - 800) / 1000 * 3));
+
+    return Math.round((diversity * 0.6 + volume * 0.4) * 10) / 10;
+};
+
+/**
+ * Visual Hierarchy: Gestalt principles + UX research
+ */
+const calculateVisualHierarchy = (elements) => {
+    const headings = countElementsByType(elements, 'heading');
+    const sections = elements.filter(el => el.type === 'section').length;
+    const images = countElementsByType(elements, 'image');
+    const buttons = countElementsByType(elements, 'button');
+
+    const fPattern = Math.min(10, sections * 2);
+    const focus = Math.min(10, (headings * 1.5 + buttons * 2) * 0.5);
+    const balance = images > 0 ? Math.min(10, 5 + images * 1.5) : 4;
+
+    return Math.round((fPattern * 0.4 + focus * 0.4 + balance * 0.2) * 10) / 10;
+};
+
+/**
+ * Conversion Optimization: CRO best practices
+ */
+const calculateConversionScore = (elements) => {
+    const forms = elements.filter(el => el.type === 'form').length;
+    const buttons = countElementsByType(elements, 'button');
+    const testimonials = countElementsByType(elements, 'testimonial');
+    const sections = elements.filter(el => el.type === 'section').length;
+
+    const leadCapture = forms > 0 ? Math.min(10, 5 + forms * 3) : 0;
+    const cta = Math.min(10, (buttons / Math.max(sections, 1)) * 3);
+    const trust = Math.min(10, testimonials * 2.5);
+
+    return Math.round((leadCapture * 0.5 + cta * 0.3 + trust * 0.2) * 10) / 10;
+};
+
+/**
+ * Advanced Local Page Analysis with Academic Metrics
  */
 const getLocalPageAnalysis = (pageData) => {
     const elements = pageData.elements || [];
+    const textContent = extractAllText(elements);
     const sections = elements.filter(el => el.type === 'section');
     const forms = elements.filter(el => el.type === 'form');
     const buttons = countElementsByType(elements, 'button');
 
-    // Simple scoring algorithm
-    const structureScore = Math.min(10, sections.length * 2); // Max 10
-    const contentScore = Math.min(10, (buttons * 2 + forms.length * 3)); // CTAs + Forms
-    const designScore = 7; // Default
-    const conversionScore = Math.min(10, forms.length * 5); // Forms are key
+    // Apply academic algorithms
+    const readability = calculateReadabilityScore(textContent);
+    const contentDepth = calculateContentDepth(elements, textContent);
+    const visualHierarchy = calculateVisualHierarchy(elements);
+    const conversion = calculateConversionScore(elements);
 
-    const overallScore = Math.round((structureScore + contentScore + designScore + conversionScore) / 4 * 10);
+    // Normalize scores
+    const structureScore = Math.round(contentDepth);
+    const contentScore = Math.round(readability / 10);
+    const designScore = Math.round(visualHierarchy);
+    const conversionScore = Math.round(conversion);
+
+    // Weighted overall (35% conversion, 25% design, 20% each for structure/content)
+    const overallScore = Math.round(
+        structureScore * 2 + contentScore * 2 + designScore * 2.5 + conversionScore * 3.5
+    );
 
     return {
         overall_score: overallScore,
@@ -691,31 +774,39 @@ const getLocalPageAnalysis = (pageData) => {
             design: designScore,
             conversion: conversionScore
         },
+        metrics: {
+            readability: Math.round(readability),
+            contentDepth: Math.round(contentDepth * 10),
+            visualHierarchy: Math.round(visualHierarchy * 10),
+            wordCount: textContent.split(/\s+/).filter(w => w.length > 0).length
+        },
         strengths: [
-            sections.length >= 3 && 'Có cấu trúc sections rõ ràng',
-            forms.length > 0 && 'Có form thu thập thông tin',
-            buttons >= 3 && 'Có đủ call-to-action buttons'
+            sections.length >= 3 && 'Cấu trúc sections hợp lý',
+            forms.length > 0 && 'Có công cụ thu thập thông tin',
+            buttons >= 3 && 'Đủ nút kêu gọi hành động',
+            readability > 60 && 'Nội dung dễ đọc, dễ hiểu'
         ].filter(Boolean),
         weaknesses: [
-            sections.length < 3 && 'Cần thêm sections để tăng nội dung',
-            forms.length === 0 && 'Thiếu form để thu thập leads',
-            buttons < 3 && 'Cần thêm CTAs để tăng conversion'
+            sections.length < 3 && 'Cần thêm phần nội dung',
+            forms.length === 0 && 'Thiếu form thu thập khách hàng tiềm năng',
+            buttons < 3 && 'Cần thêm nút kêu gọi hành động',
+            readability < 40 && 'Nội dung quá phức tạp, khó hiểu'
         ].filter(Boolean),
         suggestions: [
             {
-                type: 'critical',
-                title: 'Thêm Form Thu Thập Leads',
-                description: 'Landing page cần ít nhất 1 form để chuyển đổi visitors thành leads. Đặt form ở section cuối hoặc trong popup.'
+                type: forms.length === 0 ? 'critical' : 'improvement',
+                title: 'Thu Thập Thông Tin Khách Hàng',
+                description: 'Thêm form đăng ký để chuyển đổi khách truy cập thành khách hàng tiềm năng. Đặt ở cuối trang hoặc popup.'
+            },
+            {
+                type: buttons < 2 ? 'critical' : 'improvement',
+                title: 'Tăng Cường Kêu Gọi Hành Động',
+                description: 'Thêm nút với text hấp dẫn: "Đăng ký ngay", "Nhận ưu đãi", "Tìm hiểu thêm" ở các vị trí chiến lược.'
             },
             {
                 type: 'improvement',
-                title: 'Tối Ưu Call-to-Action',
-                description: 'Thêm buttons CTAs rõ ràng với text hấp dẫn: "Đăng ký ngay", "Nhận ưu đãi", "Tìm hiểu thêm"'
-            },
-            {
-                type: 'improvement',
-                title: 'Cải Thiện Visual Hierarchy',
-                description: 'Sử dụng heading lớn, colors tương phản và spacing hợp lý để dẫn dắt người xem.'
+                title: 'Cải Thiện Bố Cục Trang',
+                description: 'Sử dụng tiêu đề lớn, màu sắc tương phản và khoảng cách hợp lý để dẫn dắt sự chú ý.'
             }
         ]
     };
