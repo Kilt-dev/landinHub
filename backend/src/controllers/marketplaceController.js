@@ -8,6 +8,27 @@ const screenshotService = require('../services/screenshotService');
 const exportService = require('../services/exportService');
 const Order = require('../models/Order');
 const Review = require('../models/MarketplaceReview');
+const AWS = require('aws-sdk');
+
+// Configure AWS S3
+AWS.config.update({ region: process.env.AWS_REGION || 'ap-southeast-1' });
+const s3 = new AWS.S3();
+
+// Helper function to get content from S3
+const getFromS3 = async (s3Key) => {
+    try {
+        console.log('Attempting to get S3 object with key:', s3Key);
+        const s3Response = await s3.getObject({
+            Bucket: process.env.AWS_S3_BUCKET,
+            Key: s3Key
+        }).promise();
+
+        return s3Response.Body.toString('utf-8');
+    } catch (err) {
+        console.error('Failed to get from S3:', s3Key, err.message);
+        return null;
+    }
+};
 
 /**
  * Lấy danh sách marketplace pages (public)
