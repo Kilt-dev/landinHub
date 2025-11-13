@@ -520,17 +520,218 @@
     color: #28a745;
     font-weight: 600;
 }
-.review-list { margin-top: 24px; }
-.review-item {
-    border-bottom: 1px solid #eee;
-    padding: 12px 0;
+/* === REVIEW & RATING SECTION === */
+.review-list {
+    margin-top: var(--space-xl);
+    padding: var(--space-xl);
+    background-color: var(--color-bg-container);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
 }
+
+.review-list h4 {
+    font-family: var(--font-serif);
+    font-size: 1.8rem;
+    color: var(--color-text-header);
+    margin-bottom: var(--space-lg);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.review-item {
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-lg) 0;
+    transition: var(--transition);
+}
+
+.review-item:last-child {
+    border-bottom: none;
+}
+
+.review-item:hover {
+    background-color: rgba(161, 138, 109, 0.02);
+    padding-left: var(--space-md);
+    margin-left: calc(-1 * var(--space-md));
+    border-radius: var(--radius-sm);
+}
+
 .review-head {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 6px;
+    align-items: center;
+    margin-bottom: var(--space-sm);
 }
-.review-date { font-size: 0.85em; color: #666; }
-.review-comment { margin-top: 6px; color: #333; }
-.stars { color: #ffc107; }
-.stars svg { margin-right: 2px; }
+
+.review-head strong {
+    font-size: 1rem;
+    color: var(--color-text-header);
+    font-weight: 600;
+}
+
+.review-date {
+    font-size: 0.85rem;
+    color: var(--color-text-light);
+}
+
+.review-comment {
+    margin-top: var(--space-sm);
+    color: var(--color-text-body);
+    line-height: 1.6;
+    font-size: 0.95rem;
+}
+
+.stars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: var(--space-sm) 0;
+}
+
+.stars svg {
+    width: 18px;
+    height: 18px;
+    transition: var(--transition);
+}
+
+.stars .filled {
+    color: #ffc107;
+    fill: #ffc107;
+}
+
+.stars svg:not(.filled) {
+    color: #e0e0e0;
+    fill: none;
+}
+
+.stars i {
+    margin-left: 6px;
+    font-size: 0.9rem;
+    color: var(--color-text-light);
+    font-style: normal;
+}
+
+/* Review Box (Form để user đánh giá) */
+.review-box {
+    margin-top: var(--space-xl);
+    padding: var(--space-xl);
+    background: linear-gradient(135deg, rgba(161, 138, 109, 0.05) 0%, rgba(161, 138, 109, 0.02) 100%);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft);
+}
+
+.review-box h4 {
+    font-family: var(--font-serif);
+    font-size: 1.5rem;
+    color: var(--color-text-header);
+    margin-bottom: var(--space-lg);
+}
+
+.review-box .stars {
+    margin-bottom: var(--space-lg);
+}
+
+.review-box .stars svg {
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.review-box .stars svg:hover {
+    transform: scale(1.2);
+    filter: drop-shadow(0 2px 4px rgba(255, 193, 7, 0.4));
+}
+
+.review-box .stars svg.filled {
+    color: #ffc107;
+    fill: #ffc107;
+}
+
+.review-box .stars svg:not(.filled) {
+    color: #e0e0e0;
+    fill: none;
+}
+
+.review-box textarea {
+    width: 100%;
+    padding: var(--space-md);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    color: var(--color-text-body);
+    resize: vertical;
+    min-height: 100px;
+    margin-bottom: var(--space-lg);
+    transition: var(--transition);
+}
+
+.review-box textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(161, 138, 109, 0.1);
+}
+
+.review-box textarea::placeholder {
+    color: var(--color-text-light);
+}
+
+.review-box button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, var(--color-primary) 0%, #b9a589 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(161, 138, 109, 0.3);
+}
+
+.review-box button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(161, 138, 109, 0.4);
+}
+
+.review-box button:active {
+    transform: translateY(0);
+}
+
+.review-box button:disabled {
+    background: linear-gradient(135deg, #ccc 0%, #aaa 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Empty state khi chưa có review */
+.review-list:empty::before {
+    content: "Chưa có đánh giá nào. Hãy là người đầu tiên đánh giá sản phẩm này!";
+    display: block;
+    text-align: center;
+    color: var(--color-text-light);
+    font-size: 0.95rem;
+    padding: var(--space-xl);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .review-list,
+    .review-box {
+        padding: var(--space-lg);
+    }
+
+    .review-list h4,
+    .review-box h4 {
+        font-size: 1.3rem;
+    }
+
+    .review-box .stars svg {
+        width: 28px;
+        height: 28px;
+    }
+}
