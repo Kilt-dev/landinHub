@@ -76,11 +76,11 @@ const AdminTransactions = () => {
 
     const getPaymentMethodIcon = (method) => {
         switch (method) {
-            case 'VNPAY': return '💳';
-            case 'MOMO': return '📱';
-            case 'BANK_TRANSFER': return '🏦';
-            case 'SANDBOX': return '🧪';
-            default: return '💰';
+            case 'VNPAY': return 'VNPay';
+            case 'MOMO': return 'MOMO';
+            case 'BANK_TRANSFER': return 'Bank';
+            case 'SANDBOX': return 'Test';
+            default: return 'Other';
         }
     };
 
@@ -94,7 +94,7 @@ const AdminTransactions = () => {
             {/* HEADER */}
             <div className="page-header">
                 <div className="header-content">
-                    <h1>💳 Quản Lý Giao Dịch</h1>
+                    <h1>Quản Lý Giao Dịch</h1>
                     <p>Theo dõi tất cả giao dịch và lợi nhuận platform</p>
                 </div>
                 <div className="header-actions">

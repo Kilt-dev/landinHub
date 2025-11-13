@@ -81,13 +81,13 @@ const DeploymentSettings = () => {
 
         setDeploymentStatus('deploying');
         setDeployLogs([]);
-        addLog('🚀 Bắt đầu quá trình deployment...');
+        addLog('Bắt đầu quá trình deployment...');
 
         try {
             const token = localStorage.getItem('token');
 
             // Single API call - Backend handles everything!
-            addLog('🚀 Đang bắt đầu deployment...');
+            addLog('Đang bắt đầu deployment...');
 
             const response = await axios.post(
                 `${process.env.REACT_APP_API_URL}/api/deployment/${pageId}/deploy`,
@@ -100,24 +100,24 @@ const DeploymentSettings = () => {
 
             // Backend returns progress updates via WebSocket or polling
             // For now, simulate with timeout
-            addLog('📦 Backend đang build HTML...');
+            addLog('Backend đang build HTML...');
             await new Promise(resolve => setTimeout(resolve, 1000));
 
-            addLog('☁️ Backend đang upload lên CDN...');
+            addLog('Backend đang upload lên CDN...');
             await new Promise(resolve => setTimeout(resolve, 1500));
 
-            addLog('🌐 Backend đang cấu hình distribution...');
+            addLog('Backend đang cấu hình distribution...');
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             if (domainSettings.useCustomDomain && domainSettings.customDomain) {
-                addLog('🔗 Backend đang cấu hình custom domain...');
+                addLog('Backend đang cấu hình custom domain...');
                 await new Promise(resolve => setTimeout(resolve, 1500));
             }
 
-            addLog('🔄 Backend đang làm mới cache...');
+            addLog('Backend đang làm mới cache...');
             await new Promise(resolve => setTimeout(resolve, 800));
 
-            addLog('🎉 Deployment hoàn tất!');
+            addLog('Deployment hoàn tất!');
             setDeploymentStatus('deployed');
             setDeploymentInfo(response.data);
 
@@ -125,7 +125,7 @@ const DeploymentSettings = () => {
 
         } catch (error) {
             console.error('Deployment error:', error);
-            addLog(`❌ Lỗi: ${error.response?.data?.message || error.message}`);
+            addLog(`Lỗi: ${error.response?.data?.message || error.message}`);
             setDeploymentStatus('failed');
         }
     };

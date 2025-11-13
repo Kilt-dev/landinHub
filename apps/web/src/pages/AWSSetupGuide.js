@@ -15,7 +15,7 @@ const AWSSetupGuide = () => {
     return (
         <div className="aws-guide-container">
             <div className="guide-header">
-                <h1>🚀 Hướng dẫn Deploy lên AWS CloudFront + Route 53</h1>
+                <h1>Hướng dẫn Deploy lên AWS CloudFront + Route 53</h1>
                 <p>Hướng dẫn chi tiết từng bước để deploy landing pages của bạn lên AWS</p>
             </div>
 
@@ -37,17 +37,17 @@ const AWSSetupGuide = () => {
 
             {/* Overview */}
             <section id="overview" className="guide-section">
-                <h2>📋 Tổng quan</h2>
+                <h2>Tổng quan</h2>
                 <p>
                     AWS CloudFront + Route 53 là giải pháp CDN (Content Delivery Network) mạnh mẽ giúp:
                 </p>
                 <ul>
-                    <li>✅ Tăng tốc độ tải trang (latency thấp)</li>
-                    <li>✅ Phân phối toàn cầu với 450+ edge locations</li>
-                    <li>✅ SSL/TLS miễn phí</li>
-                    <li>✅ Custom domain dễ dàng</li>
-                    <li>✅ Tự động scale, không giới hạn traffic</li>
-                    <li>✅ Chi phí thấp (chỉ trả theo usage)</li>
+                    <li>Tăng tốc độ tải trang (latency thấp)</li>
+                    <li>Phân phối toàn cầu với 450+ edge locations</li>
+                    <li>SSL/TLS miễn phí</li>
+                    <li>Custom domain dễ dàng</li>
+                    <li>Tự động scale, không giới hạn traffic</li>
+                    <li>Chi phí thấp (chỉ trả theo usage)</li>
                 </ul>
 
                 <div className="architecture-diagram">
@@ -74,7 +74,7 @@ const AWSSetupGuide = () => {
 
             {/* Prerequisites */}
             <section id="prerequisites" className="guide-section">
-                <h2>📝 Yêu cầu</h2>
+                <h2>Yêu cầu</h2>
                 <div className="checklist">
                     <div className="checklist-item">
                         <CheckCircle size={20} />
@@ -171,10 +171,10 @@ const AWSSetupGuide = () => {
 
                     <div className="code-block">
                         <ul>
-                            <li>✅ <strong>AmazonS3FullAccess</strong> - Quản lý S3 buckets</li>
-                            <li>✅ <strong>CloudFrontFullAccess</strong> - Quản lý CloudFront distributions</li>
-                            <li>✅ <strong>AmazonRoute53FullAccess</strong> - Quản lý DNS records</li>
-                            <li>✅ <strong>AWSCertificateManagerFullAccess</strong> - Quản lý SSL certificates</li>
+                            <li><strong>AmazonS3FullAccess</strong> - Quản lý S3 buckets</li>
+                            <li><strong>CloudFrontFullAccess</strong> - Quản lý CloudFront distributions</li>
+                            <li><strong>AmazonRoute53FullAccess</strong> - Quản lý DNS records</li>
+                            <li><strong>AWSCertificateManagerFullAccess</strong> - Quản lý SSL certificates</li>
                         </ul>
                     </div>
 
@@ -211,7 +211,7 @@ const AWSSetupGuide = () => {
                 </div>
 
                 <div className="step">
-                    <h3>Bước 5: Tạo Access Keys 🔑</h3>
+                    <h3>Bước 5: Tạo Access Keys</h3>
                     <ol>
                         <li>Click vào user vừa tạo</li>
                         <li>Chọn tab <strong>"Security credentials"</strong></li>
@@ -222,12 +222,12 @@ const AWSSetupGuide = () => {
                     </ol>
 
                     <div className="important-box">
-                        <h4>⚠️ CỰC KỲ QUAN TRỌNG:</h4>
+                        <h4>CỰC KỲ QUAN TRỌNG:</h4>
                         <ul>
-                            <li>🔒 <strong>Access Key ID</strong>: Bắt đầu bằng "AKIA..." (có thể xem lại)</li>
-                            <li>🔐 <strong>Secret Access Key</strong>: CHỈ HIỂN THỊ 1 LẦN DUY NHẤT</li>
-                            <li>📥 Click <strong>"Download .csv file"</strong> để lưu lại</li>
-                            <li>🚫 KHÔNG BAO GIỜ share keys này công khai (GitHub, Slack, etc.)</li>
+                            <li><strong>Access Key ID</strong>: Bắt đầu bằng "AKIA..." (có thể xem lại)</li>
+                            <li><strong>Secret Access Key</strong>: CHỈ HIỂN THỊ 1 LẦN DUY NHẤT</li>
+                            <li>Click <strong>"Download .csv file"</strong> để lưu lại</li>
+                            <li>KHÔNG BAO GIỜ share keys này công khai (GitHub, Slack, etc.)</li>
                         </ul>
                     </div>
                 </div>
@@ -272,11 +272,11 @@ const AWSSetupGuide = () => {
                     <h3>Hệ thống tự động tạo</h3>
                     <p>Khi bạn click "Deploy Now", hệ thống sẽ tự động:</p>
                     <ul>
-                        <li>✅ Tạo CloudFront distribution</li>
-                        <li>✅ Point origin tới S3 bucket</li>
-                        <li>✅ Enable HTTPS</li>
-                        <li>✅ Set caching policies</li>
-                        <li>✅ Configure error pages</li>
+                        <li>Tạo CloudFront distribution</li>
+                        <li>Point origin tới S3 bucket</li>
+                        <li>Enable HTTPS</li>
+                        <li>Set caching policies</li>
+                        <li>Configure error pages</li>
                     </ul>
                     <p>Bạn sẽ nhận được URL dạng: <code>d12345abcdef.cloudfront.net</code></p>
                 </div>
@@ -358,7 +358,7 @@ ns-5678.awsdns-12.co.uk`}</pre>
                     <h3>Option 2: Tạo manual</h3>
                     <ol>
                         <li>Vào AWS Certificate Manager Console</li>
-                        <li><strong>⚠️ QUAN TRỌNG:</strong> Chọn region <strong>us-east-1</strong> (N. Virginia) - CloudFront chỉ dùng cert từ region này!</li>
+                        <li><strong>QUAN TRỌNG:</strong> Chọn region <strong>us-east-1</strong> (N. Virginia) - CloudFront chỉ dùng cert từ region này!</li>
                         <li>Click <strong>"Request certificate"</strong></li>
                         <li>Certificate type: <strong>Public certificate</strong></li>
                         <li>Domain names:
@@ -378,29 +378,29 @@ ns-5678.awsdns-12.co.uk`}</pre>
 
             {/* Troubleshooting */}
             <section id="troubleshooting" className="guide-section">
-                <h2>🔧 Xử lý sự cố thường gặp</h2>
+                <h2>Xử lý sự cố thường gặp</h2>
 
                 <div className="faq">
                     <div className="faq-item">
-                        <h4>❌ "Access Denied" khi upload S3</h4>
+                        <h4>"Access Denied" khi upload S3</h4>
                         <p><strong>Nguyên nhân:</strong> IAM user không có quyền S3</p>
                         <p><strong>Giải pháp:</strong> Thêm policy <code>AmazonS3FullAccess</code> cho IAM user</p>
                     </div>
 
                     <div className="faq-item">
-                        <h4>❌ "InvalidClientTokenId" error</h4>
+                        <h4>"InvalidClientTokenId" error</h4>
                         <p><strong>Nguyên nhân:</strong> Access Key ID sai hoặc đã bị xóa</p>
                         <p><strong>Giải pháp:</strong> Tạo lại Access Keys và update trong form</p>
                     </div>
 
                     <div className="faq-item">
-                        <h4>❌ CloudFront 403 Forbidden</h4>
+                        <h4>CloudFront 403 Forbidden</h4>
                         <p><strong>Nguyên nhân:</strong> S3 bucket chưa public hoặc CloudFront chưa có quyền</p>
                         <p><strong>Giải pháp:</strong> Enable "Block Public Access" = OFF trong S3 bucket settings</p>
                     </div>
 
                     <div className="faq-item">
-                        <h4>❌ Custom domain không hoạt động</h4>
+                        <h4>Custom domain không hoạt động</h4>
                         <p><strong>Nguyên nhân:</strong> DNS chưa propagate hoặc certificate chưa issued</p>
                         <p><strong>Giải pháp:</strong></p>
                         <ul>
@@ -411,7 +411,7 @@ ns-5678.awsdns-12.co.uk`}</pre>
                     </div>
 
                     <div className="faq-item">
-                        <h4>❌ Changes không hiển thị sau deploy</h4>
+                        <h4>Changes không hiển thị sau deploy</h4>
                         <p><strong>Nguyên nhân:</strong> CloudFront đang cache version cũ</p>
                         <p><strong>Giải pháp:</strong> Hệ thống tự động invalidate cache. Nếu vẫn không được, clear browser cache (Ctrl + Shift + R)</p>
                     </div>
@@ -420,15 +420,15 @@ ns-5678.awsdns-12.co.uk`}</pre>
 
             {/* Pricing */}
             <section id="pricing" className="guide-section">
-                <h2>💰 Chi phí ước tính</h2>
+                <h2>Chi phí ước tính</h2>
 
                 <div className="pricing-table">
                     <h3>AWS Free Tier (12 tháng đầu):</h3>
                     <ul>
-                        <li>✅ S3: 5GB storage, 20,000 GET requests, 2,000 PUT requests/tháng</li>
-                        <li>✅ CloudFront: 1TB data transfer out, 10,000,000 HTTP requests/tháng</li>
-                        <li>✅ Route 53: 1 hosted zone, 1 triệu queries/tháng</li>
-                        <li>✅ ACM: SSL certificates hoàn toàn miễn phí</li>
+                        <li>S3: 5GB storage, 20,000 GET requests, 2,000 PUT requests/tháng</li>
+                        <li>CloudFront: 1TB data transfer out, 10,000,000 HTTP requests/tháng</li>
+                        <li>Route 53: 1 hosted zone, 1 triệu queries/tháng</li>
+                        <li>ACM: SSL certificates hoàn toàn miễn phí</li>
                     </ul>
 
                     <h3>Sau Free Tier:</h3>
@@ -474,7 +474,7 @@ ns-5678.awsdns-12.co.uk`}</pre>
 
             {/* Next Steps */}
             <section className="guide-section next-steps">
-                <h2>🎯 Bước tiếp theo</h2>
+                <h2>Bước tiếp theo</h2>
                 <div className="next-steps-grid">
                     <div className="next-step-card">
                         <h3>1. Tạo AWS Account</h3>
@@ -502,12 +502,12 @@ ns-5678.awsdns-12.co.uk`}</pre>
 
             {/* Support */}
             <div className="support-box">
-                <h3>💬 Cần trợ giúp?</h3>
+                <h3>Cần trợ giúp?</h3>
                 <p>Nếu gặp vấn đề, liên hệ:</p>
                 <ul>
-                    <li>📧 Email: support@landinghub.com</li>
-                    <li>💬 Live chat trong app</li>
-                    <li>📚 <a href="/docs">Documentation</a></li>
+                    <li>Email: support@landinghub.com</li>
+                    <li>Live chat trong app</li>
+                    <li><a href="/docs">Documentation</a></li>
                 </ul>
             </div>
         </div>

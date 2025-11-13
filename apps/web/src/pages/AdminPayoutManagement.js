@@ -267,7 +267,7 @@ const AdminPayoutManagement = () => {
                     {/* Header */}
                     <div className="payout-header" data-aos="fade-down">
                         <div>
-                            <h1>💸 Quản lý rút tiền</h1>
+                            <h1>Quản lý rút tiền</h1>
                             <p>Duyệt yêu cầu rút tiền từ người bán</p>
                         </div>
                     </div>
@@ -383,7 +383,7 @@ const AdminPayoutManagement = () => {
                                                                 setShowApproveModal(true);
                                                             }}
                                                         >
-                                                            ✅ Duyệt
+                                                            Duyệt
                                                         </button>
                                                         <button
                                                             className="btn-reject"
@@ -391,7 +391,7 @@ const AdminPayoutManagement = () => {
                                                                 setSelectedPayout(payout);
                                                             }}
                                                         >
-                                                            ❌ Từ chối
+                                                            Từ chối
                                                         </button>
                                                     </div>
                                                 ) : (
@@ -431,7 +431,7 @@ const AdminPayoutManagement = () => {
             {showApproveModal && selectedPayout && (
                 <div className="modal-overlay" onClick={() => setShowApproveModal(false)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h2>✅ Duyệt yêu cầu rút tiền</h2>
+                        <h2>Duyệt yêu cầu rút tiền</h2>
                         <div className="modal-info">
                             <p><strong>Người bán:</strong> {selectedPayout.seller_id?.name}</p>
                             <p><strong>Số tiền:</strong> {formatPrice(selectedPayout.amount)}</p>
@@ -499,7 +499,7 @@ const AdminPayoutManagement = () => {
             {selectedPayout && !showApproveModal && (
                 <div className="modal-overlay" onClick={() => setSelectedPayout(null)}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <h2>❌ Từ chối yêu cầu rút tiền</h2>
+                        <h2>Từ chối yêu cầu rút tiền</h2>
                         <div className="modal-info">
                             <p><strong>Người bán:</strong> {selectedPayout.seller_id?.name}</p>
                             <p><strong>Số tiền:</strong> {formatPrice(selectedPayout.amount)}</p>
