@@ -165,16 +165,10 @@ const generateScreenshot = async (htmlContent, pageId, isUrl = false, options = 
             await new Promise(resolve => setTimeout(resolve, 300)); // Reduced from 500ms
         }
 
-        // Take screenshot
+        // Take screenshot - ALWAYS fullPage for better user preview
         const screenshot = await page.screenshot({
             type: 'png',
-            clip: options.fullPage ? undefined : {
-                x: 0,
-                y: 0,
-                width: viewport.width,
-                height: viewport.height
-            },
-            fullPage: options.fullPage || false
+            fullPage: true // CRITICAL: Always capture entire page for marketplace preview
         });
 
         const suffix = options.popupId ? `-popup-${options.popupId}` : '';
