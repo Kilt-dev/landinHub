@@ -364,9 +364,10 @@ const buildHTML = async (pageData) => {
 /**
  * Helper: Upload HTML to S3
  */
-const uploadToS3 = async (html, pageId) => {
+const uploadToS3 = async (html, s3Path) => {
     const bucketName = process.env.AWS_S3_BUCKET || 'landing-hub-pages';
-    const objectKey = `pages/${pageId}/index.html`;
+    // Use s3Path as subdomain or pageId for better organization
+    const objectKey = `${s3Path}/index.html`;
 
     try {
         // Check if bucket exists, create if not
@@ -423,9 +424,20 @@ const uploadToS3 = async (html, pageId) => {
  */
 const findOrCreateDistribution = async (bucketName, customDomain = null) => {
     try {
+        // PRIORITY 1: Use existing CloudFront distribution from env if configured
+        // This is for wildcard setups like *.landinghub.vn -> CloudFront
+        if (process.env.AWS_CLOUDFRONT_DISTRIBUTION_ID && process.env.AWS_CLOUDFRONT_DOMAIN) {
+            console.log('Using existing CloudFront distribution from environment:', process.env.AWS_CLOUDFRONT_DISTRIBUTION_ID);
+            return {
+                distributionId: process.env.AWS_CLOUDFRONT_DISTRIBUTION_ID,
+                cloudFrontDomain: process.env.AWS_CLOUDFRONT_DOMAIN,
+                status: 'Deployed'
+            };
+        }
+
         const s3DomainName = `${bucketName}.s3.${process.env.AWS_S3_REGION || 'ap-southeast-1'}.amazonaws.com`;
 
-        // Check for existing distribution
+        // PRIORITY 2: Check for existing distribution by S3 origin
         const distributions = await cloudfront.listDistributions({}).promise();
         let existingDist = null;
 
@@ -512,6 +524,7 @@ const findOrCreateDistribution = async (bucketName, customDomain = null) => {
 
 /**
  * Helper: Configure DNS with Route 53
+ * Skip if wildcard DNS already exists (e.g., *.landinghub.vn)
  */
 const configureDNS = async (customDomain, cloudFrontDomain) => {
     try {
@@ -520,7 +533,19 @@ const configureDNS = async (customDomain, cloudFrontDomain) => {
             throw new Error('Route 53 Hosted Zone ID not configured');
         }
 
-        // Create or update A record
+        // Check if wildcard DNS already exists
+        const baseDomain = process.env.AWS_ROUTE53_BASE_DOMAIN;
+        if (baseDomain && customDomain.endsWith(`.${baseDomain}`)) {
+            console.log(`Subdomain ${customDomain} covered by wildcard *.${baseDomain} - skipping DNS creation`);
+            return {
+                success: true,
+                hostedZoneId,
+                skipped: true,
+                reason: 'Wildcard DNS already configured'
+            };
+        }
+
+        // Create or update A record for custom domains not covered by wildcard
         await route53.changeResourceRecordSets({
             HostedZoneId: hostedZoneId,
             ChangeBatch: {
@@ -539,7 +564,7 @@ const configureDNS = async (customDomain, cloudFrontDomain) => {
             }
         }).promise();
 
-        return { success: true, hostedZoneId };
+        return { success: true, hostedZoneId, skipped: false };
     } catch (error) {
         throw new Error(`Route 53 configuration failed: ${error.message}`);
     }
@@ -601,7 +626,15 @@ exports.deployPage = async (req, res) => {
         // Update domain settings
         deployment.use_custom_domain = !!customDomain;
         deployment.custom_domain = customDomain || null;
-        deployment.subdomain = subdomain || null;
+
+        // Auto-generate subdomain if not provided and base domain exists
+        let finalSubdomain = subdomain;
+        if (!subdomain && !customDomain && process.env.AWS_ROUTE53_BASE_DOMAIN) {
+            // Use page slug or generate from pageId
+            finalSubdomain = page.slug || pageId.substring(0, 8);
+            console.log(`Auto-generated subdomain: ${finalSubdomain}`);
+        }
+        deployment.subdomain = finalSubdomain || null;
 
         await deployment.save();
 
@@ -618,7 +651,9 @@ exports.deployPage = async (req, res) => {
         deployment.addLog('Uploading to S3...');
         await deployment.save();
 
-        const { bucketName, objectKey, s3Url } = await uploadToS3(html, pageId);
+        // Use subdomain as S3 path for better organization
+        const s3Path = finalSubdomain || pageId;
+        const { bucketName, objectKey, s3Url } = await uploadToS3(html, s3Path);
         deployment.s3_bucket = bucketName;
         deployment.s3_object_key = objectKey;
         deployment.s3_url = s3Url;
@@ -628,8 +663,9 @@ exports.deployPage = async (req, res) => {
         deployment.addLog('Creating CloudFront distribution...');
         await deployment.save();
 
+        // Construct final domain (custom domain or auto-generated subdomain)
         const finalDomain = customDomain ||
-            (subdomain ? `${subdomain}.${process.env.AWS_ROUTE53_BASE_DOMAIN}` : null);
+            (finalSubdomain ? `${finalSubdomain}.${process.env.AWS_ROUTE53_BASE_DOMAIN}` : null);
 
         const { distributionId, cloudFrontDomain, status } =
             await findOrCreateDistribution(bucketName, finalDomain);
