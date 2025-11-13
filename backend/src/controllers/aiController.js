@@ -53,7 +53,7 @@ const callDeepSeekAPI = async (prompt, retries = 3, maxTokens = 1000) => {
 };
 
 /**
- * Helper: Call Google Gemini API
+ * Helper: Call Google Gemini API with retry logic
  * Returns null if API fails or not configured
  */
 const callGeminiAPI = async (prompt, maxTokens = 1000) => {
@@ -62,43 +62,57 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
         return null;
     }
 
-    try {
-        const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash']; // Try 2.0 first, fallback to 1.5
 
-        const result = await model.generateContent(prompt);
+    for (const modelName of models) {
+        try {
+            console.log(`Trying Gemini model: ${modelName}`);
+            const model = gemini.getGenerativeModel({ model: modelName });
 
-        const response = await result.response;
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
 
-        // Check if response was blocked by safety filters
-        if (!response.candidates || response.candidates.length === 0) {
-            console.warn('Gemini response blocked or empty candidates');
-            return null;
+            // Check if response was blocked by safety filters
+            if (!response.candidates || response.candidates.length === 0) {
+                console.warn('Gemini response blocked or empty candidates');
+                continue; // Try next model
+            }
+
+            const candidate = response.candidates[0];
+
+            // Check finish reason
+            if (candidate.finishReason === 'SAFETY') {
+                console.warn('Gemini content blocked by safety filters');
+                continue; // Try next model
+            }
+
+            const text = response.text();
+
+            console.log(`✅ Gemini ${modelName} successful`);
+            console.log('Gemini response text length:', text?.length || 0);
+
+            if (!text || text.trim().length === 0) {
+                console.warn('Gemini returned empty text');
+                continue; // Try next model
+            }
+
+            return { text };
+        } catch (err) {
+            console.error(`Gemini ${modelName} failed:`, err.message);
+
+            // If 503 (overloaded), try next model
+            if (err.message.includes('503') || err.message.includes('overloaded')) {
+                console.log(`${modelName} overloaded, trying next model...`);
+                continue;
+            }
+
+            // For other errors, also try next model
+            continue;
         }
-
-        const candidate = response.candidates[0];
-
-        // Check finish reason
-        if (candidate.finishReason === 'SAFETY') {
-            console.warn('Gemini content blocked by safety filters');
-            return null;
-        }
-
-        const text = response.text();
-
-        console.log('Gemini API call successful');
-        console.log('Gemini response text length:', text?.length || 0);
-        console.log('Gemini response preview:', text?.substring(0, 100));
-
-        if (!text || text.trim().length === 0) {
-            console.warn('Gemini returned empty text');
-            return null;
-        }
-
-        return { text };
-    } catch (err) {
-        console.error('Gemini API failed:', err.message);
-        return null;
     }
+
+    console.warn('All Gemini models failed');
+    return null;
 };
 
 /**
