@@ -63,7 +63,7 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
     }
 
     try {
-        const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+        const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
         const result = await model.generateContent({
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
