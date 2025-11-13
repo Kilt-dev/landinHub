@@ -1,6 +1,69 @@
 const { OpenAI } = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Groq = require('groq-sdk');
+const crypto = require('crypto');
+
+/**
+ * LRU Cache Implementation for AI Responses
+ * Reduces redundant API calls and improves response time
+ * Academic approach: Least Recently Used caching algorithm
+ */
+class LRUCache {
+    constructor(maxSize = 100) {
+        this.cache = new Map();
+        this.maxSize = maxSize;
+    }
+
+    generateKey(prompt, options = {}) {
+        const data = JSON.stringify({ prompt, options });
+        return crypto.createHash('md5').update(data).digest('hex');
+    }
+
+    get(key) {
+        if (!this.cache.has(key)) return null;
+
+        // Move to end (mark as recently used)
+        const value = this.cache.get(key);
+        this.cache.delete(key);
+        this.cache.set(key, value);
+
+        return value;
+    }
+
+    set(key, value) {
+        // Delete if exists (to re-add at end)
+        if (this.cache.has(key)) {
+            this.cache.delete(key);
+        }
+
+        // If cache full, delete oldest (first) entry
+        if (this.cache.size >= this.maxSize) {
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+
+        this.cache.set(key, {
+            data: value,
+            timestamp: Date.now(),
+            hits: 1
+        });
+    }
+
+    getCacheStats() {
+        return {
+            size: this.cache.size,
+            maxSize: this.maxSize,
+            entries: Array.from(this.cache.entries()).map(([key, val]) => ({
+                key: key.substring(0, 8) + '...',
+                hits: val.hits,
+                age: Date.now() - val.timestamp
+            }))
+        };
+    }
+}
+
+// Initialize LRU cache for AI responses (100 entries)
+const aiCache = new LRUCache(100);
 
 // Initialize Groq client (Primary AI provider - Fast & Free)
 let groq = null;
@@ -222,16 +285,65 @@ exports.generateContent = async (req, res) => {
 
         const { tone = 'professional', length = 'medium', style = 'modern' } = options;
 
-        // Build prompt based on type
+        // Check cache first (LRU Cache optimization)
+        const cacheKey = aiCache.generateKey(context, { type, tone, length, style });
+        const cached = aiCache.get(cacheKey);
+
+        if (cached) {
+            console.log(`✅ Cache HIT for context: "${context}" (${type})`);
+            return res.json({
+                success: true,
+                content: cached.data,
+                source: 'cache',
+                cached: true
+            });
+        }
+
+        // Build context-aware prompts (Chain of Thought approach)
         const prompts = {
-            heading: `Tạo một tiêu đề ${length === 'short' ? 'ngắn gọn' : length === 'medium' ? 'vừa phải' : 'dài'} về "${context}" với phong cách ${style}, giọng điệu ${tone}. Chỉ trả về tiêu đề, không giải thích.`,
-            paragraph: `Viết một đoạn văn ${length === 'short' ? '2-3 câu' : length === 'medium' ? '4-5 câu' : '6-8 câu'} về "${context}" với phong cách ${style}, giọng điệu ${tone}. Chỉ trả về nội dung, không giải thích.`,
-            button: `Tạo text cho button call-to-action về "${context}" với giọng điệu ${tone}. Ngắn gọn, hấp dẫn. Chỉ trả về text button (3-5 từ).`,
-            list: `Tạo 5 bullet points về "${context}" với phong cách ${style}. Mỗi điểm ngắn gọn, hấp dẫn.`
+            heading: `Task: Create a compelling headline for "${context}"
+Style: ${style}, Tone: ${tone}, Length: ${length === 'short' ? 'concise (3-6 words)' : length === 'medium' ? 'medium (7-12 words)' : 'detailed (13-20 words)'}
+
+Think step by step:
+1. What is the main benefit or value proposition?
+2. What emotion should it evoke?
+3. How to make it memorable and action-oriented?
+
+Output: Return ONLY the headline, no explanation.`,
+
+            paragraph: `Task: Write engaging paragraph about "${context}"
+Style: ${style}, Tone: ${tone}, Length: ${length === 'short' ? '2-3 sentences' : length === 'medium' ? '4-5 sentences' : '6-8 sentences'}
+
+Think step by step:
+1. What problem does this solve?
+2. What benefits does it provide?
+3. How to make it persuasive yet natural?
+
+Output: Return ONLY the paragraph, no explanation.`,
+
+            button: `Task: Create a CTA button text for "${context}"
+Tone: ${tone}, Goal: Drive action
+
+Think step by step:
+1. What action do we want users to take?
+2. What creates urgency or desire?
+3. Keep it 2-4 words, action-oriented
+
+Output: Return ONLY the button text.`,
+
+            list: `Task: Create 5 bullet points about "${context}"
+Style: ${style}
+
+Think step by step:
+1. What are the key benefits/features?
+2. How to make each point concise yet impactful?
+3. Use parallel structure
+
+Output: Return ONLY 5 bullet points, one per line.`
         };
 
         const prompt = prompts[type] || prompts.paragraph;
-        const maxTokens = length === 'short' ? 100 : length === 'medium' ? 200 : 400;
+        const maxTokens = length === 'short' ? 150 : length === 'medium' ? 250 : 450;
 
         console.log(`Generating AI content: type=${type}, context="${context}"`);
 
@@ -267,10 +379,17 @@ exports.generateContent = async (req, res) => {
             }
         }
 
+        // Save to cache if AI-generated (not template)
+        if (source !== 'template' && content) {
+            aiCache.set(cacheKey, content);
+            console.log(`💾 Saved to cache: "${context}" (${type})`);
+        }
+
         res.json({
             success: true,
             content: content,
-            source: source
+            source: source,
+            cached: false
         });
 
     } catch (error) {
