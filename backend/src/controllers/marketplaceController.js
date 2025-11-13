@@ -607,6 +607,64 @@ exports.getSellerStats = async (req, res) => {
 /**
  * Download marketplace page as HTML ZIP
  */
+
+/**
+ * Get preview data (HTML + pageData with popups)
+ * Cho phép preview công khai - trả về JSON với cả HTML và pageData
+ */
+exports.getPreviewData = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const marketplacePage = await MarketplacePage.findById(id).populate('page_id');
+        if (!marketplacePage) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy marketplace page'
+            });
+        }
+
+        const page = marketplacePage.page_id;
+        if (!page) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy page data'
+            });
+        }
+
+        // Lấy HTML từ S3
+        let htmlContent = '';
+        if (page.file_path) {
+            const { getFromS3 } = require('../utils/s3');
+            const s3Key = page.file_path.replace(/^https:\/\/[^\/]+\//, '');
+            htmlContent = await getFromS3(s3Key);
+        }
+
+        if (!htmlContent) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy HTML content'
+            });
+        }
+
+        // Trả về cả HTML và pageData
+        res.json({
+            success: true,
+            data: {
+                htmlContent,
+                pageData: page.page_data || null
+            }
+        });
+    } catch (error) {
+        console.error('Get Preview Data Error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi tải preview data',
+            error: error.message
+        });
+    }
+};
+
 /**
  * Preview marketplace page (trả về HTML)
  * Không yêu cầu auth - cho phép preview công khai

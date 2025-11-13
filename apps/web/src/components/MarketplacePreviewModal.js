@@ -1,40 +1,57 @@
 import React, { useState, useEffect } from "react";
 import { Eye, X, Monitor, Smartphone } from "lucide-react";
+import axios from "axios";
 import "../styles/PreviewModal.css";
 
 const MarketplacePreviewModal = ({ page, onClose }) => {
     const [viewMode, setViewMode] = useState("desktop");
     const [previewHtml, setPreviewHtml] = useState("");
+    const [pageData, setPageData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [popupStates, setPopupStates] = useState({});
     const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
     useEffect(() => {
         if (page) {
-            loadPreview();
+            loadPreviewData();
         }
     }, [page]);
 
-    const loadPreview = async () => {
+    const loadPreviewData = async () => {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(
-                `${API_BASE_URL}/api/marketplace/${page._id}/preview`,
+
+            // Lấy pageData từ API
+            const response = await axios.get(
+                `${API_BASE_URL}/api/marketplace/${page._id}/preview-data`,
                 {
                     headers: token ? { Authorization: `Bearer ${token}` } : {}
                 }
             );
 
-            if (response.ok) {
-                const html = await response.text();
-                setPreviewHtml(html);
-            } else {
-                // Fallback: Nếu không có API preview, hiển thị screenshot
-                setPreviewHtml("");
+            if (response.data.success) {
+                const { htmlContent, pageData: data } = response.data.data;
+                setPreviewHtml(htmlContent);
+                setPageData(data);
             }
         } catch (error) {
             console.error("Error loading preview:", error);
-            setPreviewHtml("");
+            // Fallback: load HTML only
+            try {
+                const htmlResponse = await fetch(
+                    `${API_BASE_URL}/api/marketplace/${page._id}/preview`,
+                    {
+                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    }
+                );
+                if (htmlResponse.ok) {
+                    const html = await htmlResponse.text();
+                    setPreviewHtml(html);
+                }
+            } catch (err) {
+                console.error("Fallback preview failed:", err);
+            }
         } finally {
             setLoading(false);
         }
@@ -42,6 +59,7 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
 
     const handleClose = (e) => {
         e?.stopPropagation();
+        setPopupStates({});
         onClose();
     };
 
@@ -51,7 +69,31 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
         }
     };
 
+    // Toggle popup in preview iframe - giống PreviewModal
+    const handleTogglePopup = (popupId) => {
+        try {
+            const iframe = document.querySelector('.modal1-iframe');
+            if (iframe && iframe.contentWindow) {
+                const win = iframe.contentWindow;
+                if (win.LPB && win.LPB.popups) {
+                    if (popupStates[popupId]) {
+                        win.LPB.popups.close(popupId);
+                        setPopupStates(prev => ({ ...prev, [popupId]: false }));
+                    } else {
+                        win.LPB.popups.open(popupId);
+                        setPopupStates(prev => ({ ...prev, [popupId]: true }));
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error toggling popup:', error);
+        }
+    };
+
     if (!page) return null;
+
+    // Extract popups from pageData (giống PreviewModal)
+    const popups = pageData?.elements?.filter(el => el.type === 'popup') || [];
 
     return (
         <div className="modal1-overlay modal1-overlay--preview" onClick={handleOverlayClick}>
@@ -83,6 +125,42 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
                         </button>
                     </div>
 
+                    {/* POPUP CONTROLS - giống PreviewModal */}
+                    {popups.length > 0 && (
+                        <div style={{
+                            padding: "8px 20px",
+                            background: "#f9fafb",
+                            borderBottom: "1px solid #e5e7eb",
+                            display: "flex",
+                            gap: "8px",
+                            alignItems: "center",
+                            flexWrap: "wrap"
+                        }}>
+                            <span style={{ fontSize: "13px", color: "#6b7280", fontWeight: 500 }}>
+                                Preview Popups:
+                            </span>
+                            {popups.map(popup => (
+                                <button
+                                    key={popup.id}
+                                    onClick={() => handleTogglePopup(popup.id)}
+                                    style={{
+                                        padding: "4px 12px",
+                                        fontSize: "12px",
+                                        borderRadius: "6px",
+                                        border: popupStates[popup.id] ? "1px solid #3b82f6" : "1px solid #d1d5db",
+                                        background: popupStates[popup.id] ? "#eff6ff" : "#ffffff",
+                                        color: popupStates[popup.id] ? "#3b82f6" : "#6b7280",
+                                        cursor: "pointer",
+                                        fontWeight: 500,
+                                        transition: "all 0.2s ease"
+                                    }}
+                                >
+                                    {popup.componentData?.title || popup.id}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {/* PREVIEW CONTAINER */}
                     <div className={`preview-container ${viewMode}`}>
                         <div className="preview-frame">
@@ -93,7 +171,7 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
                                 </div>
                             ) : previewHtml ? (
                                 viewMode === "desktop" ? (
-                                    // DESKTOP VIEW
+                                    // DESKTOP VIEW - giống PreviewModal
                                     <div className="desktop-preview">
                                         <div className="desktop-header">
                                             <span className="control-btn red"></span>
@@ -123,7 +201,7 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
                                         />
                                     </div>
                                 ) : (
-                                    // MOBILE VIEW
+                                    // MOBILE VIEW - giống PreviewModal
                                     <div className="mobile-preview">
                                         <div className="mobile-frame">
                                             <iframe
@@ -142,6 +220,7 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
                                                     WebkitOverflowScrolling: "touch",
                                                 }}
                                                 onLoad={(e) => {
+                                                    // Force mobile layout matching builder
                                                     try {
                                                         const iframeDoc = e.target.contentDocument || e.target.contentWindow.document;
                                                         if (!iframeDoc) return;
@@ -154,31 +233,70 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
                                                             iframeDoc.head.appendChild(viewport);
                                                         }
 
-                                                        // Inject mobile-specific CSS
+                                                        // Inject mobile-specific CSS to match builder layout
                                                         const mobileStyles = iframeDoc.createElement('style');
                                                         mobileStyles.id = 'mobile-preview-styles';
                                                         mobileStyles.textContent = `
+                                                            /* Force mobile layout matching builder */
                                                             html, body {
                                                                 width: 375px !important;
                                                                 max-width: 375px !important;
                                                                 overflow-x: hidden !important;
                                                             }
+
                                                             #lpb-canvas {
                                                                 width: 375px !important;
                                                                 max-width: 375px !important;
                                                             }
+
                                                             .lpb-section {
                                                                 position: absolute !important;
                                                                 width: 100% !important;
                                                                 max-width: 375px !important;
                                                                 left: 0 !important;
                                                                 right: 0 !important;
+                                                                transform: none !important;
+                                                                margin: 0 !important;
+                                                            }
+
+                                                            /* Force text to wrap on mobile */
+                                                            .lpb-heading, .lpb-paragraph, .lpb-button {
+                                                                max-width: 100% !important;
+                                                                word-wrap: break-word !important;
+                                                            }
+
+                                                            /* Scale images properly */
+                                                            .lpb-image img {
+                                                                max-width: 100% !important;
+                                                                height: auto !important;
                                                             }
                                                         `;
 
                                                         if (!iframeDoc.getElementById('mobile-preview-styles')) {
                                                             iframeDoc.head.appendChild(mobileStyles);
                                                         }
+
+                                                        // Apply mobile positions via JavaScript
+                                                        const applyMobilePositions = () => {
+                                                            const sections = iframeDoc.querySelectorAll('.lpb-section[data-mobile-y]');
+                                                            sections.forEach(section => {
+                                                                const mobileY = section.getAttribute('data-mobile-y');
+                                                                if (mobileY) {
+                                                                    section.style.top = `${mobileY}px`;
+                                                                }
+                                                            });
+
+                                                            const elements = iframeDoc.querySelectorAll('.lpb-element[data-mobile-x], .lpb-element[data-mobile-y]');
+                                                            elements.forEach(el => {
+                                                                const mobileX = el.getAttribute('data-mobile-x');
+                                                                const mobileY = el.getAttribute('data-mobile-y');
+                                                                if (mobileX) el.style.left = `${mobileX}px`;
+                                                                if (mobileY) el.style.top = `${mobileY}px`;
+                                                            });
+                                                        };
+
+                                                        applyMobilePositions();
+                                                        setTimeout(applyMobilePositions, 100);
                                                     } catch (error) {
                                                         console.warn('Could not inject mobile styles:', error);
                                                     }
@@ -189,28 +307,13 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
                                     </div>
                                 )
                             ) : (
-                                // FALLBACK: Show screenshot if no HTML available
-                                <div className="screenshot-preview">
-                                    {page.main_screenshot ? (
-                                        <img
-                                            src={page.main_screenshot}
-                                            alt={page.title}
-                                            style={{
-                                                width: "100%",
-                                                height: "auto",
-                                                objectFit: "contain",
-                                                borderRadius: "8px"
-                                            }}
-                                        />
-                                    ) : (
-                                        <div className="preview-placeholder">
-                                            <Eye size={48} style={{ color: "#cbd5e1", marginBottom: "16px" }} />
-                                            <p>Không có nội dung preview.</p>
-                                            <p style={{ fontSize: "0.875rem", color: "#9ca3af", marginTop: "8px" }}>
-                                                Vui lòng kiểm tra lại marketplace page.
-                                            </p>
-                                        </div>
-                                    )}
+                                // PLACEHOLDER
+                                <div className="preview-placeholder">
+                                    <Eye size={48} style={{ color: "#cbd5e1", marginBottom: "16px" }} />
+                                    <p>Không có nội dung preview.</p>
+                                    <p style={{ fontSize: "0.875rem", color: "#9ca3af", marginTop: "8px" }}>
+                                        Page này chưa có HTML để hiển thị.
+                                    </p>
                                 </div>
                             )}
                         </div>

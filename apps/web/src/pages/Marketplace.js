@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { UserContext } from '../context/UserContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
+import MarketplacePreviewModal from '../components/MarketplacePreviewModal';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -32,6 +33,8 @@ const Marketplace = () => {
     const [purchasedPageIds, setPurchasedPageIds] = useState([]);
     const [myPageIds, setMyPageIds] = useState([]);
     const [purchasedDates, setPurchasedDates] = useState({});
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [selectedPageForPreview, setSelectedPageForPreview] = useState(null);
 
     // Preview Modal State
     const [showPreviewModal, setShowPreviewModal] = useState(false);
@@ -446,15 +449,15 @@ const Marketplace = () => {
                                             )}
 
                                             <button
-                                                className="preview-btn"
+                                                className="preview-quick-btn"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handlePreview(page);
+                                                    setSelectedPageForPreview(page);
+                                                    setShowPreviewModal(true);
                                                 }}
-                                                title="Xem preview fullpage"
-                                                disabled={isLoadingPreview}
+                                                title="Xem preview nhanh"
                                             >
-                                                <Monitor size={18} />
+                                                <Eye size={16} /> Preview
                                             </button>
                                             <button className="view-detail-btn">Xem chi tiết</button>
                                         </div>
@@ -499,14 +502,13 @@ const Marketplace = () => {
                 </div>
             </div>
 
-            {/* Preview Modal */}
-            {showPreviewModal && (
-                <PreviewModal
-                    selectedTemplate={null}
-                    setShowPreviewModal={setShowPreviewModal}
-                    setPreviewHtml={setPreviewHtml}
-                    previewHtml={previewHtml}
-                    pageData={previewPageData}
+            {showPreviewModal && selectedPageForPreview && (
+                <MarketplacePreviewModal
+                    page={selectedPageForPreview}
+                    onClose={() => {
+                        setShowPreviewModal(false);
+                        setSelectedPageForPreview(null);
+                    }}
                 />
             )}
         </div>
