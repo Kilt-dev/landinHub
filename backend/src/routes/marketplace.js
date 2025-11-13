@@ -16,6 +16,12 @@ router.get('/my/purchased', auth, marketplaceController.getPurchasedPages);
 // Lấy thống kê seller
 router.get('/seller/stats', auth, marketplaceController.getSellerStats);
 
+// Preview marketplace page (HTML)
+router.get('/:id/preview', marketplaceController.previewMarketplacePage);
+
+// Get preview data (HTML + pageData with popups)
+router.get('/:id/preview-data', marketplaceController.getPreviewData);
+
 // Download marketplace page as HTML ZIP
 router.get('/:id/download/html', auth, marketplaceController.downloadAsHTML);
 

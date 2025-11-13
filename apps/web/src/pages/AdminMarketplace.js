@@ -10,6 +10,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/AdminMarketplace.css';
 import DogLoader from '../components/Loader';
+import MarketplacePreviewModal from '../components/MarketplacePreviewModal';
 import { Check, X, Eye, Star, AlertTriangle, Trash2, Download, RefreshCw, Filter, Pause, ShoppingCart, Package, Hourglass, BadgeCheck, DollarSign, Heart, LayoutTemplate, User, Store, Calendar } from 'lucide-react';
 
 const AdminMarketplace = () => {
@@ -741,17 +742,13 @@ const AdminMarketplace = () => {
                     )}
 
                     {showPreviewModal && selectedPage && (
-                        <div className="modal-overlay" onClick={() => setShowPreviewModal(false)}>
-                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                                <h2>{selectedPage.title}</h2>
-                                <img src={selectedPage.main_screenshot} alt={selectedPage.title} style={{ width: '100%', marginBottom: '20px' }} />
-                                <p><strong>Mô tả:</strong> {selectedPage.description}</p>
-                                <p><strong>Danh mục:</strong> {selectedPage.category}</p>
-                                <p><strong>Giá:</strong> {formatPrice(selectedPage.price)}</p>
-                                <p><strong>Người bán:</strong> {selectedPage.seller_id?.name || selectedPage.seller_id?.email}</p>
-                                <button onClick={() => setShowPreviewModal(false)} disabled={actionLoading}>Đóng</button>
-                            </div>
-                        </div>
+                        <MarketplacePreviewModal
+                            page={selectedPage}
+                            onClose={() => {
+                                setShowPreviewModal(false);
+                                setSelectedPage(null);
+                            }}
+                        />
                     )}
 
                     {showRejectModal && (
