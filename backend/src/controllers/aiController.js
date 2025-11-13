@@ -1,4 +1,5 @@
 const { OpenAI } = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Initialize OpenAI client for DeepSeek
 const openai = new OpenAI({
@@ -6,12 +7,20 @@ const openai = new OpenAI({
     apiKey: process.env.DEEPSEEK_API_KEY
 });
 
+// Initialize Google Gemini client
+let gemini = null;
+if (process.env.GOOGLE_API_KEY) {
+    gemini = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+}
+
 /**
  * Helper: Call DeepSeek API with retry logic
+ * Returns null if API fails (insufficient balance, network error, etc.)
  */
 const callDeepSeekAPI = async (prompt, retries = 3, maxTokens = 1000) => {
     if (!process.env.DEEPSEEK_API_KEY) {
-        throw new Error('DEEPSEEK_API_KEY environment variable is missing');
+        console.warn('DEEPSEEK_API_KEY not configured, using local templates');
+        return null;
     }
 
     for (let i = 0; i < retries; i++) {
@@ -24,9 +33,54 @@ const callDeepSeekAPI = async (prompt, retries = 3, maxTokens = 1000) => {
             });
         } catch (err) {
             console.error(`DeepSeek API attempt ${i + 1} failed:`, err.message);
-            if (i === retries - 1) throw err;
+
+            // If insufficient balance or other permanent error, return null immediately
+            if (err.status === 402 || err.status === 401) {
+                console.warn('DeepSeek API error (insufficient balance or auth), falling back to local templates');
+                return null;
+            }
+
+            if (i === retries - 1) {
+                console.warn('DeepSeek API failed after all retries, falling back to local templates');
+                return null;
+            }
+
             await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
         }
+    }
+
+    return null;
+};
+
+/**
+ * Helper: Call Google Gemini API
+ * Returns null if API fails or not configured
+ */
+const callGeminiAPI = async (prompt, maxTokens = 1000) => {
+    if (!gemini || !process.env.GOOGLE_API_KEY) {
+        console.warn('GOOGLE_API_KEY not configured, skipping Gemini');
+        return null;
+    }
+
+    try {
+        const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        const result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+                maxOutputTokens: maxTokens,
+                temperature: 0.7,
+            },
+        });
+
+        const response = await result.response;
+        const text = response.text();
+
+        console.log('Gemini API call successful');
+        return { text };
+    } catch (err) {
+        console.error('Gemini API failed:', err.message);
+        return null;
     }
 };
 
@@ -58,21 +112,46 @@ exports.generateContent = async (req, res) => {
 
         console.log(`Generating AI content: type=${type}, context="${context}"`);
 
-        const aiResponse = await callDeepSeekAPI(prompt, 3, maxTokens);
-        const content = aiResponse.choices[0].message.content.trim();
+        let content;
+        let source = 'template';
 
-        console.log(`AI content generated successfully (${content.length} chars)`);
+        // Try DeepSeek first
+        const deepseekResponse = await callDeepSeekAPI(prompt, 3, maxTokens);
+        if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
+            content = deepseekResponse.choices[0].message.content.trim();
+            source = 'deepseek';
+            console.log(`✅ DeepSeek AI generated content (${content.length} chars)`);
+        } else {
+            // Fallback to Gemini
+            console.log('DeepSeek unavailable, trying Gemini...');
+            const geminiResponse = await callGeminiAPI(prompt, maxTokens);
+
+            if (geminiResponse && geminiResponse.text) {
+                content = geminiResponse.text.trim();
+                source = 'gemini';
+                console.log(`✅ Gemini AI generated content (${content.length} chars)`);
+            } else {
+                // Final fallback to local templates
+                console.log('All AI providers unavailable, using local templates');
+                content = getLocalAIContent(context, type, options);
+            }
+        }
 
         res.json({
             success: true,
-            content: content
+            content: content,
+            source: source
         });
 
     } catch (error) {
         console.error('AI Generate Content Error:', error);
-        res.status(500).json({
-            error: 'Không thể tạo nội dung AI',
-            details: error.message
+
+        // Final fallback
+        const content = getLocalAIContent(context, type, options);
+        res.json({
+            success: true,
+            content: content,
+            source: 'template'
         });
     }
 };
@@ -136,36 +215,64 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
 
         console.log(`Analyzing page with ${elements.length} elements...`);
 
-        const aiResponse = await callDeepSeekAPI(analysisPrompt, 3, 1500);
-        const responseText = aiResponse.choices[0].message.content.trim();
-
-        // Try to parse JSON
         let analysis;
-        try {
-            // Remove markdown code blocks if present
-            const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || [null, responseText];
-            const jsonText = jsonMatch[1] || responseText;
-            analysis = JSON.parse(jsonText);
-        } catch (parseError) {
-            console.error('Failed to parse AI response as JSON:', parseError);
-            return res.status(500).json({
-                error: 'AI trả về format không hợp lệ',
-                details: parseError.message
-            });
+        let source = 'template';
+
+        // Try DeepSeek first
+        const deepseekResponse = await callDeepSeekAPI(analysisPrompt, 3, 1500);
+        if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
+            const responseText = deepseekResponse.choices[0].message.content.trim();
+
+            try {
+                const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || [null, responseText];
+                const jsonText = jsonMatch[1] || responseText;
+                analysis = JSON.parse(jsonText);
+                source = 'deepseek';
+                console.log(`✅ DeepSeek analysis completed: score = ${analysis.overall_score}`);
+            } catch (parseError) {
+                console.error('Failed to parse DeepSeek response, trying Gemini...');
+            }
         }
 
-        console.log(`Page analysis completed: overall score = ${analysis.overall_score}`);
+        // Fallback to Gemini if DeepSeek failed
+        if (!analysis) {
+            console.log('DeepSeek unavailable, trying Gemini for analysis...');
+            const geminiResponse = await callGeminiAPI(analysisPrompt, 1500);
+
+            if (geminiResponse && geminiResponse.text) {
+                try {
+                    const jsonMatch = geminiResponse.text.match(/```json\s*([\s\S]*?)\s*```/) || [null, geminiResponse.text];
+                    const jsonText = jsonMatch[1] || geminiResponse.text;
+                    analysis = JSON.parse(jsonText);
+                    source = 'gemini';
+                    console.log(`✅ Gemini analysis completed: score = ${analysis.overall_score}`);
+                } catch (parseError) {
+                    console.error('Failed to parse Gemini response, using local analysis');
+                }
+            }
+        }
+
+        // Final fallback to local analysis
+        if (!analysis) {
+            console.log('All AI providers unavailable, using local analysis');
+            analysis = getLocalPageAnalysis(pageData);
+        }
 
         res.json({
             success: true,
-            analysis: analysis
+            analysis: analysis,
+            source: source
         });
 
     } catch (error) {
         console.error('AI Page Analysis Error:', error);
-        res.status(500).json({
-            error: 'Không thể phân tích trang',
-            details: error.message
+
+        // Final fallback
+        const analysis = getLocalPageAnalysis(pageData);
+        res.json({
+            success: true,
+            analysis: analysis,
+            source: 'template'
         });
     }
 };
