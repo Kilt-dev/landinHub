@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import './MobilePreview.css';
+import '../../styles/MobilePreview.css';
 
 /**
  * Mobile Preview Component

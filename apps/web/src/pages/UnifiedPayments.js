@@ -340,7 +340,7 @@ const UnifiedPayments = () => {
                 <div className="content">
                     {/* Page Header */}
                     <div className="page-header" data-aos="fade-down">
-                        <h1>{userRole === 'admin' ? '💳 Quản lý giao dịch & Đơn hàng' : '💰 Lịch sử thanh toán & Đơn hàng'}</h1>
+                        <h1>{userRole === 'admin' ? 'Quản lý giao dịch & Đơn hàng' : 'Lịch sử thanh toán & Đơn hàng'}</h1>
                         <p>{userRole === 'admin' ? 'Toàn bộ giao dịch, đơn hàng & lợi nhuận' : 'Giao dịch, đơn hàng đã mua và đã bán'}</p>
                     </div>
 
@@ -575,9 +575,9 @@ const UnifiedPayments = () => {
                                                     )}
                                                     <td>
                                                             <span className="payment-method">
-                                                                {tx.payment_method === 'MOMO' && '💳 MOMO'}
-                                                                {tx.payment_method === 'VNPAY' && '💳 VNPay'}
-                                                                {tx.payment_method === 'SANDBOX' && '🧪 Test'}
+                                                                {tx.payment_method === 'MOMO' && 'MOMO'}
+                                                                {tx.payment_method === 'VNPAY' && 'VNPay'}
+                                                                {tx.payment_method === 'SANDBOX' && 'Test'}
                                                             </span>
                                                     </td>
                                                     <td>

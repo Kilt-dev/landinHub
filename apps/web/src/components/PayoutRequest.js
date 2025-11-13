@@ -70,7 +70,7 @@ const PayoutRequest = ({ isOpen, onClose, pendingAmount, onSuccess }) => {
         <div className="payout-modal-overlay" onClick={onClose}>
             <div className="payout-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="payout-modal-header">
-                    <h2>💰 Yêu cầu rút tiền</h2>
+                    <h2>Yêu cầu rút tiền</h2>
                     <button className="close-btn" onClick={onClose}>
                         <X size={24} />
                     </button>
@@ -143,7 +143,7 @@ const PayoutRequest = ({ isOpen, onClose, pendingAmount, onSuccess }) => {
                     </div>
 
                     <div className="payout-info-box">
-                        <h4>📋 Lưu ý:</h4>
+                        <h4>Lưu ý:</h4>
                         <ul>
                             <li>Kiểm tra kỹ thông tin tài khoản trước khi gửi</li>
                             <li>Admin sẽ xử lý trong vòng 1-3 ngày làm việc</li>
@@ -157,7 +157,7 @@ const PayoutRequest = ({ isOpen, onClose, pendingAmount, onSuccess }) => {
                             Hủy
                         </button>
                         <button type="submit" className="btn-submit" disabled={loading}>
-                            {loading ? '⏳ Đang gửi...' : '✅ Gửi yêu cầu'}
+                            {loading ? 'Đang gửi...' : 'Gửi yêu cầu'}
                         </button>
                     </div>
                 </form>

@@ -461,10 +461,10 @@ export const advancedElements = {
                         type: 'social-proof-stats',
                         componentData: {
                             stats: [
-                                { label: 'Khách hàng', value: '10,000+', icon: '👥' },
-                                { label: 'Đánh giá 5 sao', value: '4.9/5', icon: '⭐' },
-                                { label: 'Năm kinh nghiệm', value: '15+', icon: '📅' },
-                                { label: 'Dự án hoàn thành', value: '500+', icon: '✅' },
+                                { label: 'Khách hàng', value: '10,000+', icon: '' },
+                                { label: 'Đánh giá 5 sao', value: '4.9/5', icon: '' },
+                                { label: 'Năm kinh nghiệm', value: '15+', icon: '' },
+                                { label: 'Dự án hoàn thành', value: '500+', icon: '' },
                             ],
                             dataSource: { type: 'static' },
                             animation: { type: 'fadeInUp', duration: 1000, delay: 300 }

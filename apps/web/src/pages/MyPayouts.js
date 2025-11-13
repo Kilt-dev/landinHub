@@ -142,7 +142,7 @@ const MyPayouts = () => {
                     {/* Header */}
                     <div className="payouts-header" data-aos="fade-down">
                         <div>
-                            <h1>💸 Lịch sử rút tiền</h1>
+                            <h1>Lịch sử rút tiền</h1>
                             <p>Theo dõi các yêu cầu rút tiền của bạn</p>
                         </div>
                         <button className="btn-back" onClick={() => navigate('/payments')}>
@@ -261,19 +261,19 @@ const MyPayouts = () => {
                                             <td>
                                                 {payout.status === 'COMPLETED' ? (
                                                     <span className="success-note">
-                                                            ✅ {payout.notes || 'Đã chuyển khoản'}
+                                                            {payout.notes || 'Đã chuyển khoản'}
                                                         </span>
                                                 ) : payout.status === 'FAILED' ? (
                                                     <span className="error-note">
-                                                            ❌ {payout.notes || 'Bị từ chối'}
+                                                            {payout.notes || 'Bị từ chối'}
                                                         </span>
                                                 ) : payout.status === 'PROCESSING' ? (
                                                     <span className="info-note">
-                                                            ⏳ Đang xử lý...
+                                                            Đang xử lý...
                                                         </span>
                                                 ) : (
                                                     <span className="pending-note">
-                                                            ⏰ Chờ admin duyệt
+                                                            Chờ admin duyệt
                                                         </span>
                                                 )}
                                             </td>

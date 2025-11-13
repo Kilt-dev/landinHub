@@ -11,7 +11,8 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/Marketplace.css';
 import DogLoader from '../components/Loader';
-import { Search, Eye, Heart, Star, ShoppingCart } from 'lucide-react';
+import { Search, Eye, Heart, Star, ShoppingCart, Monitor } from 'lucide-react';
+import PreviewModal from '../components/PreviewModal';
 
 const Marketplace = () => {
     const { user } = useContext(UserContext);
@@ -34,6 +35,12 @@ const Marketplace = () => {
     const [purchasedDates, setPurchasedDates] = useState({});
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [selectedPageForPreview, setSelectedPageForPreview] = useState(null);
+
+    // Preview Modal State
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [previewHtml, setPreviewHtml] = useState('');
+    const [previewPageData, setPreviewPageData] = useState(null);
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
     const navigate = useNavigate();
     const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -244,6 +251,36 @@ const Marketplace = () => {
 
     const handleViewDetail = (pageId) => {
         navigate(`/marketplace/${pageId}`);
+    };
+
+    // Handle Preview
+    const handlePreview = async (marketplacePage) => {
+        setIsLoadingPreview(true);
+        try {
+            const token = localStorage.getItem('token');
+
+            // Use page_id from marketplace page (reference to original page)
+            const pageId = marketplacePage.page_id || marketplacePage.pageId || marketplacePage._id;
+            console.log('Preview for page:', pageId, marketplacePage);
+
+            // Fetch HTML from backend
+            const response = await axios.get(`${API_BASE_URL}/api/pages/${pageId}/preview-html`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.success) {
+                setPreviewHtml(response.data.html);
+                setPreviewPageData(response.data.pageData || null);
+                setShowPreviewModal(true);
+            } else {
+                alert('Không thể tải preview. Vui lòng thử lại.');
+            }
+        } catch (error) {
+            console.error('Error loading preview:', error);
+            alert('Lỗi khi tải preview: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setIsLoadingPreview(false);
+        }
     };
 
 

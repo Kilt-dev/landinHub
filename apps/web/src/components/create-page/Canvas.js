@@ -35,7 +35,6 @@
 import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react';
 import { useDrop } from 'react-dnd';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
 import { debounce, throttle } from 'lodash';
 import Guidelines from './Guidelines';
@@ -225,7 +224,6 @@ const Canvas = React.memo(({
         const unsubscribeOpen = eventController.subscribe('popup-open', (payload) => {
             const popupElement = pageData.elements.find((el) => el.id === payload.popupId);
             if (!popupElement) {
-                toast.error(`Popup "${payload.popupId}" not found!`);
                 return;
             }
             setVisiblePopups((prev) => [...new Set([...prev, payload.popupId])]);
@@ -318,7 +316,7 @@ const Canvas = React.memo(({
         drop: (item, monitor) => {
             const clientOffset = monitor.getClientOffset();
             if (!clientOffset || !canvasRef.current) {
-                toast.error('Không thể xác định vị trí thả!');
+
                 setDragPreview(null);
                 setGuidelines([]);
                 return { moved: false };
@@ -358,7 +356,6 @@ const Canvas = React.memo(({
                 // Dropping on EMPTY canvas → convert to top-level element
                 const sourceSection = pageData.elements.find((el) => el.id === item.parentId);
                 if (!sourceSection) {
-                    toast.error('Không tìm thấy section nguồn!');
                     setDragPreview(null);
                     setGuidelines([]);
                     return { moved: false };
@@ -367,7 +364,6 @@ const Canvas = React.memo(({
                 // Find the child being dragged
                 const childElement = sourceSection.children?.find((c) => c.id === item.childId);
                 if (!childElement) {
-                    toast.error('Không tìm thấy element con!');
                     setDragPreview(null);
                     setGuidelines([]);
                     return { moved: false };
@@ -388,7 +384,6 @@ const Canvas = React.memo(({
 
                 setDragPreview(null);
                 setGuidelines([]);
-                toast.success('Element được di chuyển ra ngoài section!');
                 return { moved: true, newPosition: snapped };
             } else if (monitor.getItemType() === ItemTypes.ELEMENT) {
                 if (item.json.type !== 'section' && item.json.type !== 'popup' && item.json.type !== 'modal') {
