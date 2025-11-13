@@ -11,6 +11,7 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', 
     const [tone, setTone] = useState('professional');
     const [length, setLength] = useState('medium');
     const [style, setStyle] = useState('modern');
+    const [language, setLanguage] = useState('vietnamese'); // Language selection
     const [generatedContent, setGeneratedContent] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [aiSource, setAiSource] = useState(''); // Track AI source (groq, cache, etc.)
@@ -39,7 +40,7 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', 
                 body: JSON.stringify({
                     context,
                     type: elementType,
-                    options: { tone, length, style }
+                    options: { tone, length, style, language }
                 })
             });
 
@@ -107,6 +108,14 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', 
                     {/* Options */}
                     <div className="ai-options-grid">
                         <div className="ai-form-group">
+                            <label>Ngôn ngữ</label>
+                            <select value={language} onChange={(e) => setLanguage(e.target.value)} className="ai-select">
+                                <option value="vietnamese">Tiếng Việt</option>
+                                <option value="english">English</option>
+                            </select>
+                        </div>
+
+                        <div className="ai-form-group">
                             <label>Giọng điệu</label>
                             <select value={tone} onChange={(e) => setTone(e.target.value)} className="ai-select">
                                 <option value="professional">Chuyên nghiệp</option>
@@ -120,9 +129,10 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', 
                         <div className="ai-form-group">
                             <label>Độ dài</label>
                             <select value={length} onChange={(e) => setLength(e.target.value)} className="ai-select">
-                                <option value="short">Ngắn</option>
-                                <option value="medium">Vừa</option>
-                                <option value="long">Dài</option>
+                                <option value="short">Ngắn (1-2 câu)</option>
+                                <option value="medium">Trung bình (3-5 câu)</option>
+                                <option value="long">Dài (6-10 câu)</option>
+                                <option value="very-long">Rất dài (10+ câu)</option>
                             </select>
                         </div>
 

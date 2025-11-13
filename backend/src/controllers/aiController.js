@@ -283,10 +283,10 @@ exports.generateContent = async (req, res) => {
             return res.status(400).json({ error: 'Context là bắt buộc' });
         }
 
-        const { tone = 'professional', length = 'medium', style = 'modern' } = options;
+        const { tone = 'professional', length = 'medium', style = 'modern', language = 'vietnamese' } = options;
 
         // Check cache first (LRU Cache optimization)
-        const cacheKey = aiCache.generateKey(context, { type, tone, length, style });
+        const cacheKey = aiCache.generateKey(context, { type, tone, length, style, language });
         const cached = aiCache.get(cacheKey);
 
         if (cached) {
@@ -299,10 +299,32 @@ exports.generateContent = async (req, res) => {
             });
         }
 
+        // Language-specific instructions
+        const languageInstruction = language === 'english'
+            ? 'IMPORTANT: Write in ENGLISH only.'
+            : 'IMPORTANT: Write in VIETNAMESE only.';
+
+        // Length specifications
+        const lengthSpecs = {
+            heading: {
+                short: '3-6 words',
+                medium: '7-12 words',
+                long: '13-20 words',
+                'very-long': '20-30 words'
+            },
+            paragraph: {
+                short: '1-2 sentences',
+                medium: '3-5 sentences',
+                long: '6-10 sentences',
+                'very-long': '10-15 sentences'
+            }
+        };
+
         // Build context-aware prompts (Chain of Thought approach)
         const prompts = {
             heading: `Task: Create a compelling headline for "${context}"
-Style: ${style}, Tone: ${tone}, Length: ${length === 'short' ? 'concise (3-6 words)' : length === 'medium' ? 'medium (7-12 words)' : 'detailed (13-20 words)'}
+Style: ${style}, Tone: ${tone}, Length: ${lengthSpecs.heading[length] || lengthSpecs.heading.medium}
+${languageInstruction}
 
 Think step by step:
 1. What is the main benefit or value proposition?
@@ -312,7 +334,8 @@ Think step by step:
 Output: Return ONLY the headline, no explanation.`,
 
             paragraph: `Task: Write engaging paragraph about "${context}"
-Style: ${style}, Tone: ${tone}, Length: ${length === 'short' ? '2-3 sentences' : length === 'medium' ? '4-5 sentences' : '6-8 sentences'}
+Style: ${style}, Tone: ${tone}, Length: ${lengthSpecs.paragraph[length] || lengthSpecs.paragraph.medium}
+${languageInstruction}
 
 Think step by step:
 1. What problem does this solve?
@@ -323,6 +346,7 @@ Output: Return ONLY the paragraph, no explanation.`,
 
             button: `Task: Create a CTA button text for "${context}"
 Tone: ${tone}, Goal: Drive action
+${languageInstruction}
 
 Think step by step:
 1. What action do we want users to take?
@@ -333,6 +357,7 @@ Output: Return ONLY the button text.`,
 
             list: `Task: Create 5 bullet points about "${context}"
 Style: ${style}
+${languageInstruction}
 
 Think step by step:
 1. What are the key benefits/features?
@@ -343,7 +368,14 @@ Output: Return ONLY 5 bullet points, one per line.`
         };
 
         const prompt = prompts[type] || prompts.paragraph;
-        const maxTokens = length === 'short' ? 150 : length === 'medium' ? 250 : 450;
+
+        // Updated max tokens to support very-long
+        const maxTokens = {
+            'short': 150,
+            'medium': 250,
+            'long': 450,
+            'very-long': 700
+        }[length] || 250;
 
         console.log(`Generating AI content: type=${type}, context="${context}"`);
 
@@ -740,9 +772,280 @@ const calculateConversionScore = (elements) => {
 };
 
 /**
- * Advanced Local Page Analysis with Academic Metrics
+ * Nielsen & Molich Heuristic Evaluation (1990)
+ * Academic usability evaluation framework
+ * 10 heuristics, each scored 0-5 (0=poor, 5=excellent)
+ * Total maximum score: 50 points
+ *
+ * Reference: Nielsen, J., & Molich, R. (1990). Heuristic evaluation of user interfaces.
+ * Proc. ACM CHI'90 Conf. (Seattle, WA, 1-5 April), 249-256.
  */
-const getLocalPageAnalysis = (pageData) => {
+const calculateHeuristicScore = (elements, textContent) => {
+    const buttons = countElementsByType(elements, 'button');
+    const forms = elements.filter(el => el.type === 'form').length;
+    const headings = countElementsByType(elements, 'heading');
+    const sections = elements.filter(el => el.type === 'section').length;
+    const images = countElementsByType(elements, 'image');
+    const links = countElementsByType(elements, 'link');
+    const wordCount = textContent.split(/\s+/).filter(w => w.length > 0).length;
+
+    const heuristics = {
+        // H1: Visibility of system status
+        // Does page show clear progress indicators, feedback elements?
+        visibilityOfSystemStatus: Math.min(5,
+            (buttons > 0 ? 2 : 0) + // CTAs show clear actions
+            (forms > 0 ? 2 : 0) + // Forms indicate input states
+            (headings > 0 ? 1 : 0) // Headings show page structure
+        ),
+
+        // H2: Match between system and the real world
+        // Does content use familiar language, real-world conventions?
+        matchRealWorld: Math.min(5,
+            (wordCount >= 50 ? 2 : 0) + // Sufficient descriptive text
+            (wordCount <= 1000 ? 2 : 0) + // Not overwhelming
+            (headings >= 2 ? 1 : 0) // Clear section titles
+        ),
+
+        // H3: User control and freedom
+        // Can users navigate freely? Are there exit points?
+        userControlFreedom: Math.min(5,
+            (links > 0 ? 2 : 0) + // Navigation links
+            (buttons > 0 ? 2 : 0) + // Action buttons
+            (sections >= 2 ? 1 : 0) // Multiple sections to navigate
+        ),
+
+        // H4: Consistency and standards
+        // Are design patterns consistent throughout?
+        consistencyStandards: Math.min(5,
+            (sections > 0 ? 2 : 0) + // Structured layout
+            (headings >= sections ? 2 : 0) + // Each section has heading
+            (buttons > 0 ? 1 : 0) // Consistent CTAs
+        ),
+
+        // H5: Error prevention
+        // Does design prevent user errors?
+        errorPrevention: Math.min(5,
+            (forms > 0 ? 3 : 0) + // Forms can validate input
+            (buttons >= 1 ? 2 : 0) // Clear action buttons reduce mistakes
+        ),
+
+        // H6: Recognition rather than recall
+        // Is information visible rather than requiring memory?
+        recognitionOverRecall: Math.min(5,
+            (headings >= 3 ? 2 : 0) + // Clear section labels
+            (images > 0 ? 2 : 0) + // Visual aids
+            (buttons > 0 ? 1 : 0) // Visible action options
+        ),
+
+        // H7: Flexibility and efficiency of use
+        // Does page support both novice and expert users?
+        flexibilityEfficiency: Math.min(5,
+            (buttons >= 2 ? 2 : 0) + // Multiple action paths
+            (links > 0 ? 2 : 0) + // Quick navigation
+            (sections >= 3 ? 1 : 0) // Organized content
+        ),
+
+        // H8: Aesthetic and minimalist design
+        // Is design clean without unnecessary elements?
+        aestheticMinimalist: Math.min(5,
+            (wordCount >= 100 && wordCount <= 600 ? 3 : wordCount < 100 ? 1 : 0) + // Optimal content
+            (images >= 1 && images <= 5 ? 2 : images === 0 ? 0 : 1) // Balanced visuals
+        ),
+
+        // H9: Help users recognize, diagnose, and recover from errors
+        // Are error messages clear and constructive?
+        errorRecovery: Math.min(5,
+            (forms > 0 ? 3 : 0) + // Forms can show validation messages
+            (buttons > 0 ? 2 : 0) // Clear action outcomes
+        ),
+
+        // H10: Help and documentation
+        // Is help available when needed?
+        helpDocumentation: Math.min(5,
+            (links > 0 ? 2 : 0) + // Links to more info
+            (wordCount >= 150 ? 2 : 1) + // Sufficient guidance text
+            (forms > 0 ? 1 : 0) // Form labels provide help
+        )
+    };
+
+    // Calculate total and average
+    const scores = Object.values(heuristics);
+    const totalScore = scores.reduce((sum, score) => sum + score, 0);
+    const averageScore = totalScore / 10;
+    const percentageScore = (totalScore / 50) * 100; // Convert to percentage
+
+    return {
+        total: totalScore, // 0-50
+        average: Math.round(averageScore * 10) / 10, // 0-5
+        percentage: Math.round(percentageScore), // 0-100%
+        heuristics: heuristics,
+        interpretation: getHeuristicInterpretation(percentageScore)
+    };
+};
+
+/**
+ * Get interpretation of heuristic score (bilingual)
+ */
+const getHeuristicInterpretation = (percentage, language = 'vietnamese') => {
+    const interpretations = {
+        vietnamese: {
+            excellent: 'Xuất sắc - Đạt tiêu chuẩn usability cao',
+            good: 'Tốt - Đáp ứng hầu hết nguyên tắc usability',
+            average: 'Trung bình - Cần cải thiện một số điểm',
+            poor: 'Yếu - Cần cải thiện đáng kể',
+            fail: 'Kém - Cần thiết kế lại theo nguyên tắc usability'
+        },
+        english: {
+            excellent: 'Excellent - Meets high usability standards',
+            good: 'Good - Satisfies most usability principles',
+            average: 'Average - Needs improvement in some areas',
+            poor: 'Poor - Requires significant improvement',
+            fail: 'Fail - Needs redesign following usability principles'
+        }
+    };
+
+    const lang = interpretations[language] || interpretations.vietnamese;
+
+    if (percentage >= 80) return lang.excellent;
+    if (percentage >= 60) return lang.good;
+    if (percentage >= 40) return lang.average;
+    if (percentage >= 20) return lang.poor;
+    return lang.fail;
+};
+
+/**
+ * Get detailed heuristic recommendations (bilingual)
+ */
+const getHeuristicRecommendations = (heuristicResult, language = 'vietnamese') => {
+    const recommendations = [];
+    const h = heuristicResult.heuristics;
+
+    const suggestions = {
+        vietnamese: {
+            h1: 'Thêm feedback rõ ràng: loading indicators, button states, form validation messages để người dùng hiểu trạng thái hệ thống.',
+            h2: 'Sử dụng ngôn ngữ quen thuộc, tránh thuật ngữ kỹ thuật. Sắp xếp thông tin theo logic thực tế.',
+            h3: 'Thêm navigation menu, back buttons, và exit options để người dùng tự do di chuyển.',
+            h4: 'Đảm bảo buttons, colors, typography nhất quán. Mỗi section cần có heading rõ ràng.',
+            h5: 'Thêm form validation, confirmation dialogs, và constraints để ngăn người dùng mắc lỗi.',
+            h6: 'Hiển thị options rõ ràng thay vì yêu cầu nhớ. Thêm icons, labels và visual cues.',
+            h7: 'Cung cấp shortcuts, multiple paths, và progressive disclosure cho cả novice và expert users.',
+            h8: 'Loại bỏ thông tin không cần thiết. Tập trung vào nội dung chính, sử dụng whitespace hiệu quả.',
+            h9: 'Cung cấp error messages rõ ràng với hướng dẫn khắc phục cụ thể, không dùng mã lỗi kỹ thuật.',
+            h10: 'Thêm tooltips, help links, FAQ section, và contextual help khi người dùng cần.'
+        },
+        english: {
+            h1: 'Add clear feedback: loading indicators, button states, form validation messages so users understand system status.',
+            h2: 'Use familiar language, avoid technical jargon. Organize information following real-world logic.',
+            h3: 'Add navigation menu, back buttons, and exit options for user freedom of movement.',
+            h4: 'Ensure buttons, colors, typography are consistent. Each section needs clear heading.',
+            h5: 'Add form validation, confirmation dialogs, and constraints to prevent user errors.',
+            h6: 'Display options clearly rather than requiring memory. Add icons, labels and visual cues.',
+            h7: 'Provide shortcuts, multiple paths, and progressive disclosure for both novice and expert users.',
+            h8: 'Remove unnecessary information. Focus on main content, use whitespace effectively.',
+            h9: 'Provide clear error messages with specific recovery instructions, avoid technical error codes.',
+            h10: 'Add tooltips, help links, FAQ section, and contextual help when users need it.'
+        }
+    };
+
+    const lang = suggestions[language] || suggestions.vietnamese;
+
+    if (h.visibilityOfSystemStatus < 3) {
+        recommendations.push({
+            heuristic: 'H1: Visibility of System Status',
+            score: h.visibilityOfSystemStatus,
+            priority: 'high',
+            suggestion: lang.h1
+        });
+    }
+
+    if (h.matchRealWorld < 3) {
+        recommendations.push({
+            heuristic: 'H2: Match Real World',
+            score: h.matchRealWorld,
+            priority: 'medium',
+            suggestion: lang.h2
+        });
+    }
+
+    if (h.userControlFreedom < 3) {
+        recommendations.push({
+            heuristic: 'H3: User Control & Freedom',
+            score: h.userControlFreedom,
+            priority: 'high',
+            suggestion: lang.h3
+        });
+    }
+
+    if (h.consistencyStandards < 3) {
+        recommendations.push({
+            heuristic: 'H4: Consistency & Standards',
+            score: h.consistencyStandards,
+            priority: 'high',
+            suggestion: lang.h4
+        });
+    }
+
+    if (h.errorPrevention < 3) {
+        recommendations.push({
+            heuristic: 'H5: Error Prevention',
+            score: h.errorPrevention,
+            priority: 'medium',
+            suggestion: lang.h5
+        });
+    }
+
+    if (h.recognitionOverRecall < 3) {
+        recommendations.push({
+            heuristic: 'H6: Recognition over Recall',
+            score: h.recognitionOverRecall,
+            priority: 'medium',
+            suggestion: lang.h6
+        });
+    }
+
+    if (h.flexibilityEfficiency < 3) {
+        recommendations.push({
+            heuristic: 'H7: Flexibility & Efficiency',
+            score: h.flexibilityEfficiency,
+            priority: 'low',
+            suggestion: lang.h7
+        });
+    }
+
+    if (h.aestheticMinimalist < 3) {
+        recommendations.push({
+            heuristic: 'H8: Aesthetic & Minimalist',
+            score: h.aestheticMinimalist,
+            priority: 'medium',
+            suggestion: lang.h8
+        });
+    }
+
+    if (h.errorRecovery < 3) {
+        recommendations.push({
+            heuristic: 'H9: Error Recovery',
+            score: h.errorRecovery,
+            priority: 'medium',
+            suggestion: lang.h9
+        });
+    }
+
+    if (h.helpDocumentation < 3) {
+        recommendations.push({
+            heuristic: 'H10: Help & Documentation',
+            score: h.helpDocumentation,
+            priority: 'low',
+            suggestion: lang.h10
+        });
+    }
+
+    return recommendations;
+};
+
+/**
+ * Advanced Local Page Analysis with Academic Metrics (Bilingual Support)
+ */
+const getLocalPageAnalysis = (pageData, language = 'vietnamese') => {
     const elements = pageData.elements || [];
     const textContent = extractAllText(elements);
     const sections = elements.filter(el => el.type === 'section');
@@ -754,6 +1057,13 @@ const getLocalPageAnalysis = (pageData) => {
     const contentDepth = calculateContentDepth(elements, textContent);
     const visualHierarchy = calculateVisualHierarchy(elements);
     const conversion = calculateConversionScore(elements);
+
+    // Nielsen & Molich Heuristic Evaluation (with language support)
+    const heuristicEvaluation = calculateHeuristicScore(elements, textContent);
+    const heuristicRecommendations = getHeuristicRecommendations(heuristicEvaluation, language);
+
+    // Update interpretation with language
+    heuristicEvaluation.interpretation = getHeuristicInterpretation(heuristicEvaluation.percentage, language);
 
     // Normalize scores
     const structureScore = Math.round(contentDepth);
@@ -780,17 +1090,39 @@ const getLocalPageAnalysis = (pageData) => {
             visualHierarchy: Math.round(visualHierarchy * 10),
             wordCount: textContent.split(/\s+/).filter(w => w.length > 0).length
         },
+        // Nielsen & Molich Heuristic Evaluation Results
+        heuristicEvaluation: {
+            totalScore: heuristicEvaluation.total,
+            averageScore: heuristicEvaluation.average,
+            percentageScore: heuristicEvaluation.percentage,
+            interpretation: heuristicEvaluation.interpretation,
+            details: {
+                h1_visibilityOfSystemStatus: heuristicEvaluation.heuristics.visibilityOfSystemStatus,
+                h2_matchRealWorld: heuristicEvaluation.heuristics.matchRealWorld,
+                h3_userControlFreedom: heuristicEvaluation.heuristics.userControlFreedom,
+                h4_consistencyStandards: heuristicEvaluation.heuristics.consistencyStandards,
+                h5_errorPrevention: heuristicEvaluation.heuristics.errorPrevention,
+                h6_recognitionOverRecall: heuristicEvaluation.heuristics.recognitionOverRecall,
+                h7_flexibilityEfficiency: heuristicEvaluation.heuristics.flexibilityEfficiency,
+                h8_aestheticMinimalist: heuristicEvaluation.heuristics.aestheticMinimalist,
+                h9_errorRecovery: heuristicEvaluation.heuristics.errorRecovery,
+                h10_helpDocumentation: heuristicEvaluation.heuristics.helpDocumentation
+            },
+            recommendations: heuristicRecommendations
+        },
         strengths: [
             sections.length >= 3 && 'Cấu trúc sections hợp lý',
             forms.length > 0 && 'Có công cụ thu thập thông tin',
             buttons >= 3 && 'Đủ nút kêu gọi hành động',
-            readability > 60 && 'Nội dung dễ đọc, dễ hiểu'
+            readability > 60 && 'Nội dung dễ đọc, dễ hiểu',
+            heuristicEvaluation.percentage >= 60 && 'Đạt tiêu chuẩn usability tốt'
         ].filter(Boolean),
         weaknesses: [
             sections.length < 3 && 'Cần thêm phần nội dung',
             forms.length === 0 && 'Thiếu form thu thập khách hàng tiềm năng',
             buttons < 3 && 'Cần thêm nút kêu gọi hành động',
-            readability < 40 && 'Nội dung quá phức tạp, khó hiểu'
+            readability < 40 && 'Nội dung quá phức tạp, khó hiểu',
+            heuristicEvaluation.percentage < 40 && 'Chưa đạt tiêu chuẩn usability cơ bản'
         ].filter(Boolean),
         suggestions: [
             {
