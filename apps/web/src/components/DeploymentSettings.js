@@ -221,7 +221,7 @@ const DeploymentSettings = () => {
 
                             <div className="deployment-info">
                                 <span>📅 Deploy lần cuối: {new Date(deploymentInfo.lastDeployed).toLocaleString('vi-VN')}</span>
-                                <span>🌍 Region: {awsSettings.region}</span>
+                                <span>🌍 Region: {process.env.REACT_APP_AWS_REGION || 'ap-southeast-1'}</span>
                             </div>
                         </div>
                     )}
