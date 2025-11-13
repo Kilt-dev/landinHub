@@ -33,7 +33,6 @@ const Marketplace = () => {
     const [purchasedPageIds, setPurchasedPageIds] = useState([]);
     const [myPageIds, setMyPageIds] = useState([]);
     const [purchasedDates, setPurchasedDates] = useState({});
-    const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [selectedPageForPreview, setSelectedPageForPreview] = useState(null);
 
     // Preview Modal State

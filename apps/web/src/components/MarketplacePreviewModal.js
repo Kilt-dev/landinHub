@@ -19,9 +19,9 @@ const MarketplacePreviewModal = ({ page, onClose }) => {
 
     const loadPreviewData = async () => {
         setLoading(true);
-        try {
-            const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token");
 
+        try {
             // Lấy pageData từ API
             const response = await axios.get(
                 `${API_BASE_URL}/api/marketplace/${page._id}/preview-data`,
