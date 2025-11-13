@@ -37,6 +37,7 @@ import '../styles/CreateLanding.css';
 import PreviewModal from '../components/PreviewModal'; // Import PreviewModal
 import AIContentModal from './create-page/AIContentModal'; // AI Content Generator
 import AIPageAnalyzer from './create-page/AIPageAnalyzer'; // AI Page Analyzer
+import TextSelectionToolbar from './create-page/TextSelectionToolbar'; // Text Selection AI Toolbar
 
 
 // Constants
@@ -146,6 +147,7 @@ const CreateLanding = () => {
     const [showAIContentModal, setShowAIContentModal] = useState(false);
     const [showAIAnalyzer, setShowAIAnalyzer] = useState(false);
     const [aiElementType, setAIElementType] = useState('paragraph'); // Type for AI content generation
+    const [selectedTextForAI, setSelectedTextForAI] = useState(''); // Selected text for AI generation
 
     useAuth(navigate);
     usePageContent(pageId, navigate, setPageData, setHistory, setHistoryIndex, setIsLoading);
@@ -1277,6 +1279,20 @@ const CreateLanding = () => {
         setShowAIAnalyzer(true);
     }, []);
 
+    // Handle text selection → AI
+    const handleTextSelectionAI = useCallback((selectedText) => {
+        // Store the selected text
+        setSelectedTextForAI(selectedText);
+
+        // Determine element type from selected element
+        const selected = selectedIds.length > 0 && pageData.elements.find(el => el.id === selectedIds[0]);
+        const elementType = selected ? selected.type : 'paragraph';
+        setAIElementType(elementType);
+
+        // Open AI modal with selected text
+        setShowAIContentModal(true);
+    }, [selectedIds, pageData.elements]);
+
     // AI Content Insert Handler
     const handleAIContentInsert = useCallback((content) => {
         if (selectedChildId && selectedIds.length > 0) {
@@ -1767,9 +1783,13 @@ const CreateLanding = () => {
                     {showAIContentModal && (
                         <AIContentModal
                             isOpen={showAIContentModal}
-                            onClose={() => setShowAIContentModal(false)}
+                            onClose={() => {
+                                setShowAIContentModal(false);
+                                setSelectedTextForAI(''); // Clear selected text
+                            }}
                             onInsert={handleAIContentInsert}
                             elementType={aiElementType}
+                            selectedText={selectedTextForAI}
                         />
                     )}
 
@@ -1817,6 +1837,9 @@ const CreateLanding = () => {
                     isCollapsed={isPopupLayerCollapsed}
                     onToggleCollapse={() => setIsPopupLayerCollapsed(!isPopupLayerCollapsed)}
                 />
+
+                {/* Text Selection AI Toolbar */}
+                <TextSelectionToolbar onAIClick={handleTextSelectionAI} />
             </div>
         </DndProvider>
     );
