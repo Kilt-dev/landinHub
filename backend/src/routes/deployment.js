@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const deploymentController = require('../controllers/deploymentController');
-const authMiddleware = require('../middleware/auth');
+const authMiddleware = require('../middleware/authMiddleware');
 
 /**
  * Deployment Routes
