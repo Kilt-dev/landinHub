@@ -10,7 +10,8 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/Marketplace.css';
 import DogLoader from '../components/Loader';
-import { Search, Eye, Heart, Star, ShoppingCart } from 'lucide-react';
+import { Search, Eye, Heart, Star, ShoppingCart, Monitor } from 'lucide-react';
+import PreviewModal from '../components/PreviewModal';
 
 const Marketplace = () => {
     const { user } = useContext(UserContext);
@@ -31,6 +32,12 @@ const Marketplace = () => {
     const [purchasedPageIds, setPurchasedPageIds] = useState([]);
     const [myPageIds, setMyPageIds] = useState([]);
     const [purchasedDates, setPurchasedDates] = useState({});
+
+    // Preview Modal State
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [previewHtml, setPreviewHtml] = useState('');
+    const [previewPageData, setPreviewPageData] = useState(null);
+    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
     const navigate = useNavigate();
     const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -243,6 +250,32 @@ const Marketplace = () => {
         navigate(`/marketplace/${pageId}`);
     };
 
+    // Handle Preview
+    const handlePreview = async (marketplacePage) => {
+        setIsLoadingPreview(true);
+        try {
+            const token = localStorage.getItem('token');
+
+            // Fetch HTML from backend (marketplace page's file_path in S3)
+            const response = await axios.get(`${API_BASE_URL}/api/pages/${marketplacePage.original_page_id}/preview-html`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            if (response.data.success) {
+                setPreviewHtml(response.data.html);
+                setPreviewPageData(response.data.pageData || null);
+                setShowPreviewModal(true);
+            } else {
+                alert('Không thể tải preview. Vui lòng thử lại.');
+            }
+        } catch (error) {
+            console.error('Error loading preview:', error);
+            alert('Lỗi khi tải preview: ' + (error.response?.data?.message || error.message));
+        } finally {
+            setIsLoadingPreview(false);
+        }
+    };
+
 
 
     const formatPrice = (price) => {
@@ -408,6 +441,17 @@ const Marketplace = () => {
                                                 </div>
                                             )}
 
+                                            <button
+                                                className="preview-btn"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handlePreview(page);
+                                                }}
+                                                title="Xem preview fullpage"
+                                                disabled={isLoadingPreview}
+                                            >
+                                                <Monitor size={18} />
+                                            </button>
                                             <button className="view-detail-btn">Xem chi tiết</button>
                                         </div>
 
@@ -450,6 +494,17 @@ const Marketplace = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Preview Modal */}
+            {showPreviewModal && (
+                <PreviewModal
+                    selectedTemplate={null}
+                    setShowPreviewModal={setShowPreviewModal}
+                    setPreviewHtml={setPreviewHtml}
+                    previewHtml={previewHtml}
+                    pageData={previewPageData}
+                />
+            )}
         </div>
     );
 };
