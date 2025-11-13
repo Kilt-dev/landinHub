@@ -1,6 +1,69 @@
 const { OpenAI } = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Groq = require('groq-sdk');
+const crypto = require('crypto');
+
+/**
+ * LRU Cache Implementation for AI Responses
+ * Reduces redundant API calls and improves response time
+ * Academic approach: Least Recently Used caching algorithm
+ */
+class LRUCache {
+    constructor(maxSize = 100) {
+        this.cache = new Map();
+        this.maxSize = maxSize;
+    }
+
+    generateKey(prompt, options = {}) {
+        const data = JSON.stringify({ prompt, options });
+        return crypto.createHash('md5').update(data).digest('hex');
+    }
+
+    get(key) {
+        if (!this.cache.has(key)) return null;
+
+        // Move to end (mark as recently used)
+        const value = this.cache.get(key);
+        this.cache.delete(key);
+        this.cache.set(key, value);
+
+        return value;
+    }
+
+    set(key, value) {
+        // Delete if exists (to re-add at end)
+        if (this.cache.has(key)) {
+            this.cache.delete(key);
+        }
+
+        // If cache full, delete oldest (first) entry
+        if (this.cache.size >= this.maxSize) {
+            const firstKey = this.cache.keys().next().value;
+            this.cache.delete(firstKey);
+        }
+
+        this.cache.set(key, {
+            data: value,
+            timestamp: Date.now(),
+            hits: 1
+        });
+    }
+
+    getCacheStats() {
+        return {
+            size: this.cache.size,
+            maxSize: this.maxSize,
+            entries: Array.from(this.cache.entries()).map(([key, val]) => ({
+                key: key.substring(0, 8) + '...',
+                hits: val.hits,
+                age: Date.now() - val.timestamp
+            }))
+        };
+    }
+}
+
+// Initialize LRU cache for AI responses (100 entries)
+const aiCache = new LRUCache(100);
 
 // Initialize Groq client (Primary AI provider - Fast & Free)
 let groq = null;
@@ -171,6 +234,43 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
 };
 
 /**
+ * Helper: Extract and parse JSON from AI response
+ * Handles multiple formats: markdown blocks, raw JSON, mixed text
+ */
+const extractJSON = (text) => {
+    if (!text || typeof text !== 'string') {
+        return null;
+    }
+
+    // Strategy 1: Try to find JSON in markdown code block
+    const markdownMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) {
+        try {
+            return JSON.parse(markdownMatch[1].trim());
+        } catch (e) {
+            // Continue to next strategy
+        }
+    }
+
+    // Strategy 2: Find JSON object in text (look for { ... })
+    const jsonObjectMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonObjectMatch) {
+        try {
+            return JSON.parse(jsonObjectMatch[0]);
+        } catch (e) {
+            // Continue to next strategy
+        }
+    }
+
+    // Strategy 3: Try parsing entire text as JSON
+    try {
+        return JSON.parse(text.trim());
+    } catch (e) {
+        return null;
+    }
+};
+
+/**
  * Generate AI content for text elements
  * POST /api/ai/generate-content
  * Body: { context, type, options: { tone, length, style } }
@@ -185,16 +285,65 @@ exports.generateContent = async (req, res) => {
 
         const { tone = 'professional', length = 'medium', style = 'modern' } = options;
 
-        // Build prompt based on type
+        // Check cache first (LRU Cache optimization)
+        const cacheKey = aiCache.generateKey(context, { type, tone, length, style });
+        const cached = aiCache.get(cacheKey);
+
+        if (cached) {
+            console.log(`✅ Cache HIT for context: "${context}" (${type})`);
+            return res.json({
+                success: true,
+                content: cached.data,
+                source: 'cache',
+                cached: true
+            });
+        }
+
+        // Build context-aware prompts (Chain of Thought approach)
         const prompts = {
-            heading: `Tạo một tiêu đề ${length === 'short' ? 'ngắn gọn' : length === 'medium' ? 'vừa phải' : 'dài'} về "${context}" với phong cách ${style}, giọng điệu ${tone}. Chỉ trả về tiêu đề, không giải thích.`,
-            paragraph: `Viết một đoạn văn ${length === 'short' ? '2-3 câu' : length === 'medium' ? '4-5 câu' : '6-8 câu'} về "${context}" với phong cách ${style}, giọng điệu ${tone}. Chỉ trả về nội dung, không giải thích.`,
-            button: `Tạo text cho button call-to-action về "${context}" với giọng điệu ${tone}. Ngắn gọn, hấp dẫn. Chỉ trả về text button (3-5 từ).`,
-            list: `Tạo 5 bullet points về "${context}" với phong cách ${style}. Mỗi điểm ngắn gọn, hấp dẫn.`
+            heading: `Task: Create a compelling headline for "${context}"
+Style: ${style}, Tone: ${tone}, Length: ${length === 'short' ? 'concise (3-6 words)' : length === 'medium' ? 'medium (7-12 words)' : 'detailed (13-20 words)'}
+
+Think step by step:
+1. What is the main benefit or value proposition?
+2. What emotion should it evoke?
+3. How to make it memorable and action-oriented?
+
+Output: Return ONLY the headline, no explanation.`,
+
+            paragraph: `Task: Write engaging paragraph about "${context}"
+Style: ${style}, Tone: ${tone}, Length: ${length === 'short' ? '2-3 sentences' : length === 'medium' ? '4-5 sentences' : '6-8 sentences'}
+
+Think step by step:
+1. What problem does this solve?
+2. What benefits does it provide?
+3. How to make it persuasive yet natural?
+
+Output: Return ONLY the paragraph, no explanation.`,
+
+            button: `Task: Create a CTA button text for "${context}"
+Tone: ${tone}, Goal: Drive action
+
+Think step by step:
+1. What action do we want users to take?
+2. What creates urgency or desire?
+3. Keep it 2-4 words, action-oriented
+
+Output: Return ONLY the button text.`,
+
+            list: `Task: Create 5 bullet points about "${context}"
+Style: ${style}
+
+Think step by step:
+1. What are the key benefits/features?
+2. How to make each point concise yet impactful?
+3. Use parallel structure
+
+Output: Return ONLY 5 bullet points, one per line.`
         };
 
         const prompt = prompts[type] || prompts.paragraph;
-        const maxTokens = length === 'short' ? 100 : length === 'medium' ? 200 : 400;
+        const maxTokens = length === 'short' ? 150 : length === 'medium' ? 250 : 450;
 
         console.log(`Generating AI content: type=${type}, context="${context}"`);
 
@@ -230,10 +379,17 @@ exports.generateContent = async (req, res) => {
             }
         }
 
+        // Save to cache if AI-generated (not template)
+        if (source !== 'template' && content) {
+            aiCache.set(cacheKey, content);
+            console.log(`💾 Saved to cache: "${context}" (${type})`);
+        }
+
         res.json({
             success: true,
             content: content,
-            source: source
+            source: source,
+            cached: false
         });
 
     } catch (error) {
@@ -270,23 +426,22 @@ exports.analyzePage = async (req, res) => {
         // Extract text content
         const textContent = extractAllText(elements);
 
-        const analysisPrompt = `
-Phân tích landing page này và đưa ra đánh giá chi tiết:
+        const analysisPrompt = `You are a JSON API. Analyze this landing page and return ONLY valid JSON, no explanations, no markdown, no text before or after.
 
-Thông tin trang:
-- Số sections: ${sections.length}
-- Số popups: ${popups.length}
-- Số forms: ${forms.length}
-- Tổng số elements: ${elements.length}
-- Nội dung text: ${textContent.substring(0, 500)}...
+Page information:
+- Sections: ${sections.length}
+- Popups: ${popups.length}
+- Forms: ${forms.length}
+- Total elements: ${elements.length}
+- Text content: ${textContent.substring(0, 500)}...
 
-Hãy đánh giá:
-1. CẤU TRÚC (0-10 điểm): Bố cục, số lượng sections, tổ chức nội dung
-2. NỘI DUNG (0-10 điểm): Chất lượng text, call-to-action, message clarity
-3. THIẾT KẾ (0-10 điểm): Màu sắc, typography, visual hierarchy
-4. CHUYỂN ĐỔI (0-10 điểm): Form placement, CTAs, popup strategy
+Rate these aspects (0-10):
+1. STRUCTURE: Layout, number of sections, content organization
+2. CONTENT: Text quality, call-to-actions, message clarity
+3. DESIGN: Colors, typography, visual hierarchy
+4. CONVERSION: Form placement, CTAs, popup strategy
 
-Trả về JSON format:
+Return this EXACT JSON structure (no markdown, no code blocks, just pure JSON):
 {
   "overall_score": 85,
   "scores": {
@@ -295,16 +450,15 @@ Trả về JSON format:
     "design": 8,
     "conversion": 9
   },
-  "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
-  "weaknesses": ["Điểm yếu 1", "Điểm yếu 2"],
+  "strengths": ["Strength 1", "Strength 2"],
+  "weaknesses": ["Weakness 1", "Weakness 2"],
   "suggestions": [
-    {"type": "critical", "title": "Tiêu đề gợi ý", "description": "Mô tả chi tiết"},
-    {"type": "improvement", "title": "Tiêu đề", "description": "Mô tả"}
+    {"type": "critical", "title": "Suggestion title", "description": "Detailed description"},
+    {"type": "improvement", "title": "Title", "description": "Description"}
   ]
 }
 
-CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
-`;
+CRITICAL: Return ONLY the JSON object above with your analysis. No explanations, no markdown blocks, no extra text.`;
 
         console.log(`Analyzing page with ${elements.length} elements...`);
 
@@ -314,14 +468,15 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
         // Try Groq first (Primary - Fast & Free)
         const groqResponse = await callGroqAPI(analysisPrompt, 1500);
         if (groqResponse && groqResponse.text) {
-            try {
-                const jsonMatch = groqResponse.text.match(/```json\s*([\s\S]*?)\s*```/) || [null, groqResponse.text];
-                const jsonText = jsonMatch[1] || groqResponse.text;
-                analysis = JSON.parse(jsonText);
+            console.log('Groq response preview:', groqResponse.text.substring(0, 200));
+            analysis = extractJSON(groqResponse.text);
+
+            if (analysis) {
                 source = 'groq';
                 console.log(`✅ Groq analysis completed: score = ${analysis.overall_score}`);
-            } catch (parseError) {
+            } else {
                 console.error('Failed to parse Groq response, trying Gemini...');
+                console.log('Full Groq response:', groqResponse.text);
             }
         }
 
@@ -331,13 +486,12 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
             const geminiResponse = await callGeminiAPI(analysisPrompt, 1500);
 
             if (geminiResponse && geminiResponse.text) {
-                try {
-                    const jsonMatch = geminiResponse.text.match(/```json\s*([\s\S]*?)\s*```/) || [null, geminiResponse.text];
-                    const jsonText = jsonMatch[1] || geminiResponse.text;
-                    analysis = JSON.parse(jsonText);
+                analysis = extractJSON(geminiResponse.text);
+
+                if (analysis) {
                     source = 'gemini';
                     console.log(`✅ Gemini analysis completed: score = ${analysis.overall_score}`);
-                } catch (parseError) {
+                } else {
                     console.error('Failed to parse Gemini response, trying DeepSeek...');
                 }
             }
@@ -350,14 +504,12 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
 
             if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
                 const responseText = deepseekResponse.choices[0].message.content.trim();
+                analysis = extractJSON(responseText);
 
-                try {
-                    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || [null, responseText];
-                    const jsonText = jsonMatch[1] || responseText;
-                    analysis = JSON.parse(jsonText);
+                if (analysis) {
                     source = 'deepseek';
                     console.log(`✅ DeepSeek analysis completed: score = ${analysis.overall_score}`);
-                } catch (parseError) {
+                } else {
                     console.error('Failed to parse DeepSeek response, using local analysis');
                 }
             }
@@ -515,21 +667,104 @@ const getLocalAIContent = (context, type, options) => {
 };
 
 /**
- * Fallback: Local page analysis
+ * Academic Algorithm: Flesch Reading Ease Score
+ * Formula: 206.835 - 1.015(words/sentences) - 84.6(syllables/words)
+ */
+const calculateReadabilityScore = (text) => {
+    if (!text || text.length < 10) return 60;
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    if (sentences.length === 0 || words.length === 0) return 60;
+
+    const countSyllables = (word) => {
+        word = word.toLowerCase();
+        if (word.length <= 3) return 1;
+        const vowels = word.match(/[aeiouyàáảãạăắằẳẵặâấầẩẫậèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]+/gi);
+        return vowels ? vowels.length : 1;
+    };
+
+    const totalSyllables = words.reduce((sum, w) => sum + countSyllables(w), 0);
+    const score = 206.835 - (1.015 * words.length / sentences.length) - (84.6 * totalSyllables / words.length);
+    return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+/**
+ * Content Depth: Information density analysis
+ */
+const calculateContentDepth = (elements, textContent) => {
+    const wordCount = textContent.split(/\s+/).filter(w => w.length > 0).length;
+    const headings = countElementsByType(elements, 'heading');
+    const paragraphs = countElementsByType(elements, 'paragraph');
+    const lists = countElementsByType(elements, 'list');
+    const images = countElementsByType(elements, 'image');
+
+    const diversity = Math.min(10, headings + paragraphs * 0.5 + lists * 2 + images * 0.3);
+    let volume = 0;
+    if (wordCount < 100) volume = wordCount / 100 * 3;
+    else if (wordCount <= 800) volume = 3 + ((wordCount - 100) / 700 * 7);
+    else volume = Math.max(7, 10 - ((wordCount - 800) / 1000 * 3));
+
+    return Math.round((diversity * 0.6 + volume * 0.4) * 10) / 10;
+};
+
+/**
+ * Visual Hierarchy: Gestalt principles + UX research
+ */
+const calculateVisualHierarchy = (elements) => {
+    const headings = countElementsByType(elements, 'heading');
+    const sections = elements.filter(el => el.type === 'section').length;
+    const images = countElementsByType(elements, 'image');
+    const buttons = countElementsByType(elements, 'button');
+
+    const fPattern = Math.min(10, sections * 2);
+    const focus = Math.min(10, (headings * 1.5 + buttons * 2) * 0.5);
+    const balance = images > 0 ? Math.min(10, 5 + images * 1.5) : 4;
+
+    return Math.round((fPattern * 0.4 + focus * 0.4 + balance * 0.2) * 10) / 10;
+};
+
+/**
+ * Conversion Optimization: CRO best practices
+ */
+const calculateConversionScore = (elements) => {
+    const forms = elements.filter(el => el.type === 'form').length;
+    const buttons = countElementsByType(elements, 'button');
+    const testimonials = countElementsByType(elements, 'testimonial');
+    const sections = elements.filter(el => el.type === 'section').length;
+
+    const leadCapture = forms > 0 ? Math.min(10, 5 + forms * 3) : 0;
+    const cta = Math.min(10, (buttons / Math.max(sections, 1)) * 3);
+    const trust = Math.min(10, testimonials * 2.5);
+
+    return Math.round((leadCapture * 0.5 + cta * 0.3 + trust * 0.2) * 10) / 10;
+};
+
+/**
+ * Advanced Local Page Analysis with Academic Metrics
  */
 const getLocalPageAnalysis = (pageData) => {
     const elements = pageData.elements || [];
+    const textContent = extractAllText(elements);
     const sections = elements.filter(el => el.type === 'section');
     const forms = elements.filter(el => el.type === 'form');
     const buttons = countElementsByType(elements, 'button');
 
-    // Simple scoring algorithm
-    const structureScore = Math.min(10, sections.length * 2); // Max 10
-    const contentScore = Math.min(10, (buttons * 2 + forms.length * 3)); // CTAs + Forms
-    const designScore = 7; // Default
-    const conversionScore = Math.min(10, forms.length * 5); // Forms are key
+    // Apply academic algorithms
+    const readability = calculateReadabilityScore(textContent);
+    const contentDepth = calculateContentDepth(elements, textContent);
+    const visualHierarchy = calculateVisualHierarchy(elements);
+    const conversion = calculateConversionScore(elements);
 
-    const overallScore = Math.round((structureScore + contentScore + designScore + conversionScore) / 4 * 10);
+    // Normalize scores
+    const structureScore = Math.round(contentDepth);
+    const contentScore = Math.round(readability / 10);
+    const designScore = Math.round(visualHierarchy);
+    const conversionScore = Math.round(conversion);
+
+    // Weighted overall (35% conversion, 25% design, 20% each for structure/content)
+    const overallScore = Math.round(
+        structureScore * 2 + contentScore * 2 + designScore * 2.5 + conversionScore * 3.5
+    );
 
     return {
         overall_score: overallScore,
@@ -539,31 +774,39 @@ const getLocalPageAnalysis = (pageData) => {
             design: designScore,
             conversion: conversionScore
         },
+        metrics: {
+            readability: Math.round(readability),
+            contentDepth: Math.round(contentDepth * 10),
+            visualHierarchy: Math.round(visualHierarchy * 10),
+            wordCount: textContent.split(/\s+/).filter(w => w.length > 0).length
+        },
         strengths: [
-            sections.length >= 3 && 'Có cấu trúc sections rõ ràng',
-            forms.length > 0 && 'Có form thu thập thông tin',
-            buttons >= 3 && 'Có đủ call-to-action buttons'
+            sections.length >= 3 && 'Cấu trúc sections hợp lý',
+            forms.length > 0 && 'Có công cụ thu thập thông tin',
+            buttons >= 3 && 'Đủ nút kêu gọi hành động',
+            readability > 60 && 'Nội dung dễ đọc, dễ hiểu'
         ].filter(Boolean),
         weaknesses: [
-            sections.length < 3 && 'Cần thêm sections để tăng nội dung',
-            forms.length === 0 && 'Thiếu form để thu thập leads',
-            buttons < 3 && 'Cần thêm CTAs để tăng conversion'
+            sections.length < 3 && 'Cần thêm phần nội dung',
+            forms.length === 0 && 'Thiếu form thu thập khách hàng tiềm năng',
+            buttons < 3 && 'Cần thêm nút kêu gọi hành động',
+            readability < 40 && 'Nội dung quá phức tạp, khó hiểu'
         ].filter(Boolean),
         suggestions: [
             {
-                type: 'critical',
-                title: 'Thêm Form Thu Thập Leads',
-                description: 'Landing page cần ít nhất 1 form để chuyển đổi visitors thành leads. Đặt form ở section cuối hoặc trong popup.'
+                type: forms.length === 0 ? 'critical' : 'improvement',
+                title: 'Thu Thập Thông Tin Khách Hàng',
+                description: 'Thêm form đăng ký để chuyển đổi khách truy cập thành khách hàng tiềm năng. Đặt ở cuối trang hoặc popup.'
+            },
+            {
+                type: buttons < 2 ? 'critical' : 'improvement',
+                title: 'Tăng Cường Kêu Gọi Hành Động',
+                description: 'Thêm nút với text hấp dẫn: "Đăng ký ngay", "Nhận ưu đãi", "Tìm hiểu thêm" ở các vị trí chiến lược.'
             },
             {
                 type: 'improvement',
-                title: 'Tối Ưu Call-to-Action',
-                description: 'Thêm buttons CTAs rõ ràng với text hấp dẫn: "Đăng ký ngay", "Nhận ưu đãi", "Tìm hiểu thêm"'
-            },
-            {
-                type: 'improvement',
-                title: 'Cải Thiện Visual Hierarchy',
-                description: 'Sử dụng heading lớn, colors tương phản và spacing hợp lý để dẫn dắt người xem.'
+                title: 'Cải Thiện Bố Cục Trang',
+                description: 'Sử dụng tiêu đề lớn, màu sắc tương phản và khoảng cách hợp lý để dẫn dắt sự chú ý.'
             }
         ]
     };

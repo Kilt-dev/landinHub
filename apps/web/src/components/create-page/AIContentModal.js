@@ -6,24 +6,51 @@ import './AIContentModal.css';
  * AI Content Generator Modal
  * Allows users to generate AI content for text elements
  */
-const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph' }) => {
-    const [context, setContext] = useState('');
+const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph', selectedText = '' }) => {
+    const [context, setContext] = useState(selectedText || '');
     const [tone, setTone] = useState('professional');
     const [length, setLength] = useState('medium');
     const [style, setStyle] = useState('modern');
     const [generatedContent, setGeneratedContent] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [aiSource, setAiSource] = useState(''); // Track AI source (groq, cache, etc.)
+
+    // Update context when selectedText changes
+    React.useEffect(() => {
+        if (selectedText) {
+            setContext(selectedText);
+        }
+    }, [selectedText]);
 
     const handleGenerate = async () => {
         if (!context.trim()) {
-            alert('Vui lòng nhập chủ đề hoặc context');
+            alert('Vui lòng nhập chủ đề hoặc nội dung bạn muốn tạo');
             return;
         }
 
         setIsGenerating(true);
         try {
-            const content = await generateAIContent(context, elementType, { tone, length, style });
-            setGeneratedContent(content);
+            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/ai/generate-content`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    context,
+                    type: elementType,
+                    options: { tone, length, style }
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                setGeneratedContent(data.content);
+                setAiSource(data.source);
+            } else {
+                throw new Error('Failed to generate content');
+            }
         } catch (error) {
             alert('Không thể tạo nội dung. Vui lòng thử lại.');
             console.error(error);
@@ -51,21 +78,30 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph' }
         <div className="ai-content-modal-overlay" onClick={handleClose}>
             <div className="ai-content-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="ai-modal-header">
-                    <h3>🤖 AI Content Generator</h3>
-                    <button className="ai-modal-close" onClick={handleClose}>✕</button>
+                    <div>
+                        <h3>Trợ Lý Tạo Nội Dung</h3>
+                        <p className="ai-modal-subtitle">Tạo nội dung chuyên nghiệp chỉ trong vài giây</p>
+                    </div>
+                    <button className="ai-modal-close" onClick={handleClose}>×</button>
                 </div>
 
                 <div className="ai-modal-body">
                     {/* Context Input */}
                     <div className="ai-form-group">
-                        <label>Chủ đề / Nội dung bạn muốn tạo</label>
+                        <label>
+                            Bạn muốn viết gì?
+                            {selectedText && <span className="ai-label-hint">Đã chọn text</span>}
+                        </label>
                         <input
                             type="text"
                             value={context}
                             onChange={(e) => setContext(e.target.value)}
-                            placeholder="VD: Giới thiệu khóa học marketing online"
+                            placeholder="VD: Giới thiệu khóa học marketing online, sản phẩm công nghệ..."
                             className="ai-input"
                         />
+                        <small className="ai-input-hint">
+                            Mẹo: Mô tả càng rõ ràng, nội dung tạo ra càng chính xác
+                        </small>
                     </div>
 
                     {/* Options */}
@@ -110,24 +146,26 @@ const AIContentModal = ({ isOpen, onClose, onInsert, elementType = 'paragraph' }
                         {isGenerating ? (
                             <>
                                 <div className="ai-spinner"></div>
-                                Đang tạo...
+                                Đang tạo nội dung...
                             </>
                         ) : (
-                            <>✨ Tạo nội dung với AI</>
+                            <>Tạo Nội Dung</>
                         )}
                     </button>
 
                     {/* Generated Content */}
                     {generatedContent && (
                         <div className="ai-result">
-                            <label>Nội dung được tạo:</label>
+                            <label>Nội dung đã tạo</label>
                             <textarea
                                 value={generatedContent}
                                 onChange={(e) => setGeneratedContent(e.target.value)}
                                 className="ai-result-textarea"
                                 rows="6"
                             />
-                            <p className="ai-hint">💡 Bạn có thể chỉnh sửa nội dung trước khi chèn vào trang</p>
+                            <p className="ai-hint">
+                                Bạn có thể chỉnh sửa nội dung trước khi chèn vào trang
+                            </p>
                         </div>
                     )}
                 </div>
