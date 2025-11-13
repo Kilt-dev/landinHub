@@ -283,10 +283,10 @@ exports.generateContent = async (req, res) => {
             return res.status(400).json({ error: 'Context là bắt buộc' });
         }
 
-        const { tone = 'professional', length = 'medium', style = 'modern' } = options;
+        const { tone = 'professional', length = 'medium', style = 'modern', language = 'vietnamese' } = options;
 
         // Check cache first (LRU Cache optimization)
-        const cacheKey = aiCache.generateKey(context, { type, tone, length, style });
+        const cacheKey = aiCache.generateKey(context, { type, tone, length, style, language });
         const cached = aiCache.get(cacheKey);
 
         if (cached) {
@@ -299,10 +299,32 @@ exports.generateContent = async (req, res) => {
             });
         }
 
+        // Language-specific instructions
+        const languageInstruction = language === 'english'
+            ? 'IMPORTANT: Write in ENGLISH only.'
+            : 'IMPORTANT: Write in VIETNAMESE only.';
+
+        // Length specifications
+        const lengthSpecs = {
+            heading: {
+                short: '3-6 words',
+                medium: '7-12 words',
+                long: '13-20 words',
+                'very-long': '20-30 words'
+            },
+            paragraph: {
+                short: '1-2 sentences',
+                medium: '3-5 sentences',
+                long: '6-10 sentences',
+                'very-long': '10-15 sentences'
+            }
+        };
+
         // Build context-aware prompts (Chain of Thought approach)
         const prompts = {
             heading: `Task: Create a compelling headline for "${context}"
-Style: ${style}, Tone: ${tone}, Length: ${length === 'short' ? 'concise (3-6 words)' : length === 'medium' ? 'medium (7-12 words)' : 'detailed (13-20 words)'}
+Style: ${style}, Tone: ${tone}, Length: ${lengthSpecs.heading[length] || lengthSpecs.heading.medium}
+${languageInstruction}
 
 Think step by step:
 1. What is the main benefit or value proposition?
@@ -312,7 +334,8 @@ Think step by step:
 Output: Return ONLY the headline, no explanation.`,
 
             paragraph: `Task: Write engaging paragraph about "${context}"
-Style: ${style}, Tone: ${tone}, Length: ${length === 'short' ? '2-3 sentences' : length === 'medium' ? '4-5 sentences' : '6-8 sentences'}
+Style: ${style}, Tone: ${tone}, Length: ${lengthSpecs.paragraph[length] || lengthSpecs.paragraph.medium}
+${languageInstruction}
 
 Think step by step:
 1. What problem does this solve?
@@ -323,6 +346,7 @@ Output: Return ONLY the paragraph, no explanation.`,
 
             button: `Task: Create a CTA button text for "${context}"
 Tone: ${tone}, Goal: Drive action
+${languageInstruction}
 
 Think step by step:
 1. What action do we want users to take?
@@ -333,6 +357,7 @@ Output: Return ONLY the button text.`,
 
             list: `Task: Create 5 bullet points about "${context}"
 Style: ${style}
+${languageInstruction}
 
 Think step by step:
 1. What are the key benefits/features?
@@ -343,7 +368,14 @@ Output: Return ONLY 5 bullet points, one per line.`
         };
 
         const prompt = prompts[type] || prompts.paragraph;
-        const maxTokens = length === 'short' ? 150 : length === 'medium' ? 250 : 450;
+
+        // Updated max tokens to support very-long
+        const maxTokens = {
+            'short': 150,
+            'medium': 250,
+            'long': 450,
+            'very-long': 700
+        }[length] || 250;
 
         console.log(`Generating AI content: type=${type}, context="${context}"`);
 
