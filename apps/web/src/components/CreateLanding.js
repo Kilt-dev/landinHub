@@ -94,13 +94,11 @@ const usePageContent = (pageId, navigate, setPageData, setHistory, setHistoryInd
                     setPageData(finalPageData);
                     setHistory([finalPageData]);
                     setHistoryIndex(0);
-                    toast.success('Tải trang thành công!');
                 } else {
                     throw new Error(response.data.error || 'Không thể tải trang');
                 }
             } catch (error) {
                 console.error('Lỗi khi lấy nội dung trang:', error);
-                toast.error('Lỗi khi lấy nội dung trang: ' + (error.response?.data?.error || error.message));
                 if (error.response?.status === 401) {
                     localStorage.removeItem('token');
                     navigate('/auth');
@@ -164,7 +162,6 @@ const CreateLanding = () => {
                         : el
                 )
             }));
-            toast.info(`Popup "${popupId}" đã mở`);
         };
 
         const handlePopupClose = ({ popupId }) => {
@@ -233,7 +230,6 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success(childId ? 'Đã cập nhật hiển thị child!' : 'Đã cập nhật hiển thị element!');
     }, [history, historyIndex]);
 
     const handleToggleLock = useCallback((elementId, childId, e) => {
@@ -261,7 +257,7 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success(childId ? 'Đã cập nhật khóa child!' : 'Đã cập nhật khóa element!');
+
     }, [history, historyIndex]);
 
     // View mode change with responsive sync and mobile stacking
@@ -328,7 +324,6 @@ const CreateLanding = () => {
         });
 
         const modeLabel = mode === 'desktop' ? 'Desktop' : mode === 'tablet' ? 'Tablet' : 'Mobile';
-        toast.info(`Đã chuyển sang chế độ ${modeLabel}${mode === 'mobile' ? ' - Áp dụng vertical stacking' : ''}`);
     }, [history, historyIndex]);
 
     // Add section
@@ -401,7 +396,6 @@ const CreateLanding = () => {
             const newHeight = section.json.size?.height || 400;
             setGuideLine({ show: true, y: nextY + newHeight });
         }
-        toast.success(`Đã thêm ${section.json.type} mới!`);
         setShowPopup(false);
     }, [pageData.elements, history, historyIndex]);
 
@@ -478,7 +472,6 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success(`Đã thêm ${element.type}!`);
     }, [pageData, history, historyIndex]);
 
     // Add child
@@ -512,7 +505,6 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã thêm thành phần con!');
     }, [history, historyIndex]);
 
     // Delete element with confirmation
@@ -550,7 +542,6 @@ const CreateLanding = () => {
         const nextY = calculateNextSectionY(pageData.elements.filter(el => el.id !== id));
         setGuideLine({ show: true, y: nextY });
 
-        toast.success(`Đã xóa ${element.type}!`);
     }, [historyIndex, pageData.elements]);
 
     // Delete child
@@ -576,7 +567,6 @@ const CreateLanding = () => {
             return newPageData;
         });
         setSelectedChildId(null);
-        toast.success('Đã xóa thành phần con!');
     }, [historyIndex]);
 
     // Move element up
@@ -588,7 +578,8 @@ const CreateLanding = () => {
 
             // Check if actually moved
             if (reorderedElements === prev.elements) {
-                toast.info('Section đã ở vị trí đầu tiên');
+
+
                 return prev;
             }
 
@@ -608,7 +599,6 @@ const CreateLanding = () => {
         const nextY = calculateNextSectionY(pageData.elements);
         setGuideLine({ show: true, y: nextY });
 
-        toast.success('Đã di chuyển section lên!');
     }, [historyIndex, pageData.elements]);
 
     // Move element down
@@ -620,7 +610,6 @@ const CreateLanding = () => {
 
             // Check if actually moved
             if (reorderedElements === prev.elements) {
-                toast.info('Section đã ở vị trí cuối cùng');
                 return prev;
             }
 
@@ -639,8 +628,6 @@ const CreateLanding = () => {
         // Update guideline
         const nextY = calculateNextSectionY(pageData.elements);
         setGuideLine({ show: true, y: nextY });
-
-        toast.success('Đã di chuyển section xuống!');
     }, [historyIndex, pageData.elements]);
 
     // Select element
@@ -717,7 +704,6 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã cập nhật cài đặt canvas!');
     }, [historyIndex]);
 
     // Edit element
@@ -739,26 +725,22 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã cập nhật phần tử!');
     }, [historyIndex, selectedIds, selectedChildId]);
 
     // Copy element to clipboard
     const handleCopyElement = useCallback(() => {
         if (selectedIds.length === 0) {
-            toast.warning('Chọn một element để copy');
             return;
         }
         const element = pageData.elements.find((el) => el.id === selectedIds[0]);
         if (element) {
             setClipboard({ ...element });
-            toast.success(`Đã copy ${element.type}! (Ctrl+V để paste)`);
         }
     }, [selectedIds, pageData.elements]);
 
     // Cut element to clipboard
     const handleCutElement = useCallback(() => {
         if (selectedIds.length === 0) {
-            toast.warning('Chọn một element để cut');
             return;
         }
         const element = pageData.elements.find((el) => el.id === selectedIds[0]);
@@ -766,14 +748,12 @@ const CreateLanding = () => {
             setClipboard({ ...element });
             // Delete the original element
             handleDeleteElement(selectedIds[0], null);
-            toast.success(`Đã cut ${element.type}! (Ctrl+V để paste)`);
         }
     }, [selectedIds, pageData.elements, handleDeleteElement]);
 
     // Paste element from clipboard
     const handlePasteElement = useCallback(() => {
         if (!clipboard) {
-            toast.warning('Clipboard trống! Copy một element trước (Ctrl+C)');
             return;
         }
 
@@ -815,7 +795,6 @@ const CreateLanding = () => {
 
         // Select the newly pasted element
         setSelectedIds([newElement.id]);
-        toast.success(`Đã paste ${clipboard.type}!`);
     }, [clipboard, history, historyIndex]);
 
     // Duplicate element (Ctrl+D)
@@ -1017,7 +996,6 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã cập nhật vị trí thành phần con!');
     }, [historyIndex, viewMode]);
 
     // Update child size
@@ -1113,7 +1091,6 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success(targetParentId ? 'Đã di chuyển thành phần con!' : 'Đã chuyển thành phần con thành phần tử độc lập!');
     }, [historyIndex, viewMode]);
 
     // Update children
@@ -1139,7 +1116,6 @@ const CreateLanding = () => {
             setHistoryIndex(historyIndex + 1);
             return newPageData;
         });
-        toast.success('Đã sắp xếp lại thành phần con!');
     }, [historyIndex]);
 
     // Undo
@@ -1162,13 +1138,9 @@ const CreateLanding = () => {
 
     // Auto save
     const handleAutoSave = useCallback(async () => {
-        setIsSaving(true); // Show DogLoader during autosave
         try {
             const htmlContent = renderStaticHTML(pageData);
-            await api.post('/api/pages/autosave', { html: htmlContent, pageId });
-            toast.success('Đã tự động lưu bản nháp!');
         } catch (error) {
-            toast.error('Lỗi khi tự động lưu: ' + (error.response?.data?.error || error.message));
         } finally {
             setIsSaving(false); // Hide DogLoader
         }
@@ -1354,7 +1326,6 @@ const CreateLanding = () => {
             });
             toast.success('Đã chèn nội dung AI!');
         } else {
-            toast.warning('Vui lòng chọn một element trước!');
         }
         setShowAIContentModal(false);
     }, [selectedIds, selectedChildId, historyIndex, history, pageData]);

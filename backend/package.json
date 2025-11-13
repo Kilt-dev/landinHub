@@ -4,7 +4,9 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "install-chrome": "npx puppeteer browsers install chrome",
+    "postinstall": "pnpm add install-chrome"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -800,7 +800,7 @@ exports.deployPage = async (req, res) => {
         await deployment.save();
 
         // Construct final domain (custom domain or auto-generated subdomain)
-        const finalDomain = customDomain ||
+         finalDomain = customDomain ||
             (finalSubdomain ? `${finalSubdomain}.${process.env.AWS_ROUTE53_BASE_DOMAIN}` : null);
 
         const { distributionId, cloudFrontDomain, status } =

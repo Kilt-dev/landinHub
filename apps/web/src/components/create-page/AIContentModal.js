@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { generateAIContent } from '../../services/aiService';
-import './AIContentModal.css';
+import '../../styles/AIContentModal.css';
 
 /**
  * AI Content Generator Modal

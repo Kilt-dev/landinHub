@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getToastSettings, updateToastSettings } from '../../utils/toastConfig';
-import './ToastSettings.css';
+import '../../styles/ToastSettings.css';
 
 /**
  * Toast Notification Settings Panel

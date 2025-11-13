@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import './ResizeHandles.css';
+import '../../styles/ResizeHandles.css';
 
 /**
  * ResizeHandles Component

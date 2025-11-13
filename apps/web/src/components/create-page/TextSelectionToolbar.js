@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import './TextSelectionToolbar.css';
+import '../../styles/TextSelectionToolbar.css';
 
 /**
  * Floating Toolbar for Text Selection

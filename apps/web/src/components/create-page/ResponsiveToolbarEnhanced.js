@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Smartphone, Tablet, Monitor, Eye, Maximize2, RotateCw } from 'lucide-react';
 import { toast } from 'react-toastify';
-import './ResponsiveToolbarEnhanced.css';
+import '../../styles/ResponsiveToolbarEnhanced.css';
 
 /**
  * Enhanced Responsive Toolbar with Mobile Preview

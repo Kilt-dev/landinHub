@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
-import './QuickPresets.css';
+import '../../styles/QuickPresets.css';
 
 /**
  * Quick Component Presets

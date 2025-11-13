@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Copy, RefreshCw, Wand2, Languages, CheckCheck } from 'lucide-react';
-import './TextContextMenu.css';
+import '../../styles/TextContextMenu.css';
 
 /**
  * Context Menu cho Text Elements

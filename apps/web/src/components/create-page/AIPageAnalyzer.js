@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { analyzePageWithAI } from '../../services/aiService';
-import './AIPageAnalyzer.css';
+import '../../styles/AIPageAnalyzer.css';
 
 /**
  * AI Page Analyzer
