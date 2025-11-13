@@ -1,10 +1,17 @@
 const { OpenAI } = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 // Initialize OpenAI client for DeepSeek
 const openai = new OpenAI({
     baseURL: 'https://api.deepseek.com',
     apiKey: process.env.DEEPSEEK_API_KEY
 });
+
+// Initialize Google Gemini client
+let gemini = null;
+if (process.env.GOOGLE_API_KEY) {
+    gemini = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+}
 
 /**
  * Helper: Call DeepSeek API with retry logic
@@ -46,6 +53,38 @@ const callDeepSeekAPI = async (prompt, retries = 3, maxTokens = 1000) => {
 };
 
 /**
+ * Helper: Call Google Gemini API
+ * Returns null if API fails or not configured
+ */
+const callGeminiAPI = async (prompt, maxTokens = 1000) => {
+    if (!gemini || !process.env.GOOGLE_API_KEY) {
+        console.warn('GOOGLE_API_KEY not configured, skipping Gemini');
+        return null;
+    }
+
+    try {
+        const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        const result = await model.generateContent({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+                maxOutputTokens: maxTokens,
+                temperature: 0.7,
+            },
+        });
+
+        const response = await result.response;
+        const text = response.text();
+
+        console.log('Gemini API call successful');
+        return { text };
+    } catch (err) {
+        console.error('Gemini API failed:', err.message);
+        return null;
+    }
+};
+
+/**
  * Generate AI content for text elements
  * POST /api/ai/generate-content
  * Body: { context, type, options: { tone, length, style } }
@@ -73,22 +112,35 @@ exports.generateContent = async (req, res) => {
 
         console.log(`Generating AI content: type=${type}, context="${context}"`);
 
-        const aiResponse = await callDeepSeekAPI(prompt, 3, maxTokens);
-
         let content;
-        if (aiResponse && aiResponse.choices && aiResponse.choices[0]) {
-            content = aiResponse.choices[0].message.content.trim();
-            console.log(`AI content generated successfully (${content.length} chars)`);
+        let source = 'template';
+
+        // Try DeepSeek first
+        const deepseekResponse = await callDeepSeekAPI(prompt, 3, maxTokens);
+        if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
+            content = deepseekResponse.choices[0].message.content.trim();
+            source = 'deepseek';
+            console.log(`✅ DeepSeek AI generated content (${content.length} chars)`);
         } else {
-            // Fallback to local templates
-            console.log('Using local templates for content generation');
-            content = getLocalAIContent(context, type, options);
+            // Fallback to Gemini
+            console.log('DeepSeek unavailable, trying Gemini...');
+            const geminiResponse = await callGeminiAPI(prompt, maxTokens);
+
+            if (geminiResponse && geminiResponse.text) {
+                content = geminiResponse.text.trim();
+                source = 'gemini';
+                console.log(`✅ Gemini AI generated content (${content.length} chars)`);
+            } else {
+                // Final fallback to local templates
+                console.log('All AI providers unavailable, using local templates');
+                content = getLocalAIContent(context, type, options);
+            }
         }
 
         res.json({
             success: true,
             content: content,
-            source: aiResponse ? 'ai' : 'template'
+            source: source
         });
 
     } catch (error) {
@@ -163,33 +215,53 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
 
         console.log(`Analyzing page with ${elements.length} elements...`);
 
-        const aiResponse = await callDeepSeekAPI(analysisPrompt, 3, 1500);
-
         let analysis;
-        if (aiResponse && aiResponse.choices && aiResponse.choices[0]) {
-            const responseText = aiResponse.choices[0].message.content.trim();
+        let source = 'template';
 
-            // Try to parse JSON
+        // Try DeepSeek first
+        const deepseekResponse = await callDeepSeekAPI(analysisPrompt, 3, 1500);
+        if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
+            const responseText = deepseekResponse.choices[0].message.content.trim();
+
             try {
-                // Remove markdown code blocks if present
                 const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || [null, responseText];
                 const jsonText = jsonMatch[1] || responseText;
                 analysis = JSON.parse(jsonText);
-                console.log(`Page analysis completed: overall score = ${analysis.overall_score}`);
+                source = 'deepseek';
+                console.log(`✅ DeepSeek analysis completed: score = ${analysis.overall_score}`);
             } catch (parseError) {
-                console.error('Failed to parse AI response as JSON, using local analysis');
-                analysis = getLocalPageAnalysis(pageData);
+                console.error('Failed to parse DeepSeek response, trying Gemini...');
             }
-        } else {
-            // Fallback to local analysis
-            console.log('Using local analysis (DeepSeek API unavailable)');
+        }
+
+        // Fallback to Gemini if DeepSeek failed
+        if (!analysis) {
+            console.log('DeepSeek unavailable, trying Gemini for analysis...');
+            const geminiResponse = await callGeminiAPI(analysisPrompt, 1500);
+
+            if (geminiResponse && geminiResponse.text) {
+                try {
+                    const jsonMatch = geminiResponse.text.match(/```json\s*([\s\S]*?)\s*```/) || [null, geminiResponse.text];
+                    const jsonText = jsonMatch[1] || geminiResponse.text;
+                    analysis = JSON.parse(jsonText);
+                    source = 'gemini';
+                    console.log(`✅ Gemini analysis completed: score = ${analysis.overall_score}`);
+                } catch (parseError) {
+                    console.error('Failed to parse Gemini response, using local analysis');
+                }
+            }
+        }
+
+        // Final fallback to local analysis
+        if (!analysis) {
+            console.log('All AI providers unavailable, using local analysis');
             analysis = getLocalPageAnalysis(pageData);
         }
 
         res.json({
             success: true,
             analysis: analysis,
-            source: (aiResponse && analysis.overall_score) ? 'ai' : 'template'
+            source: source
         });
 
     } catch (error) {
