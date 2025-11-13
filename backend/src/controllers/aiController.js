@@ -171,6 +171,43 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
 };
 
 /**
+ * Helper: Extract and parse JSON from AI response
+ * Handles multiple formats: markdown blocks, raw JSON, mixed text
+ */
+const extractJSON = (text) => {
+    if (!text || typeof text !== 'string') {
+        return null;
+    }
+
+    // Strategy 1: Try to find JSON in markdown code block
+    const markdownMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (markdownMatch && markdownMatch[1]) {
+        try {
+            return JSON.parse(markdownMatch[1].trim());
+        } catch (e) {
+            // Continue to next strategy
+        }
+    }
+
+    // Strategy 2: Find JSON object in text (look for { ... })
+    const jsonObjectMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonObjectMatch) {
+        try {
+            return JSON.parse(jsonObjectMatch[0]);
+        } catch (e) {
+            // Continue to next strategy
+        }
+    }
+
+    // Strategy 3: Try parsing entire text as JSON
+    try {
+        return JSON.parse(text.trim());
+    } catch (e) {
+        return null;
+    }
+};
+
+/**
  * Generate AI content for text elements
  * POST /api/ai/generate-content
  * Body: { context, type, options: { tone, length, style } }
@@ -270,23 +307,22 @@ exports.analyzePage = async (req, res) => {
         // Extract text content
         const textContent = extractAllText(elements);
 
-        const analysisPrompt = `
-Phân tích landing page này và đưa ra đánh giá chi tiết:
+        const analysisPrompt = `You are a JSON API. Analyze this landing page and return ONLY valid JSON, no explanations, no markdown, no text before or after.
 
-Thông tin trang:
-- Số sections: ${sections.length}
-- Số popups: ${popups.length}
-- Số forms: ${forms.length}
-- Tổng số elements: ${elements.length}
-- Nội dung text: ${textContent.substring(0, 500)}...
+Page information:
+- Sections: ${sections.length}
+- Popups: ${popups.length}
+- Forms: ${forms.length}
+- Total elements: ${elements.length}
+- Text content: ${textContent.substring(0, 500)}...
 
-Hãy đánh giá:
-1. CẤU TRÚC (0-10 điểm): Bố cục, số lượng sections, tổ chức nội dung
-2. NỘI DUNG (0-10 điểm): Chất lượng text, call-to-action, message clarity
-3. THIẾT KẾ (0-10 điểm): Màu sắc, typography, visual hierarchy
-4. CHUYỂN ĐỔI (0-10 điểm): Form placement, CTAs, popup strategy
+Rate these aspects (0-10):
+1. STRUCTURE: Layout, number of sections, content organization
+2. CONTENT: Text quality, call-to-actions, message clarity
+3. DESIGN: Colors, typography, visual hierarchy
+4. CONVERSION: Form placement, CTAs, popup strategy
 
-Trả về JSON format:
+Return this EXACT JSON structure (no markdown, no code blocks, just pure JSON):
 {
   "overall_score": 85,
   "scores": {
@@ -295,16 +331,15 @@ Trả về JSON format:
     "design": 8,
     "conversion": 9
   },
-  "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
-  "weaknesses": ["Điểm yếu 1", "Điểm yếu 2"],
+  "strengths": ["Strength 1", "Strength 2"],
+  "weaknesses": ["Weakness 1", "Weakness 2"],
   "suggestions": [
-    {"type": "critical", "title": "Tiêu đề gợi ý", "description": "Mô tả chi tiết"},
-    {"type": "improvement", "title": "Tiêu đề", "description": "Mô tả"}
+    {"type": "critical", "title": "Suggestion title", "description": "Detailed description"},
+    {"type": "improvement", "title": "Title", "description": "Description"}
   ]
 }
 
-CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
-`;
+CRITICAL: Return ONLY the JSON object above with your analysis. No explanations, no markdown blocks, no extra text.`;
 
         console.log(`Analyzing page with ${elements.length} elements...`);
 
@@ -314,14 +349,15 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
         // Try Groq first (Primary - Fast & Free)
         const groqResponse = await callGroqAPI(analysisPrompt, 1500);
         if (groqResponse && groqResponse.text) {
-            try {
-                const jsonMatch = groqResponse.text.match(/```json\s*([\s\S]*?)\s*```/) || [null, groqResponse.text];
-                const jsonText = jsonMatch[1] || groqResponse.text;
-                analysis = JSON.parse(jsonText);
+            console.log('Groq response preview:', groqResponse.text.substring(0, 200));
+            analysis = extractJSON(groqResponse.text);
+
+            if (analysis) {
                 source = 'groq';
                 console.log(`✅ Groq analysis completed: score = ${analysis.overall_score}`);
-            } catch (parseError) {
+            } else {
                 console.error('Failed to parse Groq response, trying Gemini...');
+                console.log('Full Groq response:', groqResponse.text);
             }
         }
 
@@ -331,13 +367,12 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
             const geminiResponse = await callGeminiAPI(analysisPrompt, 1500);
 
             if (geminiResponse && geminiResponse.text) {
-                try {
-                    const jsonMatch = geminiResponse.text.match(/```json\s*([\s\S]*?)\s*```/) || [null, geminiResponse.text];
-                    const jsonText = jsonMatch[1] || geminiResponse.text;
-                    analysis = JSON.parse(jsonText);
+                analysis = extractJSON(geminiResponse.text);
+
+                if (analysis) {
                     source = 'gemini';
                     console.log(`✅ Gemini analysis completed: score = ${analysis.overall_score}`);
-                } catch (parseError) {
+                } else {
                     console.error('Failed to parse Gemini response, trying DeepSeek...');
                 }
             }
@@ -350,14 +385,12 @@ CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH THÊM.
 
             if (deepseekResponse && deepseekResponse.choices && deepseekResponse.choices[0]) {
                 const responseText = deepseekResponse.choices[0].message.content.trim();
+                analysis = extractJSON(responseText);
 
-                try {
-                    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || [null, responseText];
-                    const jsonText = jsonMatch[1] || responseText;
-                    analysis = JSON.parse(jsonText);
+                if (analysis) {
                     source = 'deepseek';
                     console.log(`✅ DeepSeek analysis completed: score = ${analysis.overall_score}`);
-                } catch (parseError) {
+                } else {
                     console.error('Failed to parse DeepSeek response, using local analysis');
                 }
             }
