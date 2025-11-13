@@ -77,6 +77,8 @@ const callGeminiAPI = async (prompt, maxTokens = 1000) => {
         const text = response.text();
 
         console.log('Gemini API call successful');
+        console.log('Gemini response text length:', text?.length || 0);
+        console.log('Gemini response preview:', text?.substring(0, 100));
         return { text };
     } catch (err) {
         console.error('Gemini API failed:', err.message);
@@ -125,6 +127,10 @@ exports.generateContent = async (req, res) => {
             // Fallback to Gemini
             console.log('DeepSeek unavailable, trying Gemini...');
             const geminiResponse = await callGeminiAPI(prompt, maxTokens);
+
+            console.log('geminiResponse received:', geminiResponse ? 'YES' : 'NO');
+            console.log('geminiResponse.text exists:', geminiResponse?.text ? 'YES' : 'NO');
+            console.log('geminiResponse.text value:', geminiResponse?.text);
 
             if (geminiResponse && geminiResponse.text) {
                 content = geminiResponse.text.trim();
