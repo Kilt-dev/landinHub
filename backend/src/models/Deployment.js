@@ -147,7 +147,7 @@ DeploymentSchema.virtual('url').get(function() {
     if (this.use_custom_domain && this.custom_domain) {
         return `https://${this.custom_domain}`;
     } else if (this.subdomain) {
-        return `https://${this.subdomain}.${process.env.AWS_ROUTE53_BASE_DOMAIN || 'landinghub.app'}`;
+        return `https://${this.subdomain}.${process.env.AWS_ROUTE53_BASE_DOMAIN || 'landinghub.vn'}`;
     } else if (this.cloudfront_domain) {
         return `https://${this.cloudfront_domain}`;
     }

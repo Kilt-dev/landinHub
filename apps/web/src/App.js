@@ -37,6 +37,9 @@ import UnifiedPayments from './pages/UnifiedPayments';
 import DeploymentSettings from './components/DeploymentSettings';
 import AdminSupport from './pages/AdminSupport';
 import SupportChatbox from './components/SupportChatbox';
+import AdminAnalytics from './pages/AdminAnalytics';
+
+
 
 function App() {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -82,6 +85,7 @@ function App() {
                             <Route path="/admin/marketplace" element={<AdminMarketplace />} />
                             <Route path="/admin/payouts" element={<AdminPayoutManagement />} />
                             <Route path="/admin/support" element={<AdminSupport />} />
+                            <Route path="/admin/analytics" element={<AdminAnalytics />} />
                             <Route path="/reports" element={<Reports />} />
                             <Route path="/users" element={<AdminUser />} />
                             {/* Catch-all route */}
