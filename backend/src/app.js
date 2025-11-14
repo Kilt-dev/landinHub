@@ -62,6 +62,7 @@ app.use('/api/payout', require('./routes/payout'));
 app.use('/api/admin/marketplace', require('./routes/adminMarketplace'));
 app.use('/api/forms', require('./routes/formSubmissions'));
 app.use('/api/deployment', require('./routes/deployment'));
-app.use('/api/ai', require('./routes/ai'));
+app.use('/api/chat', require('./routes/chat'));
+app.use('/api/research', require('./routes/llmResearch'));
 
 module.exports = app;
