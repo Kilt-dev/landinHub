@@ -1,78 +1,45 @@
 /**
- * Multi-AI Provider Service
- * Supports: OpenAI, Groq, Google Gemini, Ollama
- * Allows easy switching between providers based on availability and preference
+ * Simplified AI Provider Service
+ * Supports: Groq (Primary) → Google Gemini (Fallback)
+ * Optimized for cost-effective, high-performance AI responses
  */
 
-const OpenAI = require('openai');
 const axios = require('axios');
 
-// Provider configurations
+// Provider configurations - Groq first, Gemini as fallback
 const providers = {
-  openai: {
-    name: 'OpenAI',
-    enabled: !!process.env.OPENAI_API_KEY,
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-    maxTokens: 800
-  },
   groq: {
     name: 'Groq',
     enabled: !!process.env.GROQ_API_KEY,
     model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-    maxTokens: 800,
-    url: 'https://api.groq.com/openai/v1/chat/completions'
+    maxTokens: 1000,
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    priority: 1 // Primary provider
   },
   gemini: {
     name: 'Google Gemini',
     enabled: !!process.env.GEMINI_API_KEY,
     model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-    maxTokens: 800,
-    url: 'https://generativelanguage.googleapis.com/v1beta/models'
-  },
-  ollama: {
-    name: 'Ollama (Local)',
-    enabled: !!process.env.OLLAMA_ENABLED,
-    model: process.env.OLLAMA_MODEL || 'llama3.2',
-    maxTokens: 800,
-    url: process.env.OLLAMA_URL || 'http://localhost:11434/api/chat'
+    maxTokens: 1000,
+    url: 'https://generativelanguage.googleapis.com/v1beta/models',
+    priority: 2 // Fallback provider
   }
 };
 
-// Get active provider (in order of preference)
+// Get active provider (Groq → Gemini priority)
 function getActiveProvider() {
-  const preferredProvider = process.env.AI_PROVIDER || 'auto';
-
-  if (preferredProvider !== 'auto') {
-    if (providers[preferredProvider]?.enabled) {
-      return preferredProvider;
-    }
-    console.warn(`Preferred provider ${preferredProvider} not available, falling back to auto`);
+  // Always prefer Groq if available
+  if (providers.groq.enabled) {
+    return 'groq';
   }
 
-  // Auto-select first available provider
-  for (const [key, config] of Object.entries(providers)) {
-    if (config.enabled) {
-      return key;
-    }
+  // Fallback to Gemini
+  if (providers.gemini.enabled) {
+    console.log('⚠️  Groq not available, using Gemini as fallback');
+    return 'gemini';
   }
 
-  throw new Error('No AI provider configured! Please set up at least one: OPENAI_API_KEY, GROQ_API_KEY, GEMINI_API_KEY, or OLLAMA_ENABLED');
-}
-
-// OpenAI provider
-async function callOpenAI(messages, options = {}) {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-  });
-
-  const completion = await openai.chat.completions.create({
-    model: providers.openai.model,
-    messages,
-    temperature: options.temperature || 0.7,
-    max_tokens: options.maxTokens || providers.openai.maxTokens
-  });
-
-  return completion.choices[0].message.content;
+  throw new Error('No AI provider configured! Please set up GROQ_API_KEY or GEMINI_API_KEY');
 }
 
 // Groq provider (OpenAI-compatible API)
@@ -141,86 +108,56 @@ async function callGemini(messages, options = {}) {
   }
 }
 
-// Ollama provider (local)
-async function callOllama(messages, options = {}) {
-  try {
-    // Ollama uses streaming by default, we'll disable it
-    const response = await axios.post(
-      providers.ollama.url,
-      {
-        model: providers.ollama.model,
-        messages,
-        stream: false,
-        options: {
-          temperature: options.temperature || 0.7,
-          num_predict: options.maxTokens || providers.ollama.maxTokens
-        }
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    return response.data.message.content;
-  } catch (error) {
-    console.error('Ollama error:', error.message);
-    throw error;
-  }
-}
-
-// Universal chat completion function
+// Universal chat completion with automatic Groq → Gemini fallback
 async function chatCompletion(messages, options = {}) {
-  const provider = getActiveProvider();
+  // Try Groq first
+  if (providers.groq.enabled) {
+    try {
+      console.log(`🚀 Using Groq: ${providers.groq.model}`);
+      const response = await callGroq(messages, options);
+      return {
+        response,
+        provider: providers.groq.name,
+        model: providers.groq.model,
+        fallback: false
+      };
+    } catch (error) {
+      console.error(`❌ Groq failed:`, error.message);
 
-  console.log(`🤖 Using AI provider: ${providers[provider].name} (${providers[provider].model})`);
-
-  try {
-    let response;
-
-    switch (provider) {
-      case 'openai':
-        response = await callOpenAI(messages, options);
-        break;
-      case 'groq':
-        response = await callGroq(messages, options);
-        break;
-      case 'gemini':
-        response = await callGemini(messages, options);
-        break;
-      case 'ollama':
-        response = await callOllama(messages, options);
-        break;
-      default:
-        throw new Error(`Unknown provider: ${provider}`);
+      // Auto-fallback to Gemini
+      if (providers.gemini.enabled) {
+        console.log(`🔄 Falling back to Gemini...`);
+        try {
+          const response = await callGemini(messages, options);
+          return {
+            response,
+            provider: providers.gemini.name,
+            model: providers.gemini.model,
+            fallback: true
+          };
+        } catch (geminiError) {
+          console.error(`❌ Gemini also failed:`, geminiError.message);
+          throw new Error('Both Groq and Gemini providers failed');
+        }
+      } else {
+        throw new Error('Groq failed and Gemini is not configured');
+      }
     }
+  }
 
+  // If Groq not available, use Gemini directly
+  if (providers.gemini.enabled) {
+    console.log(`🌟 Using Gemini: ${providers.gemini.model} (Groq not available)`);
+    const response = await callGemini(messages, options);
     return {
       response,
-      provider: providers[provider].name,
-      model: providers[provider].model
+      provider: providers.gemini.name,
+      model: providers.gemini.model,
+      fallback: false
     };
-  } catch (error) {
-    console.error(`Error with ${providers[provider].name}:`, error.message);
-
-    // Try fallback to next available provider
-    const availableProviders = Object.keys(providers).filter(
-      key => providers[key].enabled && key !== provider
-    );
-
-    if (availableProviders.length > 0) {
-      console.log(`Falling back to ${providers[availableProviders[0]].name}...`);
-      // Temporarily override provider
-      const originalProvider = process.env.AI_PROVIDER;
-      process.env.AI_PROVIDER = availableProviders[0];
-      const result = await chatCompletion(messages, options);
-      process.env.AI_PROVIDER = originalProvider;
-      return result;
-    }
-
-    throw error;
   }
+
+  throw new Error('No AI provider configured! Please set up GROQ_API_KEY or GEMINI_API_KEY');
 }
 
 // Get provider status
