@@ -1,80 +1,13 @@
 const ChatRoom = require('../models/ChatRoom');
 const ChatMessage = require('../models/ChatMessage');
 const User = require('../models/User');
-const OpenAI = require('openai');
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const { detectIntentAndRespond } = require('../services/aiResponseService');
 
 // Track online users
 const onlineUsers = new Map(); // userId -> socketId
 const typingUsers = new Map(); // roomId -> Set of userIds
 
-// AI-powered intent detection and auto-response
-const detectIntentAndRespond = async (message, context) => {
-  try {
-    const systemPrompt = `Bạn là trợ lý AI của Landing Hub - nền tảng tạo landing page.
-Nhiệm vụ: Phân tích câu hỏi của user và đưa ra câu trả lời hữu ích.
-
-Context về user:
-- Đang ở trang: ${context.page || 'unknown'}
-- Đang làm: ${context.action || 'unknown'}
-- Page ID: ${context.page_id || 'N/A'}
-
-Các chủ đề hỗ trợ:
-1. BUILDER: Cách sử dụng page builder, kéo thả elements, chỉnh sửa properties, responsive design, toolbar, layer manager
-2. MARKETPLACE: Mua bán template, pricing, licensing, reviews, download
-3. DEPLOYMENT: Publish page, custom domain, CloudFront, SSL, Route53
-4. PAYMENT: Thanh toán, MoMo, VNPay, transaction issues, refund
-5. ACCOUNT: Đăng ký, đăng nhập, subscription, profile, password reset
-6. ANALYTICS: Page views, conversions, form submissions
-
-Trả lời ngắn gọn (2-4 câu), rõ ràng bằng tiếng Việt.
-Nếu cần hướng dẫn chi tiết hơn, đề xuất: "Để được hỗ trợ chi tiết hơn, admin sẽ hỗ trợ bạn ngay!"`;
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
-      temperature: 0.7,
-      max_tokens: 300
-    });
-
-    const response = completion.choices[0].message.content;
-
-    // Detect intent
-    let detectedIntent = 'general';
-    const lowerMessage = message.toLowerCase();
-
-    if (lowerMessage.includes('builder') || lowerMessage.includes('kéo thả') || lowerMessage.includes('element') || lowerMessage.includes('component')) {
-      detectedIntent = 'builder';
-    } else if (lowerMessage.includes('marketplace') || lowerMessage.includes('mua') || lowerMessage.includes('bán') || lowerMessage.includes('template')) {
-      detectedIntent = 'marketplace';
-    } else if (lowerMessage.includes('deploy') || lowerMessage.includes('domain') || lowerMessage.includes('publish') || lowerMessage.includes('xuất bản')) {
-      detectedIntent = 'deployment';
-    } else if (lowerMessage.includes('thanh toán') || lowerMessage.includes('payment') || lowerMessage.includes('momo') || lowerMessage.includes('vnpay')) {
-      detectedIntent = 'payment';
-    } else if (lowerMessage.includes('đăng ký') || lowerMessage.includes('đăng nhập') || lowerMessage.includes('tài khoản') || lowerMessage.includes('password')) {
-      detectedIntent = 'account';
-    }
-
-    return {
-      response,
-      intent: detectedIntent,
-      confidence: 0.8
-    };
-  } catch (error) {
-    console.error('AI response error:', error);
-    return {
-      response: 'Xin lỗi, tôi đang gặp sự cố. Một admin sẽ hỗ trợ bạn ngay! 🙏',
-      intent: 'error',
-      confidence: 0
-    };
-  }
-};
+// Note: detectIntentAndRespond is now imported from aiResponseService
 
 // Notify room participants
 const notifyRoom = (io, roomId, event, data) => {
@@ -242,7 +175,7 @@ module.exports = (io) => {
           // Delay AI response slightly to feel more natural
           setTimeout(async () => {
             try {
-              const aiResult = await detectIntentAndRespond(message, room.context || {});
+              const aiResult = await detectIntentAndRespond(message, room.context || {}, userId);
 
               const botMessage = new ChatMessage({
                 room_id: roomId,
