@@ -14,5 +14,4 @@ router.get('/:id/content', authenticate, pagesController.getPageContent);
 router.get('/debug/s3', pagesController.debugS3);
 router.get('/:id/regenerate-screenshot', authenticate, pagesController.regenerateScreenshot); // Đã có
 router.get('/regenerate-screenshots', authenticate, pagesController.regenerateScreenshots); // Thêm mới
-
 module.exports = router;

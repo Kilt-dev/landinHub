@@ -14,15 +14,31 @@ const cloudfront = new AWS.CloudFront();
 const route53 = new AWS.Route53();
 
 
-// Browser pool với giới hạn page
+// Browser pool với giới hạn page và proper cleanup
 const browserPool = {
     browser: null,
     activePages: 0,
-    maxPages: 5
+    maxPages: 5,
+    lastUsed: Date.now(),
+    restartThreshold: 50, // Restart after 50 pages to prevent memory leak
+    pagesProcessed: 0
 };
 
 // Khởi tạo trình duyệt Puppeteer
 const getBrowser = async () => {
+    // Restart browser if processed too many pages
+    if (browserPool.browser && browserPool.pagesProcessed >= browserPool.restartThreshold) {
+        console.log(`Browser processed ${browserPool.pagesProcessed} pages, restarting for memory management...`);
+        try {
+            await browserPool.browser.close();
+        } catch (e) {
+            console.warn('Error closing old browser:', e.message);
+        }
+        browserPool.browser = null;
+        browserPool.activePages = 0;
+        browserPool.pagesProcessed = 0;
+    }
+
     if (!browserPool.browser) {
         console.log('Launching Puppeteer browser');
         try {
@@ -35,6 +51,12 @@ const getBrowser = async () => {
                     '--disable-features=VizDisplayCompositor',
                     '--disable-extensions',
                     '--disable-plugins',
+                    '--disable-dev-shm-usage', // Fix shared memory issues
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--single-process', // Important for stability
+                    '--disable-gpu'
                 ],
                 timeout: 30000,
             });
@@ -43,18 +65,44 @@ const getBrowser = async () => {
                 console.log('Browser disconnected, clearing pool');
                 browserPool.browser = null;
                 browserPool.activePages = 0;
+                browserPool.pagesProcessed = 0;
             });
         } catch (err) {
             console.error('Failed to launch Puppeteer browser:', err.message);
             throw new Error('Không thể khởi động trình duyệt: ' + err.message);
         }
     }
+
+    browserPool.lastUsed = Date.now();
     return browserPool.browser;
 };
 
-// Giải phóng page
-const releasePage = async () => {
+// CRITICAL FIX: Properly close page to prevent memory leak
+const releasePage = async (page) => {
+    if (page && !page.isClosed()) {
+        try {
+            await page.close();
+            console.log('✅ Page closed properly');
+        } catch (err) {
+            console.warn('Error closing page:', err.message);
+        }
+    }
     browserPool.activePages = Math.max(0, browserPool.activePages - 1);
+    browserPool.pagesProcessed++;
+};
+
+// Get a new page with pool limit enforcement
+const getPage = async () => {
+    if (browserPool.activePages >= browserPool.maxPages) {
+        throw new Error(`Browser pool exhausted (${browserPool.activePages}/${browserPool.maxPages} active pages). Please try again.`);
+    }
+
+    const browser = await getBrowser();
+    const page = await browser.newPage();
+    browserPool.activePages++;
+
+    console.log(`📄 New page opened (${browserPool.activePages}/${browserPool.maxPages} active)`);
+    return page;
 };
 
 // Hàm chuẩn hóa S3 key từ file_path
@@ -73,37 +121,39 @@ const getS3KeyFromFilePath = (file_path, fileName = 'index.html') => {
     return s3Key.endsWith(fileName) ? s3Key : `${s3Key}/${fileName}`;
 };
 
-// Tối ưu hóa tạo screenshot với hỗ trợ popup states
-const generateScreenshot = async (htmlContent, pageId, isUrl = false, options = {}) => {
+// Optimized screenshot generation with retry logic
+const generateScreenshot = async (htmlContent, pageId, isUrl = false, options = {}, retryCount = 0) => {
     console.log('Generating screenshot for page:', pageId);
 
-    const browser = await getBrowser();
-    const page = await browser.newPage();
+    let page = null;
 
     try {
-        // Tăng kích thước viewport để phù hợp với thiết kế responsive
+        // Get page from pool (enforces limit)
+        page = await getPage();
+
+        // Viewport configuration
         const viewport = options.mobile ?
             { width: 375, height: 667, deviceScaleFactor: 2 } :
             { width: 1280, height: 720, deviceScaleFactor: 1 };
 
         await page.setViewport(viewport);
 
+        // OPTIMIZED: Reduced timeout from 30s to 10s
+        const loadOptions = {
+            waitUntil: 'domcontentloaded',
+            timeout: 10000 // 10s instead of 30s
+        };
+
         if (isUrl) {
-            await page.goto(htmlContent, {
-                waitUntil: 'domcontentloaded',
-                timeout: 30000
-            });
+            await page.goto(htmlContent, loadOptions);
         } else {
-            await page.setContent(htmlContent, {
-                waitUntil: 'domcontentloaded',
-                timeout: 30000
-            });
+            await page.setContent(htmlContent, loadOptions);
         }
 
-        // Chờ thêm để đảm bảo tất cả tài nguyên được tải
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // OPTIMIZED: Reduced wait time from 3000ms to 1000ms
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Nếu cần capture popup state
+        // Popup state handling
         if (options.popupId) {
             console.log('Opening popup for screenshot:', options.popupId);
             await page.evaluate((popupId) => {
@@ -112,20 +162,13 @@ const generateScreenshot = async (htmlContent, pageId, isUrl = false, options = 
                 }
             }, options.popupId);
 
-            // Chờ popup animation
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 300)); // Reduced from 500ms
         }
 
-        // Tối ưu hóa kích thước ảnh chụp
+        // Take screenshot - ALWAYS fullPage for better user preview
         const screenshot = await page.screenshot({
             type: 'png',
-            clip: options.fullPage ? undefined : {
-                x: 0,
-                y: 0,
-                width: viewport.width,
-                height: viewport.height
-            },
-            fullPage: options.fullPage || false
+            fullPage: true // CRITICAL: Always capture entire page for marketplace preview
         });
 
         const suffix = options.popupId ? `-popup-${options.popupId}` : '';
@@ -139,11 +182,28 @@ const generateScreenshot = async (htmlContent, pageId, isUrl = false, options = 
         return screenshotUrl;
 
     } catch (err) {
-        console.error('Screenshot generation failed:', err.message);
+        console.error(`Screenshot generation failed (attempt ${retryCount + 1}/3):`, err.message);
+
+        // Exponential backoff retry (max 3 attempts)
+        if (retryCount < 2 && err.message.includes('timeout')) {
+            const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+            console.log(`Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+
+            // Close failed page before retry
+            if (page) {
+                await releasePage(page);
+            }
+
+            return generateScreenshot(htmlContent, pageId, isUrl, options, retryCount + 1);
+        }
+
         return null;
     } finally {
-        await page.close();
-        await releasePage();
+        // CRITICAL: Always close page properly
+        if (page) {
+            await releasePage(page);
+        }
     }
 };
 

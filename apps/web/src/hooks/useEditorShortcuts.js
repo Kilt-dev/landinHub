@@ -59,7 +59,7 @@ export const useEditorShortcuts = ({
             if (canUndo) {
                 onUndo?.();
             } else {
-                toast.info('⚠️ Không thể hoàn tác thêm');
+                toast.info('Không thể hoàn tác thêm');
             }
             return;
         }
@@ -68,14 +68,14 @@ export const useEditorShortcuts = ({
             if (canRedo) {
                 onRedo?.();
             } else {
-                toast.info('⚠️ Không thể làm lại thêm');
+                toast.info('Không thể làm lại thêm');
             }
             return;
         }
 
         // ========== SAVE ==========
         if (isMod && key.toLowerCase() === 's') {
-            toast.info('💾 Đang lưu...');
+            toast.info('Đang lưu...');
             onSave?.();
             return;
         }
@@ -84,7 +84,7 @@ export const useEditorShortcuts = ({
         if (isMod && key.toLowerCase() === 'a') {
             if (pageData?.elements?.length > 0) {
                 onSelectAll?.(pageData.elements.map(el => el.id));
-                toast.success(`✅ Đã chọn ${pageData.elements.length} phần tử`);
+                toast.success(`Đã chọn ${pageData.elements.length} phần tử`);
             }
             return;
         }
@@ -92,7 +92,7 @@ export const useEditorShortcuts = ({
         // ========== COPY ==========
         if (isMod && key.toLowerCase() === 'c' && selectedIds.length > 0) {
             onCopy?.(selectedIds);
-            toast.success(`📋 Đã copy ${selectedIds.length} phần tử`);
+            toast.success(`Đã copy ${selectedIds.length} phần tử`);
             return;
         }
 
@@ -105,7 +105,7 @@ export const useEditorShortcuts = ({
         // ========== DUPLICATE ==========
         if (isMod && key.toLowerCase() === 'd' && selectedIds.length > 0) {
             onDuplicate?.(selectedIds);
-            toast.success(`📑 Đã nhân bản ${selectedIds.length} phần tử`);
+            toast.success(`Đã nhân bản ${selectedIds.length} phần tử`);
             return;
         }
 
@@ -118,7 +118,7 @@ export const useEditorShortcuts = ({
                 }
             }
             onDelete?.(selectedIds);
-            toast.success(`🗑️ Đã xóa ${selectedIds.length} phần tử`);
+            toast.success(`Đã xóa ${selectedIds.length} phần tử`);
             return;
         }
 
@@ -126,7 +126,7 @@ export const useEditorShortcuts = ({
         if (key === 'Escape') {
             if (selectedIds.length > 0) {
                 onDeselect?.();
-                toast.info('❌ Đã bỏ chọn');
+                toast.info('Đã bỏ chọn');
             }
             return;
         }

@@ -4,9 +4,12 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "install-chrome": "npx puppeteer browsers install chrome",
+    "postinstall": "pnpm add install-chrome"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "archiver": "^7.0.1",
     "aws-sdk": "^2.1376.0",
     "axios": "^1.13.2",
@@ -17,6 +20,7 @@
     "express": "^4.21.2",
     "express-validator": "^7.2.1",
     "google-auth-library": "^9.0.0",
+    "groq-sdk": "^0.35.0",
     "json2csv": "6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.0",
     "loader": "^2.1.1",

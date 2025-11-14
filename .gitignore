@@ -17,6 +17,8 @@ node_modules/
 *.swp
 *.swo
 # Android
+/apps/web/node_modules/
+/apps/mobile/node_modules/
 apps/web/node_modules/
 apps/mobile/android/app/build/
 apps/mobile/android/.gradle/

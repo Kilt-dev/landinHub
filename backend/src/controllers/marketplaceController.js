@@ -8,6 +8,49 @@ const screenshotService = require('../services/screenshotService');
 const exportService = require('../services/exportService');
 const Order = require('../models/Order');
 const Review = require('../models/MarketplaceReview');
+const AWS = require('aws-sdk');
+
+// Configure AWS S3
+AWS.config.update({ region: process.env.AWS_REGION || 'ap-southeast-1' });
+const s3 = new AWS.S3();
+
+// Helper function to extract S3 key from various formats
+const extractS3Key = (filePath) => {
+    if (!filePath) return null;
+
+    // Remove s3:// protocol and bucket name if present
+    // Format: s3://bucket-name/path/to/file -> path/to/file
+    if (filePath.startsWith('s3://')) {
+        const parts = filePath.replace('s3://', '').split('/');
+        parts.shift(); // Remove bucket name
+        return parts.join('/');
+    }
+
+    // Remove https:// URL if present
+    // Format: https://domain.com/path/to/file -> path/to/file
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        return filePath.replace(/^https?:\/\/[^\/]+\//, '');
+    }
+
+    // Already clean path
+    return filePath;
+};
+
+// Helper function to get content from S3
+const getFromS3 = async (s3Key) => {
+    try {
+        console.log('Attempting to get S3 object with key:', s3Key);
+        const s3Response = await s3.getObject({
+            Bucket: process.env.AWS_S3_BUCKET,
+            Key: s3Key
+        }).promise();
+
+        return s3Response.Body.toString('utf-8');
+    } catch (err) {
+        console.error('Failed to get from S3:', s3Key, err.message);
+        return null;
+    }
+};
 
 /**
  * Lấy danh sách marketplace pages (public)
@@ -615,37 +658,81 @@ exports.getSellerStats = async (req, res) => {
 exports.getPreviewData = async (req, res) => {
     try {
         const { id } = req.params;
+        console.log('\n=== GET PREVIEW DATA ===');
+        console.log('Marketplace ID:', id);
 
         const marketplacePage = await MarketplacePage.findById(id).populate('page_id');
+        console.log('MarketplacePage found:', !!marketplacePage);
+
         if (!marketplacePage) {
+            console.log('❌ MarketplacePage not found');
             return res.status(404).json({
                 success: false,
                 message: 'Không tìm thấy marketplace page'
             });
         }
 
+        console.log('MarketplacePage details:', {
+            _id: marketplacePage._id,
+            title: marketplacePage.title,
+            page_id_ref: marketplacePage.page_id ? 'exists' : 'null',
+            status: marketplacePage.status
+        });
+
         const page = marketplacePage.page_id;
+        console.log('Page populated:', !!page);
+
         if (!page) {
+            console.log('❌ Page not populated');
             return res.status(404).json({
                 success: false,
                 message: 'Không tìm thấy page data'
             });
         }
 
+        console.log('Page details:', {
+            _id: page._id,
+            name: page.name,
+            file_path: page.file_path ? 'exists' : 'null',
+            has_page_data: !!page.page_data
+        });
+
         // Lấy HTML từ S3
         let htmlContent = '';
         if (page.file_path) {
-            const { getFromS3 } = require('../utils/s3');
-            const s3Key = page.file_path.replace(/^https:\/\/[^\/]+\//, '');
+            let s3Key = extractS3Key(page.file_path);
+            console.log('Original file_path:', page.file_path);
+            console.log('Extracted S3 key:', s3Key);
+
+            // Try with the key as-is first
             htmlContent = await getFromS3(s3Key);
+
+            // If not found and doesn't end with .html, try adding /index.html
+            if (!htmlContent && !s3Key.endsWith('.html')) {
+                console.log('Trying with /index.html appended...');
+                const keyWithIndex = `${s3Key}/index.html`;
+                htmlContent = await getFromS3(keyWithIndex);
+                if (htmlContent) {
+                    console.log('✅ Found with /index.html');
+                }
+            }
+
+            console.log('HTML fetched:', htmlContent ? `${htmlContent.length} chars` : 'null');
+        } else {
+            console.log('❌ No file_path in page');
         }
 
         if (!htmlContent) {
+            console.log('❌ No HTML content');
             return res.status(404).json({
                 success: false,
                 message: 'Không tìm thấy HTML content'
             });
         }
+
+        console.log('✅ Returning preview data');
+        console.log('PageData available:', !!page.page_data);
+        console.log('=== END GET PREVIEW DATA ===\n');
 
         // Trả về cả HTML và pageData
         res.json({
@@ -656,7 +743,8 @@ exports.getPreviewData = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Get Preview Data Error:', error);
+        console.error('❌ Get Preview Data Error:', error);
+        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Lỗi khi tải preview data',
@@ -691,9 +779,16 @@ exports.previewMarketplacePage = async (req, res) => {
         // Lấy HTML từ S3
         let htmlContent = '';
         if (page.file_path) {
-            const { getFromS3 } = require('../utils/s3');
-            const s3Key = page.file_path.replace(/^https:\/\/[^\/]+\//, '');
+            let s3Key = extractS3Key(page.file_path);
+
+            // Try with the key as-is first
             htmlContent = await getFromS3(s3Key);
+
+            // If not found and doesn't end with .html, try adding /index.html
+            if (!htmlContent && !s3Key.endsWith('.html')) {
+                const keyWithIndex = `${s3Key}/index.html`;
+                htmlContent = await getFromS3(keyWithIndex);
+            }
         }
 
         if (!htmlContent) {
