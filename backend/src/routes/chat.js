@@ -122,4 +122,23 @@ router.put('/admin/rooms/:roomId/status', authMiddleware, isAdmin, chatControlle
 // Get chat statistics
 router.get('/admin/stats', authMiddleware, isAdmin, chatController.getChatStats);
 
+// Get AI provider status
+router.get('/provider-status', (req, res) => {
+  try {
+    const multiAIProvider = require('../services/multiAIProvider');
+    const status = multiAIProvider.getProviderStatus();
+
+    res.json({
+      success: true,
+      providers: status
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Cannot get provider status',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

@@ -1,9 +1,6 @@
-const OpenAI = require('openai');
+const multiAIProvider = require('./multiAIProvider');
 const chatContextService = require('./chatContextService');
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const advancedChatContext = require('./advancedChatContext');
 
 /**
  * AI-powered intent detection and auto-response with REAL DATA
@@ -12,7 +9,10 @@ const openai = new OpenAI({
 async function detectIntentAndRespond(message, context, userId) {
   try {
     // Build comprehensive context with real data from database
-    const aiContext = await chatContextService.buildAIContext(userId, message, context);
+    const [aiContext, advancedContext] = await Promise.all([
+      chatContextService.buildAIContext(userId, message, context),
+      advancedChatContext.buildAdvancedContext(userId, message)
+    ]);
 
     // Build enhanced system prompt with real data
     let systemPrompt = `Bạn là trợ lý AI của Landing Hub - nền tảng tạo landing page.
@@ -119,30 +119,76 @@ Context về user:
       systemPrompt += `- Đã bán: ${aiContext.user.sales} templates\n`;
     }
 
+    // Add advanced context data
+    if (advancedContext.pageAnalytics) {
+      systemPrompt += `\n📈 ANALYTICS CỦA USER:\n`;
+      const analytics = advancedContext.pageAnalytics;
+      systemPrompt += `- Tổng ${analytics.totalPages} pages\n`;
+      systemPrompt += `- Tổng views: ${analytics.totalViews}, conversions: ${analytics.totalConversions}\n`;
+      systemPrompt += `- Tỷ lệ conversion trung bình: ${analytics.avgConversionRate}\n`;
+      systemPrompt += `- Page tốt nhất: "${analytics.topPage.name}" (${analytics.topPage.views} views, ${analytics.topPage.conversions} conversions, ${analytics.topPage.conversionRate})\n`;
+    }
+
+    if (advancedContext.salesInsights) {
+      systemPrompt += `\n💰 SALES INSIGHTS (USER LÀ SELLER):\n`;
+      const sales = advancedContext.salesInsights;
+      systemPrompt += `- Đang bán ${sales.totalTemplates} templates\n`;
+      systemPrompt += `- Tổng ${sales.totalSales} lượt bán, doanh thu: ${sales.totalRevenue}\n`;
+      systemPrompt += `- Giá bán trung bình: ${sales.avgSalePrice}\n`;
+      systemPrompt += `- Rating trung bình: ${sales.avgRating}⭐\n`;
+      systemPrompt += `- Tháng này: ${sales.monthlyStats.sales} sales, ${sales.monthlyStats.revenue}\n`;
+      systemPrompt += `- Template bán chạy nhất: "${sales.topSeller.title}" (${sales.topSeller.sold} sales)\n`;
+    }
+
+    if (advancedContext.formAnalytics) {
+      systemPrompt += `\n📝 FORM SUBMISSIONS:\n`;
+      const forms = advancedContext.formAnalytics;
+      systemPrompt += `- Tổng ${forms.totalSubmissions} form submissions\n`;
+      systemPrompt += `- Tháng này: ${forms.monthlySubmissions} submissions\n`;
+      systemPrompt += `- Page có nhiều form nhất: "${forms.topPage.name}" (${forms.topPage.submissions} submissions)\n`;
+    }
+
+    if (advancedContext.recommendations && advancedContext.recommendations.length > 0) {
+      systemPrompt += `\n💡 GỢI Ý CHO USER:\n`;
+      advancedContext.recommendations.forEach((rec, i) => {
+        systemPrompt += `${i + 1}. [${rec.priority.toUpperCase()}] ${rec.title}: ${rec.description}\n`;
+      });
+    }
+
+    if (advancedContext.competitorAnalysis) {
+      systemPrompt += `\n🎯 PHÂN TÍCH CẠNH TRANH:\n`;
+      const comp = advancedContext.competitorAnalysis;
+      systemPrompt += `User có ${comp.yourStats.templates} templates, giá TB: ${comp.yourStats.avgPrice} VNĐ, ${comp.yourStats.totalSales} sales\n`;
+      systemPrompt += `Thị trường: Giá TB ${comp.marketAvg.price} VNĐ, ${comp.marketAvg.sales} sales/template, rating ${comp.marketAvg.rating}⭐\n`;
+      systemPrompt += `Đánh giá: ${comp.priceComparison}\n`;
+      systemPrompt += `Có ${comp.competitorCount} competitors trong cùng category\n`;
+    }
+
     systemPrompt += `\n---
 
 QUAN TRỌNG:
 1. Trả lời bằng tiếng Việt, thân thiện và chuyên nghiệp
 2. Sử dụng DỮ LIỆU THỰC ở trên khi trả lời (tên templates, giá, thống kê...)
-3. Nếu user hỏi "template nào phổ biến", hãy LIST CỤ THỂ từ data trên
-4. Nếu hỏi "xu hướng", hãy phân tích trends data
-5. Nếu hỏi cách dùng builder, hãy hướng dẫn chi tiết từng bước
-6. Trả lời ngắn gọn (3-5 câu) trừ khi cần giải thích chi tiết
-7. Nếu không chắc chắn, đề xuất chờ admin hỗ trợ
+3. Nếu user hỏi về pages/sales/analytics của họ, dùng data ANALYTICS/SALES INSIGHTS ở trên
+4. Nếu user hỏi "template nào phổ biến", hãy LIST CỤ THỂ từ marketplace data
+5. Nếu hỏi "xu hướng", phân tích trends data
+6. Nếu có GỢI Ý, nhắc nhở user một cách tinh tế
+7. Nếu hỏi cách dùng builder, hướng dẫn chi tiết từng bước
+8. Trả lời ngắn gọn (3-5 câu) trừ khi cần giải thích chi tiết
+9. Nếu không chắc chắn, đề xuất chờ admin hỗ trợ
 
-Hãy trả lời câu hỏi của user một cách hữu ích và chính xác nhất!`;
+Hãy trả lời câu hỏi của user một cách hữu ích, chính xác và cá nhân hóa nhất!`;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
+    // Use multi-AI provider (supports OpenAI, Groq, Gemini, Ollama)
+    const aiResponse = await multiAIProvider.chatCompletion([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: message }
+    ], {
       temperature: 0.7,
-      max_tokens: 800
+      maxTokens: 1000
     });
 
-    const response = completion.choices[0].message.content;
+    const response = aiResponse.response;
 
     // Detect intent
     let detectedIntent = 'general';
@@ -158,18 +204,33 @@ Hãy trả lời câu hỏi của user một cách hữu ích và chính xác nh
       detectedIntent = 'payment';
     } else if (lowerMessage.includes('đăng ký') || lowerMessage.includes('đăng nhập') || lowerMessage.includes('tài khoản')) {
       detectedIntent = 'account';
+    } else if (lowerMessage.includes('analytics') || lowerMessage.includes('thống kê') || lowerMessage.includes('views') || lowerMessage.includes('conversion')) {
+      detectedIntent = 'analytics';
+    } else if (lowerMessage.includes('doanh thu') || lowerMessage.includes('sales') || lowerMessage.includes('bán được')) {
+      detectedIntent = 'sales';
+    } else if (lowerMessage.includes('gợi ý') || lowerMessage.includes('recommend') || lowerMessage.includes('nên làm')) {
+      detectedIntent = 'recommendations';
+    } else if (lowerMessage.includes('cạnh tranh') || lowerMessage.includes('competitor') || lowerMessage.includes('so sánh')) {
+      detectedIntent = 'competitor_analysis';
     }
 
     return {
       response,
       intent: detectedIntent,
-      confidence: 0.85,
+      confidence: 0.9,
+      aiProvider: aiResponse.provider,
+      aiModel: aiResponse.model,
       contextUsed: {
         hasMarketplaceData: !!aiContext.marketplace?.stats,
         hasBuilderTutorial: !!aiContext.builder?.tutorial,
         hasDeploymentGuide: !!aiContext.deployment?.guide,
         hasPaymentInfo: !!aiContext.payment?.methods,
-        hasUserStats: !!aiContext.user
+        hasUserStats: !!aiContext.user,
+        hasPageAnalytics: !!advancedContext.pageAnalytics,
+        hasSalesInsights: !!advancedContext.salesInsights,
+        hasFormAnalytics: !!advancedContext.formAnalytics,
+        hasRecommendations: !!advancedContext.recommendations,
+        hasCompetitorAnalysis: !!advancedContext.competitorAnalysis
       }
     };
   } catch (error) {
