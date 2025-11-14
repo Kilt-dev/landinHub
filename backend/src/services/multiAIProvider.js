@@ -17,10 +17,11 @@ const providers = {
     priority: 1 // Primary provider
   },
   gemini: {
-    name: 'Google Gemini',
+    name: 'Google Gemini 2.0',
     enabled: !!process.env.GEMINI_API_KEY,
-    model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
-    maxTokens: 1000,
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+    maxTokens: 8192, // Gemini 2.0 Flash supports up to 8192 output tokens
+    contextWindow: 1048576, // 1M token context window
     url: 'https://generativelanguage.googleapis.com/v1beta/models',
     priority: 2 // Fallback provider
   }
