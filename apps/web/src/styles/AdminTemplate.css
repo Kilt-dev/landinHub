@@ -440,7 +440,7 @@
 }
 
 /* Modal */
-.modal-overlay {
+.modal-overlay1 {
     position: fixed;
     top: 0;
     left: 0;
@@ -455,7 +455,7 @@
     animation: fadeIn 0.3s ease-out;
 }
 
-.modal-content {
+.modal-content1 {
     background: white;
     border-radius: 12px;
     max-width: 600px;
@@ -466,7 +466,7 @@
     animation: slideUp 0.3s ease-out;
 }
 
-.modal-header {
+.modal-header1 {
     padding: 1.5rem;
     border-bottom: 1px solid #e2e8f0;
     display: flex;
@@ -474,7 +474,7 @@
     align-items: center;
 }
 
-.modal-title {
+.modal-title1 {
     font-size: 1.25rem;
     font-weight: 600;
     color: #1e293b;
@@ -483,7 +483,7 @@
     gap: 0.5rem;
 }
 
-.modal-close {
+.modal-close1 {
     background: none;
     border: none;
     color: #64748b;
@@ -491,28 +491,28 @@
     transition: color 0.2s ease;
 }
 
-.modal-close:hover {
+.modal-close1:hover {
     color: #1e293b;
 }
 
-.modal-form {
+.modal-form1 {
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
 }
 
-.modal-form__label {
+.modal-form__label1 {
     font-size: 0.875rem;
     font-weight: 600;
     color: #1e293b;
     margin-bottom: 0.5rem;
 }
 
-.modal-form__input,
-.modal-form__textarea,
-.modal-form__select,
-.modal-form__file {
+.modal-form__input1,
+.modal-form__textarea1,
+.modal-form__select1,
+.modal-form__file1 {
     width: 100%;
     padding: 0.75rem;
     border: 1px solid #e2e8f0;
@@ -521,52 +521,52 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.modal-form__input:focus,
-.modal-form__textarea:focus,
-.modal-form__select:focus {
+.modal-form__input1:focus,
+.modal-form__textarea1:focus,
+.modal-form__select1:focus {
     outline: none;
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.modal-form__hint {
+.modal-form__hint1 {
     font-size: 0.75rem;
     color: #64748b;
     margin-top: 0.5rem;
 }
 
-.modal-form__grid {
+.modal-form__grid1 {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 1rem;
 }
 
-.modal-form__checkbox-group {
+.modal-form__checkbox-group1 {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
 }
 
-.modal-form__checkbox-label {
+.modal-form__checkbox-label1 {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     font-size: 0.875rem;
 }
 
-.modal-form__checkbox {
+.modal-form__checkbox1 {
     width: 1.125rem;
     height: 1.125rem;
     accent-color: #3b82f6;
 }
 
-.modal-form__checkbox-text {
+.modal-form__checkbox-text1 {
     display: flex;
     align-items: center;
     gap: 0.25rem;
 }
 
-.modal-footer {
+.modal-footer1 {
     display: flex;
     gap: 1rem;
     justify-content: flex-end;

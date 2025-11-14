@@ -25,6 +25,7 @@ const Templates = () => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [previewHtml, setPreviewHtml] = useState("");
+    const [previewPageData, setPreviewPageData] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [filterCategory, setFilterCategory] = useState("all");
     const [filterPremium, setFilterPremium] = useState("all");
@@ -304,7 +305,8 @@ const Templates = () => {
         try {
             const response = await api.get(`/api/templates/${template.id}/preview`);
             if (response.data.success) {
-                setPreviewHtml(response.data.html);
+                setPreviewHtml(response.data.html || '');
+                setPreviewPageData(response.data.pageData || null);
                 setSelectedTemplate(template);
                 setShowPreviewModal(true);
             }
@@ -788,43 +790,43 @@ const Templates = () => {
                 )}
 
                 {showEditModal && selectedTemplate && (
-                    <div className="modal-overlay">
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h2 className="modal-title">
+                    <div className="modal-overlay1">
+                        <div className="modal-content1">
+                            <div className="modal-header1">
+                                <h2 className="modal-title1">
                                     <Edit size={20} /> Chỉnh sửa Template
                                 </h2>
-                                <button onClick={() => setShowEditModal(false)} className="modal-close">
+                                <button onClick={() => setShowEditModal(false)} className="modal-close1">
                                     <X size={20} />
                                 </button>
                             </div>
-                            <form onSubmit={handleEditSubmit} className="modal-form">
+                            <form onSubmit={handleEditSubmit} className="modal-form1">
                                 <div>
-                                    <label className="modal-form__label">Tên Template *</label>
+                                    <label className="modal-form__label1">Tên Template *</label>
                                     <input
                                         type="text"
                                         value={editForm.name}
                                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                                         required
-                                        className="modal-form__input"
+                                        className="modal-form__input1"
                                     />
                                 </div>
                                 <div>
-                                    <label className="modal-form__label">Mô tả</label>
+                                    <label className="modal-form__label1">Mô tả</label>
                                     <textarea
                                         value={editForm.description}
                                         onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                                         rows={3}
-                                        className="modal-form__textarea"
+                                        className="modal-form__textarea1"
                                     />
                                 </div>
-                                <div className="modal-form__grid">
+                                <div className="modal-form__grid1">
                                     <div>
-                                        <label className="modal-form__label">Danh mục</label>
+                                        <label className="modal-form__label1">Danh mục</label>
                                         <select
                                             value={editForm.category}
                                             onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
-                                            className="modal-form__select"
+                                            className="modal-form__select1"
                                         >
                                             {categories.map((cat) => (
                                                 <option key={cat} value={cat}>{cat}</option>
@@ -843,7 +845,7 @@ const Templates = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="modal-form__label">Tags</label>
+                                    <label className="modal-form__label1">Tags</label>
                                     <input
                                         type="text"
                                         value={editForm.tags}
@@ -853,19 +855,19 @@ const Templates = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="modal-form__label">Trạng thái</label>
+                                    <label className="modal-form__label1">Trạng thái</label>
                                     <select
                                         value={editForm.status}
                                         onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                        className="modal-form__select"
+                                        className="modal-form__select1"
                                     >
                                         <option value="ACTIVE">Hoạt động</option>
                                         <option value="INACTIVE">Tạm ẩn</option>
                                         <option value="DRAFT">Nháp</option>
                                     </select>
                                 </div>
-                                <div className="modal-form__checkbox-group">
-                                    <label className="modal-form__checkbox-label">
+                                <div className="modal-form__checkbox-group1">
+                                    <label className="modal-form__checkbox-label1">
                                         <input
                                             type="checkbox"
                                             checked={editForm.is_premium}
@@ -876,20 +878,20 @@ const Templates = () => {
                                             <Crown size={14} /> Premium
                                         </span>
                                     </label>
-                                    <label className="modal-form__checkbox-label">
+                                    <label className="modal-form__checkbox-label1">
                                         <input
                                             type="checkbox"
                                             checked={editForm.is_featured}
                                             onChange={(e) => setEditForm({ ...editForm, is_featured: e.target.checked })}
-                                            className="modal-form__checkbox"
+                                            className="modal-form__checkbox1"
                                         />
-                                        <span className="modal-form__checkbox-text">
+                                        <span className="modal-form__checkbox-text1">
                                             <Star size={14} /> Nổi bật
                                         </span>
                                     </label>
                                 </div>
-                                <div className="modal-footer">
-                                    <button type="button" onClick={() => setShowEditModal(false)} className="button-cancel">Hủy</button>
+                                <div className="modal-footer1">
+                                    <button type="button" onClick={() => setShowEditModal(false)} className="button-cancel1">Hủy</button>
                                     <button type="submit" disabled={isSaving} className="button-submit">
                                         {isSaving ? (
                                             <>
@@ -913,6 +915,7 @@ const Templates = () => {
                         setShowPreviewModal={setShowPreviewModal}
                         setPreviewHtml={setPreviewHtml}
                         previewHtml={previewHtml}
+                        pageData={previewPageData}
                     />
                 )}
 
