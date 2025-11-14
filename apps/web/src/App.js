@@ -34,6 +34,8 @@ import CozeChat from "./components/CozeChat";
 import AdminUser from "./pages/AdminUsers";
 import UnifiedPayments from './pages/UnifiedPayments';
 import DeploymentSettings from './components/DeploymentSettings';
+import AdminSupport from './pages/AdminSupport';
+import SupportChatbox from './components/SupportChatbox';
 
 function App() {
     const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -78,6 +80,7 @@ function App() {
                             <Route path="/qltemplates" element={<AdminAddTemplate />} />
                             <Route path="/admin/marketplace" element={<AdminMarketplace />} />
                             <Route path="/admin/payouts" element={<AdminPayoutManagement />} />
+                            <Route path="/admin/support" element={<AdminSupport />} />
                             <Route path="/reports" element={<Reports />} />
                             <Route path="/users" element={<AdminUser />} />
                             {/* Catch-all route */}
@@ -89,7 +92,10 @@ function App() {
                         <ToastContainer position="bottom-right" autoClose={3000} />
 
                         {/* ✅ Chat LD hiển thị toàn hệ thống */}
-                        <CozeChat enabled={true} />
+                        <CozeChat enabled={false} />
+
+                        {/* ✅ Support Chatbox - Modern AI-powered support */}
+                        <SupportChatbox />
                     </UserProvider>
                 </Router>
             </ErrorBoundary>

@@ -50,5 +50,9 @@ io.on('connection', socket => {
     });
 });
 
+// 4.1. Tích hợp Chat Socket Handler
+const chatSocket = require('./sockets/chatSocket');
+chatSocket(io);
+
 // 5. Khởi động server
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
