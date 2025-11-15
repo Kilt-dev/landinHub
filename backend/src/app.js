@@ -22,11 +22,15 @@ const corsOptions = {
             process.env.REACT_APP_API_URL || 'http://localhost:3000',
             'http://localhost:3000',
             'http://localhost:5000',
+            'https://landinghub.shop',
+            'https://www.landinghub.shop',
+            'https://api.landinghub.shop',
         ];
 
-        // Allow CloudFront domains (*.cloudfront.net)
+        // Allow CloudFront domains (*.cloudfront.net) and landinghub domains
         if (origin.includes('.cloudfront.net') ||
             origin.includes('.landinghub.app') ||
+            origin.includes('.landinghub.shop') ||
             allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
