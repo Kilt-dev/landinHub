@@ -56,7 +56,7 @@ exports.submitForm = async (req, res) => {
         const submission = new FormSubmission({
             page_id,
             form_id,
-            user_id: user_id || 'unknown', // Fallback if page not found
+            user_id: user_id || null, // null if page not found (public submission)
             form_data,
             metadata
         });
