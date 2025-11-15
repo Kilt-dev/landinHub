@@ -624,6 +624,32 @@ const renderElementHTML = (element, isChild = false) => {
                 />
             `;
 
+        case 'line':
+            const lineWidth = size.width || componentData.size?.width || 100;
+            const lineHeight = size.height || componentData.size?.height || 2;
+            const lineStrokeWidth = componentData.strokeWidth || styles.strokeWidth || lineHeight;
+            const lineStroke = componentData.stroke || styles.stroke || styles.borderColor || '#000';
+            const lineStrokeLinecap = componentData.strokeLinecap || styles.strokeLinecap || 'round';
+            const svgHeight = Math.max(lineHeight, lineStrokeWidth);
+            return `
+                <svg
+                    ${baseAttrs}
+                    width="${lineWidth}"
+                    height="${svgHeight}"
+                    style="${inlineStyles}; ${positionStyles}; display:block;"
+                >
+                    <line
+                        x1="0"
+                        y1="${svgHeight / 2}"
+                        x2="${lineWidth}"
+                        y2="${svgHeight / 2}"
+                        stroke="${lineStroke}"
+                        stroke-width="${lineStrokeWidth}"
+                        stroke-linecap="${lineStrokeLinecap}"
+                    />
+                </svg>
+            `;
+
         case 'link':
         case 'anchor':
             return `
@@ -639,15 +665,133 @@ const renderElementHTML = (element, isChild = false) => {
             `;
 
         case 'form':
+            // Render children elements (if any)
             const formChildren = children.map(child => renderElementHTML(child, true)).join('\n');
+
+            // Render configured fields from componentData.fields (form builder style)
+            const renderFormFields = (fields) => {
+                if (!Array.isArray(fields) || fields.length === 0) return '';
+
+                return fields.map(field => {
+                    const fieldId = field.id || `field-${Math.random().toString(36).substr(2, 9)}`;
+                    const fieldName = field.name || fieldId;
+                    const fieldLabel = field.label || '';
+                    const required = field.required || false;
+                    const requiredAttr = required ? 'required' : '';
+                    const requiredMark = required ? '<span style="color:#ef4444;margin-left:4px;">*</span>' : '';
+
+                    const fieldWrapperStyle = 'margin-bottom:16px; display:flex; flex-direction:column; gap:6px;';
+                    const labelStyle = 'font-size:14px; font-weight:500; color:#374151;';
+                    const inputStyle = 'width:100%; padding:12px 16px; border-radius:8px; border:1px solid #d1d5db; font-size:16px; outline:none; transition:all 0.3s ease; box-sizing:border-box;';
+
+                    switch (field.type) {
+                        case 'text':
+                        case 'email':
+                        case 'tel':
+                        case 'number':
+                        case 'date':
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}">
+                                    ${fieldLabel ? `<label for="${fieldId}" style="${labelStyle}">${fieldLabel}${requiredMark}</label>` : ''}
+                                    <input
+                                        type="${field.type}"
+                                        id="${fieldId}"
+                                        name="${fieldName}"
+                                        placeholder="${field.placeholder || ''}"
+                                        ${requiredAttr}
+                                        style="${inputStyle}"
+                                    />
+                                </div>
+                            `;
+
+                        case 'textarea':
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}">
+                                    ${fieldLabel ? `<label for="${fieldId}" style="${labelStyle}">${fieldLabel}${requiredMark}</label>` : ''}
+                                    <textarea
+                                        id="${fieldId}"
+                                        name="${fieldName}"
+                                        rows="${field.rows || 4}"
+                                        placeholder="${field.placeholder || ''}"
+                                        ${requiredAttr}
+                                        style="${inputStyle} resize:vertical; font-family:inherit;"
+                                    ></textarea>
+                                </div>
+                            `;
+
+                        case 'select':
+                            const options = Array.isArray(field.options) ? field.options : [];
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}">
+                                    ${fieldLabel ? `<label for="${fieldId}" style="${labelStyle}">${fieldLabel}${requiredMark}</label>` : ''}
+                                    <select
+                                        id="${fieldId}"
+                                        name="${fieldName}"
+                                        ${requiredAttr}
+                                        style="${inputStyle} cursor:pointer; background-color:#fff;"
+                                    >
+                                        ${options.map(opt => `<option value="${opt.value || opt}">${opt.label || opt}</option>`).join('')}
+                                    </select>
+                                </div>
+                            `;
+
+                        case 'checkbox':
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}; flex-direction:row; align-items:center; gap:8px;">
+                                    <input
+                                        type="checkbox"
+                                        id="${fieldId}"
+                                        name="${fieldName}"
+                                        ${requiredAttr}
+                                        style="width:18px; height:18px; cursor:pointer;"
+                                    />
+                                    <label for="${fieldId}" style="font-size:16px; color:#374151; cursor:pointer;">
+                                        ${fieldLabel}${requiredMark}
+                                    </label>
+                                </div>
+                            `;
+
+                        case 'radio':
+                            const radioOptions = Array.isArray(field.options) ? field.options : [];
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}">
+                                    ${fieldLabel ? `<label style="${labelStyle}">${fieldLabel}${requiredMark}</label>` : ''}
+                                    ${radioOptions.map((opt, idx) => `
+                                        <div style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                            <input
+                                                type="radio"
+                                                id="${fieldId}-${idx}"
+                                                name="${fieldName}"
+                                                value="${opt.value || opt}"
+                                                ${idx === 0 && required ? 'required' : ''}
+                                                style="width:18px; height:18px; cursor:pointer;"
+                                            />
+                                            <label for="${fieldId}-${idx}" style="font-size:16px; color:#374151; cursor:pointer;">
+                                                ${opt.label || opt}
+                                            </label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+
+                        default:
+                            return '';
+                    }
+                }).join('\n');
+            };
+
+            const configuredFields = renderFormFields(componentData.fields);
+            const formContent = configuredFields || formChildren || '<div style="padding:20px; text-align:center; color:#9ca3af; border:2px dashed #e5e7eb; border-radius:8px;"><p>Please configure form fields</p></div>';
+
             return `
                 <form
                     ${baseAttrs}
                     action="${componentData.action || '#'}"
                     method="${componentData.method || 'POST'}"
                     style="${inlineStyles}; ${positionStyles}"
+                    class="lpb-form"
                 >
-                    ${formChildren || '<p>Empty form</p>'}
+                    ${formContent}
                 </form>
             `;
 
