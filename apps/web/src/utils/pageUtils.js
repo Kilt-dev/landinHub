@@ -829,9 +829,6 @@ const renderElementHTML = (element, isChild = false) => {
                 <div class="lpb-form-messages" style="margin-top:16px;"></div>
             `;
 
-            // API endpoint (configurable)
-            const apiEndpoint = componentData.apiEndpoint || '/api/forms/submit';
-
             // Form submission JavaScript
             const formScript = hasFields ? `
                 <script>
@@ -896,8 +893,13 @@ const renderElementHTML = (element, isChild = false) => {
                                 }
                             };
 
+                            // Get API endpoint (priority: custom config > window config > default backend)
+                            const apiEndpoint = '${componentData.apiEndpoint || ''}' ||
+                                                (window.LPB_CONFIG && window.LPB_CONFIG.apiUrl) ||
+                                                'http://localhost:5000/api/forms/submit';
+
                             // Submit to backend
-                            const response = await fetch('${apiEndpoint}', {
+                            const response = await fetch(apiEndpoint, {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -2213,6 +2215,15 @@ export const renderStaticHTML = (pageData) => {
             }
         }
     </style>
+
+    <!-- Landing Page Builder Configuration -->
+    <script>
+        window.LPB_CONFIG = {
+            apiUrl: '${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/forms/submit',
+            pageId: '${pageData._id || pageData.id || ''}',
+            environment: '${process.env.NODE_ENV || 'development'}'
+        };
+    </script>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <!-- Canvas -->

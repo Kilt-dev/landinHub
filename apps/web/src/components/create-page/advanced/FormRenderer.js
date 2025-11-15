@@ -242,9 +242,14 @@ const FormRenderer = ({
             page_id: pageId,
             form_id: parentId || `form-${Date.now()}`, // Form element ID
             form_data: data,
-            device_type: getDeviceType(),
-            screen_resolution: `${window.screen.width}x${window.screen.height}`,
-            ...getUtmParams(),
+            metadata: {
+                device_type: getDeviceType(),
+                screen_resolution: `${window.screen.width}x${window.screen.height}`,
+                referrer: document.referrer || '',
+                user_agent: navigator.userAgent,
+                language: navigator.language,
+                ...getUtmParams(),
+            }
         };
 
         // Set loading state
@@ -255,8 +260,10 @@ const FormRenderer = ({
         setSubmitMessage('');
 
         try {
-            // Submit to system API (auto-save to MongoDB)
-            const systemApiUrl = `${process.env.REACT_APP_API_URL || ''}/api/forms/submit`;
+            // Get API URL from config (injected by backend) or fallback
+            const systemApiUrl = (window.LPB_CONFIG && window.LPB_CONFIG.apiUrl) ||
+                                 `http://localhost:5000/api/forms/submit`;
+
             const response = await fetch(systemApiUrl, {
                 method: 'POST',
                 headers: {
