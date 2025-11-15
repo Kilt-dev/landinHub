@@ -8,6 +8,22 @@ const { Parser } = require('json2csv');
  */
 
 /**
+ * Helper function to build published URL from page data
+ * @param {Object} page - Page object
+ * @returns {string|null} - Published URL
+ */
+const buildPublishedUrl = (page) => {
+    // Priority: cloudfrontDomain > url.landinghub.shop
+    if (page.cloudfrontDomain) {
+        return `https://${page.cloudfrontDomain}`;
+    }
+    if (page.url) {
+        return `https://${page.url}.landinghub.shop`;
+    }
+    return null;
+};
+
+/**
  * Submit a form (called by end users from landing pages)
  * POST /api/forms/submit
  */
@@ -124,8 +140,8 @@ exports.getPageSubmissions = async (req, res) => {
         const submissionsWithPageInfo = submissions.map(sub => ({
             ...sub,
             page_name: page.name || 'Untitled Page',
-            page_url: page.url || page.slug || null,
-            page_published_url: page.cloudfront_url || page.published_url || null
+            page_url: page.url || null,
+            page_published_url: buildPublishedUrl(page)
         }));
 
         const total = await FormSubmission.countDocuments(filter);
@@ -139,8 +155,8 @@ exports.getPageSubmissions = async (req, res) => {
             page: {
                 id: page._id,
                 name: page.name || 'Untitled Page',
-                url: page.url || page.slug,
-                published_url: page.cloudfront_url || page.published_url
+                url: page.url,
+                published_url: buildPublishedUrl(page)
             },
             pagination: {
                 total,
@@ -185,7 +201,7 @@ exports.getUserSubmissions = async (req, res) => {
 
         // Fetch page info for all pages
         const pages = await Page.find({ _id: { $in: pageIds } })
-            .select('_id name url slug cloudfront_url published_url')
+            .select('_id name url cloudfrontDomain')
             .lean();
 
         // Create page lookup map
@@ -193,8 +209,8 @@ exports.getUserSubmissions = async (req, res) => {
         pages.forEach(page => {
             pageMap[page._id.toString()] = {
                 name: page.name || 'Untitled Page',
-                url: page.url || page.slug,
-                published_url: page.cloudfront_url || page.published_url
+                url: page.url,
+                published_url: buildPublishedUrl(page)
             };
         });
 
