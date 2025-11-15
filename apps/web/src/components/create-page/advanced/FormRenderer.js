@@ -226,15 +226,11 @@ const FormRenderer = ({
         // Prepare submission payload
         const submissionData = {
             page_id: pageId,
+            form_id: parentId || `form-${Date.now()}`, // Form element ID
             form_data: data,
-            metadata: {
-                device_type: getDeviceType(),
-                user_agent: navigator.userAgent,
-                screen_resolution: `${window.screen.width}x${window.screen.height}`,
-                referrer: document.referrer || 'direct',
-                submitted_at: new Date().toISOString(),
-                ...getUtmParams(),
-            }
+            device_type: getDeviceType(),
+            screen_resolution: `${window.screen.width}x${window.screen.height}`,
+            ...getUtmParams(),
         };
 
         // Set loading state
@@ -332,23 +328,89 @@ const FormRenderer = ({
                 componentData.fields.map((field, index) => renderFormField(field, index))
             ) : (
                 <>
-                    {/* Empty form placeholder in canvas mode */}
+                    {/* Empty form placeholder in canvas mode - Enhanced with step-by-step guide */}
                     {isCanvas && children.length === 0 && (
                         <div
                             style={{
-                                padding: '24px',
+                                padding: '32px 24px',
                                 textAlign: 'center',
-                                backgroundColor: '#f9fafb',
-                                border: '2px dashed #d1d5db',
-                                borderRadius: '8px',
-                                color: '#6b7280',
+                                backgroundColor: '#eff6ff',
+                                border: '2px dashed #3b82f6',
+                                borderRadius: '12px',
+                                color: '#1e40af',
                             }}
                         >
-                            <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: '500' }}>
-                                Form rỗng
+                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📝</div>
+                            <div style={{ fontSize: '16px', marginBottom: '12px', fontWeight: '600', color: '#1e3a8a' }}>
+                                Form Chưa Có Trường Nhập Liệu
                             </div>
-                            <div style={{ fontSize: '13px' }}>
-                                Nhấp vào form và mở Properties Panel để thêm các trường
+                            <div style={{ fontSize: '13px', color: '#374151', marginBottom: '16px', lineHeight: '1.6' }}>
+                                Để thu thập thông tin khách hàng (leads), hãy thêm các trường vào form:
+                            </div>
+                            <div style={{
+                                textAlign: 'left',
+                                display: 'inline-block',
+                                backgroundColor: '#fff',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                            }}>
+                                <div style={{ fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{
+                                        backgroundColor: '#3b82f6',
+                                        color: '#fff',
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '11px',
+                                        fontWeight: '600'
+                                    }}>1</span>
+                                    <span>Click vào form này (đã chọn sẵn)</span>
+                                </div>
+                                <div style={{ fontSize: '13px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{
+                                        backgroundColor: '#3b82f6',
+                                        color: '#fff',
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '11px',
+                                        fontWeight: '600'
+                                    }}>2</span>
+                                    <span>Mở <strong>Properties Panel</strong> (bên phải) →</span>
+                                </div>
+                                <div style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{
+                                        backgroundColor: '#3b82f6',
+                                        color: '#fff',
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '50%',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '11px',
+                                        fontWeight: '600'
+                                    }}>3</span>
+                                    <span>Click <strong>"+ Add Field"</strong> để thêm trường</span>
+                                </div>
+                            </div>
+                            <div style={{
+                                fontSize: '12px',
+                                color: '#6b7280',
+                                marginTop: '16px',
+                                padding: '12px',
+                                backgroundColor: '#fef3c7',
+                                borderRadius: '6px',
+                                border: '1px solid #fcd34d'
+                            }}>
+                                💡 <strong>Tip:</strong> Bắt đầu với Name, Email, Phone để thu thập leads cơ bản
                             </div>
                         </div>
                     )}
