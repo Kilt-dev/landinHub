@@ -1,0 +1,124 @@
+service: landinghub-backend
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ap-southeast-1
+  stage: ${opt:stage, 'prod'}
+  memorySize: 512
+  timeout: 30
+  environment:
+    NODE_ENV: production
+    MONGO_URI: ${env:MONGO_URI}
+    JWT_SECRET: ${env:JWT_SECRET}
+    FRONTEND_URL: https://landinghub.shop
+    AWS_ACCESS_KEY_ID_CUSTOM: ${env:AWS_ACCESS_KEY_ID}
+    AWS_SECRET_ACCESS_KEY_CUSTOM: ${env:AWS_SECRET_ACCESS_KEY}
+    AWS_REGION_CUSTOM: ${env:AWS_REGION}
+    AWS_S3_BUCKET: ${env:AWS_S3_BUCKET}
+    AWS_CLOUDFRONT_DISTRIBUTION_ID: ${env:AWS_CLOUDFRONT_DISTRIBUTION_ID}
+    AWS_CLOUDFRONT_DOMAIN: ${env:AWS_CLOUDFRONT_DOMAIN}
+    AWS_ROUTE53_BASE_DOMAIN: ${env:AWS_ROUTE53_BASE_DOMAIN}
+    AWS_ROUTE53_HOSTED_ZONE_ID: ${env:AWS_ROUTE53_HOSTED_ZONE_ID}
+    AWS_ACM_CERTIFICATE_ARN: ${env:AWS_ACM_CERTIFICATE_ARN}
+    DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY}
+    GOOGLE_API_KEY: ${env:GOOGLE_API_KEY}
+    GEMINI_API_KEY: ${env:GEMINI_API_KEY}
+    GROQ_API_KEY: ${env:GROQ_API_KEY}
+    GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID}
+    GOOGLE_CLIENT_SECRET: ${env:GOOGLE_CLIENT_SECRET}
+    MOMO_ENDPOINT: ${env:MOMO_ENDPOINT}
+    MOMO_PARTNER_CODE: ${env:MOMO_PARTNER_CODE}
+    MOMO_ACCESS_KEY: ${env:MOMO_ACCESS_KEY}
+    MOMO_SECRET_KEY: ${env:MOMO_SECRET_KEY}
+    MOMO_RETURN_URL: https://landinghub.shop/payment/result
+    MOMO_IPN_URL: https://api.landinghub.shop/api/payment/momo/ipn
+    VNPAY_TMN_CODE: ${env:VNPAY_TMN_CODE}
+    VNPAY_SECRET_KEY: ${env:VNPAY_SECRET_KEY}
+    VNPAY_IPN_URL: https://api.landinghub.shop/api/payment/vnpay/ipn
+    VNPAY_API_URL: ${env:VNPAY_API_URL}
+    VNPAY_URL: ${env:VNPAY_URL}
+    VNPAY_RETURN_URL: https://landinghub.shop/payment/vnpay/callback
+    EMAIL_HOST: ${env:EMAIL_HOST}
+    EMAIL_PORT: ${env:EMAIL_PORT}
+    EMAIL_USER: ${env:EMAIL_USER}
+    EMAIL_PASS: ${env:EMAIL_PASS}
+    SMTP_HOST: ${env:SMTP_HOST}
+    SMTP_PORT: ${env:SMTP_PORT}
+    SMTP_USER: ${env:SMTP_USER}
+    SMTP_PASSWORD: ${env:SMTP_PASSWORD}
+    PLATFORM_FEE_PERCENTAGE: ${env:PLATFORM_FEE_PERCENTAGE}
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:*
+          Resource:
+            - arn:aws:s3:::${env:AWS_S3_BUCKET}/*
+        - Effect: Allow
+          Action:
+            - cloudfront:CreateInvalidation
+          Resource: '*'
+        - Effect: Allow
+          Action:
+            - route53:ChangeResourceRecordSets
+            - route53:GetHostedZone
+            - route53:ListResourceRecordSets
+          Resource: 'arn:aws:route53:::hostedzone/${env:AWS_ROUTE53_HOSTED_ZONE_ID}'
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+functions:
+  api:
+    handler: lambda.handler
+    events:
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors:
+            origin: https://landinghub.shop
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: true
+      - http:
+          path: /
+          method: ANY
+          cors:
+            origin: https://landinghub.shop
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: true
+
+custom:
+  serverless-offline:
+    httpPort: 5000
+    lambdaPort: 3002
+
+package:
+  exclude:
+    - node_modules/**
+    - .env
+    - .git/**
+    - .gitignore
+    - README.md
+    - package-lock.json
+  include:
+    - src/**
+    - lambda.js
+    - package.json
