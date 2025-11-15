@@ -231,10 +231,10 @@ const DeploymentSettings = () => {
                                 <div className="url-item">
                                     <label>Địa chỉ tên miền phụ:</label>
                                     <div className="url-display">
-                                        <a href={`https://${deploymentInfo.subdomain}.landinghub.vn`} target="_blank" rel="noopener noreferrer">
-                                            {deploymentInfo.subdomain}.landinghub.vn
+                                        <a href={`https://${deploymentInfo.subdomain}.landinghub.shop`} target="_blank" rel="noopener noreferrer">
+                                            {deploymentInfo.subdomain}.landinghub.shop
                                         </a>
-                                        <button onClick={() => copyToClipboard(`https://${deploymentInfo.subdomain}.landinghub.vn`)}>
+                                        <button onClick={() => copyToClipboard(`https://${deploymentInfo.subdomain}.landinghub.shop`)}>
                                             <Copy size={16} />
                                         </button>
                                     </div>
@@ -311,10 +311,10 @@ const DeploymentSettings = () => {
                                 onChange={(e) => setDomainSettings({...domainSettings, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})}
                                 placeholder="my-landing"
                             />
-                            <span className="subdomain-suffix">.landinghub.vn</span>
+                            <span className="subdomain-suffix">.landinghub.shop</span>
                         </div>
                         <small>
-                            Để trống để tự động tạo (ví dụ: {pageData?.slug || 'page-123'}.landinghub.vn)
+                            Để trống để tự động tạo (ví dụ: {pageData?.slug || 'page-123'}.landinghub.shop)
                         </small>
                     </div>
                 )}
