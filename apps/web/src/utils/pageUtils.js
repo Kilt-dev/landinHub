@@ -781,18 +781,192 @@ const renderElementHTML = (element, isChild = false) => {
             };
 
             const configuredFields = renderFormFields(componentData.fields);
+            const hasFields = configuredFields || formChildren;
             const formContent = configuredFields || formChildren || '<div style="padding:20px; text-align:center; color:#9ca3af; border:2px dashed #e5e7eb; border-radius:8px;"><p>Please configure form fields</p></div>';
+
+            // Form title
+            const formTitle = componentData.title ? `
+                <h3 style="margin:0 0 20px 0; font-size:24px; font-weight:700; color:#1f2937; text-align:${componentData.titleAlign || 'left'};">
+                    ${componentData.title}
+                </h3>
+            ` : '';
+
+            // Form subtitle/description
+            const formDescription = componentData.description ? `
+                <p style="margin:0 0 24px 0; font-size:16px; color:#6b7280; line-height:1.5; text-align:${componentData.descriptionAlign || 'left'};">
+                    ${componentData.description}
+                </p>
+            ` : '';
+
+            // Submit button (only if there are fields)
+            const submitButton = hasFields ? `
+                <button
+                    type="submit"
+                    class="lpb-form-submit"
+                    style="
+                        width:${componentData.submitButtonFullWidth !== false ? '100%' : 'auto'};
+                        padding:${componentData.submitButtonPadding || '14px 32px'};
+                        background:${componentData.submitButtonBackground || '#2563eb'};
+                        color:${componentData.submitButtonColor || '#ffffff'};
+                        border:${componentData.submitButtonBorder || 'none'};
+                        border-radius:${componentData.submitButtonBorderRadius || '8px'};
+                        font-size:${componentData.submitButtonFontSize || '16px'};
+                        font-weight:${componentData.submitButtonFontWeight || '600'};
+                        cursor:pointer;
+                        transition:all 0.3s ease;
+                        margin-top:8px;
+                        box-shadow:0 1px 2px rgba(0,0,0,0.05);
+                    "
+                    onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)';"
+                    onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)';"
+                >
+                    ${componentData.submitButtonText || 'Gửi'}
+                </button>
+            ` : '';
+
+            // Message containers
+            const messageContainers = `
+                <div class="lpb-form-messages" style="margin-top:16px;"></div>
+            `;
+
+            // API endpoint (configurable)
+            const apiEndpoint = componentData.apiEndpoint || '/api/forms/submit';
+
+            // Form submission JavaScript
+            const formScript = hasFields ? `
+                <script>
+                (function() {
+                    const form = document.getElementById('${id}');
+                    if (!form) return;
+
+                    form.addEventListener('submit', async function(e) {
+                        e.preventDefault();
+
+                        const submitBtn = form.querySelector('.lpb-form-submit');
+                        const messagesContainer = form.querySelector('.lpb-form-messages');
+
+                        // Disable submit button
+                        if (submitBtn) {
+                            submitBtn.disabled = true;
+                            submitBtn.textContent = 'Đang gửi...';
+                            submitBtn.style.opacity = '0.6';
+                            submitBtn.style.cursor = 'not-allowed';
+                        }
+
+                        // Clear previous messages
+                        if (messagesContainer) messagesContainer.innerHTML = '';
+
+                        try {
+                            // Collect form data
+                            const formData = new FormData(form);
+                            const data = {};
+                            formData.forEach((value, key) => {
+                                data[key] = value;
+                            });
+
+                            // Get UTM parameters from URL
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const utmParams = {};
+                            ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'].forEach(param => {
+                                if (urlParams.has(param)) {
+                                    utmParams[param] = urlParams.get(param);
+                                }
+                            });
+
+                            // Detect device type
+                            const getDeviceType = () => {
+                                const ua = navigator.userAgent;
+                                if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return 'tablet';
+                                if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) return 'mobile';
+                                return 'desktop';
+                            };
+
+                            // Prepare submission payload
+                            const payload = {
+                                page_id: '${element?.page_id || 'unknown'}',
+                                form_id: '${id}',
+                                form_data: data,
+                                metadata: {
+                                    referrer: document.referrer || '',
+                                    user_agent: navigator.userAgent,
+                                    language: navigator.language,
+                                    device_type: getDeviceType(),
+                                    screen_resolution: window.screen.width + 'x' + window.screen.height,
+                                    ...utmParams
+                                }
+                            };
+
+                            // Submit to backend
+                            const response = await fetch('${apiEndpoint}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(payload)
+                            });
+
+                            const result = await response.json();
+
+                            if (response.ok) {
+                                // Success
+                                if (messagesContainer) {
+                                    messagesContainer.innerHTML = \`
+                                        <div style="padding:12px 16px; background:#d1fae5; border:1px solid #10b981; border-radius:8px; color:#065f46; font-size:14px;">
+                                            ✓ ${componentData.successMessage || 'Cảm ơn bạn! Chúng tôi đã nhận được thông tin của bạn.'}
+                                        </div>
+                                    \`;
+                                }
+
+                                // Reset form
+                                form.reset();
+
+                                // Redirect if configured
+                                const redirectUrl = '${componentData.redirectUrl || ''}';
+                                if (redirectUrl) {
+                                    setTimeout(() => {
+                                        window.location.href = redirectUrl;
+                                    }, 2000);
+                                }
+                            } else {
+                                throw new Error(result.message || 'Submission failed');
+                            }
+                        } catch (error) {
+                            console.error('Form submission error:', error);
+                            if (messagesContainer) {
+                                messagesContainer.innerHTML = \`
+                                    <div style="padding:12px 16px; background:#fee2e2; border:1px solid #ef4444; border-radius:8px; color:#991b1b; font-size:14px;">
+                                        ✗ ${componentData.errorMessage || 'Có lỗi xảy ra. Vui lòng thử lại sau.'}
+                                    </div>
+                                \`;
+                            }
+                        } finally {
+                            // Re-enable submit button
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = '${componentData.submitButtonText || 'Gửi'}';
+                                submitBtn.style.opacity = '1';
+                                submitBtn.style.cursor = 'pointer';
+                            }
+                        }
+                    });
+                })();
+                </script>
+            ` : '';
 
             return `
                 <form
                     ${baseAttrs}
-                    action="${componentData.action || '#'}"
-                    method="${componentData.method || 'POST'}"
                     style="${inlineStyles}; ${positionStyles}"
                     class="lpb-form"
+                    novalidate
                 >
+                    ${formTitle}
+                    ${formDescription}
                     ${formContent}
+                    ${submitButton}
+                    ${messageContainers}
                 </form>
+                ${formScript}
             `;
 
         case 'input':
