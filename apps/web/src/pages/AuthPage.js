@@ -24,7 +24,8 @@ const AuthPage = () => {
             const token = credentialResponse.credential;
             localStorage.setItem('token', token);
 
-            await fetch('http://localhost:5000/api/auth/google-callback', {
+            const API_URL = process.env.REACT_APP_API_URL || 'https://api.landinghub.shop';
+            await fetch(`${API_URL}/api/auth/google-callback`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: decoded.email, name: userData.name }),
