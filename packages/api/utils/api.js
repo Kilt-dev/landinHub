@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || 'https://llk8aosgaf.execute-api.us-east-1.amazonaws.com/prod',
+    baseURL: process.env.REACT_APP_API_URL || 'https://api.landinghub.shop',
 });
 
 api.interceptors.request.use(

@@ -9,7 +9,7 @@
  */
 export const generateFormSubmissionScript = (formElement, pageId) => {
     const formId = formElement.id || `FORM-${Date.now()}`;
-    const apiUrl = process.env.REACT_APP_API_URL || 'https://llk8aosgaf.execute-api.us-east-1.amazonaws.com/prod';
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.landinghub.shop';
 
     const fields = formElement.componentData?.fields || [];
     const successMessage = formElement.componentData?.successMessage || 'Cảm ơn bạn đã gửi thông tin!';

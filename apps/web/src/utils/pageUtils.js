@@ -896,7 +896,7 @@ const renderElementHTML = (element, isChild = false) => {
                             // Get API endpoint (priority: custom config > window config > default backend)
                             const apiEndpoint = '${componentData.apiEndpoint || ''}' ||
                                                 (window.LPB_CONFIG && window.LPB_CONFIG.apiUrl) ||
-                                                'https://llk8aosgaf.execute-api.us-east-1.amazonaws.com/prod/api/forms/submit';
+                                                'https://api.landinghub.shop/api/forms/submit';
 
                             // Submit to backend
                             const response = await fetch(apiEndpoint, {
@@ -2219,7 +2219,7 @@ export const renderStaticHTML = (pageData) => {
     <!-- Landing Page Builder Configuration -->
     <script>
         window.LPB_CONFIG = {
-            apiUrl: '${process.env.REACT_APP_API_URL || 'https://llk8aosgaf.execute-api.us-east-1.amazonaws.com/prod'}/api/forms/submit',
+            apiUrl: '${process.env.REACT_APP_API_URL || 'https://api.landinghub.shop'}/api/forms/submit',
             pageId: '${pageData._id || pageData.id || ''}',
             environment: '${process.env.NODE_ENV || 'production'}'
         };
