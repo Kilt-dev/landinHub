@@ -58,6 +58,9 @@ const FormData = () => {
                 }
             );
 
+            console.log('Submissions response:', response.data);
+            console.log('First submission:', response.data.submissions[0]);
+
             setSubmissions(response.data.submissions);
 
             // Calculate total pages
@@ -247,6 +250,43 @@ const FormData = () => {
             spam: 'Spam'
         };
         return labels[status] || status;
+    };
+
+    // Format field name to be more readable
+    const formatFieldName = (fieldName) => {
+        // Common field mappings
+        const fieldLabels = {
+            name: 'Họ và tên',
+            fullname: 'Họ và tên',
+            full_name: 'Họ và tên',
+            email: 'Email',
+            phone: 'Số điện thoại',
+            phoneNumber: 'Số điện thoại',
+            phone_number: 'Số điện thoại',
+            message: 'Tin nhắn',
+            subject: 'Tiêu đề',
+            company: 'Công ty',
+            address: 'Địa chỉ',
+            city: 'Thành phố',
+            country: 'Quốc gia',
+            website: 'Website',
+            note: 'Ghi chú',
+            notes: 'Ghi chú',
+            description: 'Mô tả'
+        };
+
+        // Check if we have a predefined label
+        const lowerKey = fieldName.toLowerCase();
+        if (fieldLabels[lowerKey]) {
+            return fieldLabels[lowerKey];
+        }
+
+        // Otherwise, format the field name nicely
+        return fieldName
+            .replace(/_/g, ' ')           // Replace underscores with spaces
+            .replace(/([A-Z])/g, ' $1')   // Add space before capital letters
+            .replace(/\b\w/g, c => c.toUpperCase()) // Capitalize first letter of each word
+            .trim();
     };
 
     // Get device icon
@@ -518,7 +558,7 @@ const FormData = () => {
                                         <div className="submission-data-preview">
                                             {Object.entries(submission.form_data || {}).slice(0, 2).map(([key, value]) => (
                                                 <div key={key} className="data-field">
-                                                    <span className="field-key">{key}:</span>
+                                                    <span className="field-key">{formatFieldName(key)}:</span>
                                                     <span className="field-value">
                                                         {String(value).substring(0, 50)}
                                                         {String(value).length > 50 && '...'}
@@ -613,7 +653,7 @@ const FormData = () => {
                                 <div className="card-form-data">
                                     {Object.entries(submission.form_data || {}).map(([key, value]) => (
                                         <div key={key} className="submission-field">
-                                            <span className="field-key">{key}:</span>
+                                            <span className="field-key">{formatFieldName(key)}:</span>
                                             <span className="field-value">{String(value)}</span>
                                         </div>
                                     ))}
@@ -740,12 +780,23 @@ const FormData = () => {
                                                 Dữ liệu Form
                                             </h4>
                                             <div className="form-data-grid">
-                                                {Object.entries(sub.form_data || {}).map(([key, value]) => (
-                                                    <div key={key} className="form-data-item">
-                                                        <div className="form-data-key">{key}</div>
-                                                        <div className="form-data-value">{String(value)}</div>
+                                                {Object.keys(sub.form_data || {}).length === 0 ? (
+                                                    <div style={{
+                                                        padding: '20px',
+                                                        textAlign: 'center',
+                                                        color: '#6b7280',
+                                                        fontStyle: 'italic'
+                                                    }}>
+                                                        Không có dữ liệu form
                                                     </div>
-                                                ))}
+                                                ) : (
+                                                    Object.entries(sub.form_data || {}).map(([key, value]) => (
+                                                        <div key={key} className="form-data-item">
+                                                            <div className="form-data-key">{formatFieldName(key)}</div>
+                                                            <div className="form-data-value">{String(value)}</div>
+                                                        </div>
+                                                    ))
+                                                )}
                                             </div>
                                         </div>
 

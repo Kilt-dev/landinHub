@@ -215,12 +215,17 @@ exports.getUserSubmissions = async (req, res) => {
         });
 
         // Attach page info to submissions
-        const submissionsWithPageInfo = submissions.map(sub => ({
-            ...sub,
-            page_name: pageMap[sub.page_id]?.name || 'Unknown Page',
-            page_url: pageMap[sub.page_id]?.url || null,
-            page_published_url: pageMap[sub.page_id]?.published_url || null
-        }));
+        const submissionsWithPageInfo = submissions.map(sub => {
+            const pageId = sub.page_id ? sub.page_id.toString() : null;
+            const pageInfo = pageId ? pageMap[pageId] : null;
+
+            return {
+                ...sub,
+                page_name: pageInfo?.name || 'Unknown Page',
+                page_url: pageInfo?.url || null,
+                page_published_url: pageInfo?.published_url || null
+            };
+        });
 
         const total = await FormSubmission.countDocuments(filter);
 
