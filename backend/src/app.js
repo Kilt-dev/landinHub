@@ -65,10 +65,18 @@ app.use('/api/marketplace', require('./routes/marketplace'));
 app.use('/api/payment', require('./routes/payment'));
 app.use('/api/payout', require('./routes/payout'));
 app.use('/api/admin/marketplace', require('./routes/adminMarketplace'));
+app.use('/api/admin/users', require('./routes/adminUserRoutes'));
 app.use('/api/forms', require('./routes/formSubmissions'));
 app.use('/api/deployment', require('./routes/deployment'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/research', require('./routes/llmResearch'));
 app.use('/api/chat-analytics', require('./routes/chatAnalytics'));
+app.use('/api/chat-feedback', require('./routes/chatFeedback'));
+app.use('/api/ai', require('./routes/ai'));
+app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/notifications', require('./routes/notification'));
+app.use('/api/orders', require('./routes/orderRoutes'));
+app.use('/api/coze', require('./routes/coze'));
 
 module.exports = app;
