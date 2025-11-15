@@ -13,7 +13,7 @@ const { Parser } = require('json2csv');
  */
 exports.submitForm = async (req, res) => {
     try {
-        const { page_id, form_id, form_data } = req.body;
+        const { page_id, form_id, form_data, metadata: clientMetadata } = req.body;
 
         if (!page_id || !form_id || !form_data) {
             return res.status(400).json({
@@ -22,35 +22,41 @@ exports.submitForm = async (req, res) => {
             });
         }
 
-        // Get page info to find owner
-        const page = await Page.findById(page_id);
-        if (!page) {
-            return res.status(404).json({
-                success: false,
-                message: 'Page not found'
-            });
+        // Try to get page info to find owner (but don't fail if page not found)
+        let user_id = null;
+        try {
+            const page = await Page.findById(page_id).select('user_id').lean();
+            if (page) {
+                user_id = page.user_id;
+            }
+        } catch (pageError) {
+            console.warn('Could not fetch page info:', pageError.message);
+            // Continue anyway - we'll store the submission without user_id for now
         }
 
-        // Extract metadata from request
+        // Merge metadata from request body and headers
         const metadata = {
             ip_address: req.ip || req.connection.remoteAddress,
             user_agent: req.get('user-agent'),
             referrer: req.get('referer'),
-            utm_source: req.body.utm_source,
-            utm_medium: req.body.utm_medium,
-            utm_campaign: req.body.utm_campaign,
-            utm_term: req.body.utm_term,
-            utm_content: req.body.utm_content,
-            device_type: req.body.device_type || 'unknown',
             language: req.get('accept-language')?.split(',')[0],
-            screen_resolution: req.body.screen_resolution
+            // Metadata from client (includes UTM params, device type, screen resolution)
+            ...(clientMetadata || {}),
+            // Backward compatibility - check root level too
+            utm_source: clientMetadata?.utm_source || req.body.utm_source,
+            utm_medium: clientMetadata?.utm_medium || req.body.utm_medium,
+            utm_campaign: clientMetadata?.utm_campaign || req.body.utm_campaign,
+            utm_term: clientMetadata?.utm_term || req.body.utm_term,
+            utm_content: clientMetadata?.utm_content || req.body.utm_content,
+            device_type: clientMetadata?.device_type || req.body.device_type || 'unknown',
+            screen_resolution: clientMetadata?.screen_resolution || req.body.screen_resolution
         };
 
-        // Create submission
+        // Create submission (user_id might be null if page fetch failed)
         const submission = new FormSubmission({
             page_id,
             form_id,
-            user_id: page.user_id,
+            user_id: user_id || 'unknown', // Fallback if page not found
             form_data,
             metadata
         });
