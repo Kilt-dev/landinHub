@@ -106,18 +106,43 @@ export const snapToGrid = (x, y, gridSize = 1, snapPoints = [], enableSnap = tru
 };
 
 /**
+ * Normalizes position value to ensure it's always a number
+ * Handles cases where position might be stored as string (e.g., "100px" or "100")
+ * @param {number|string|undefined} value - Position value
+ * @param {number} defaultValue - Default value if undefined
+ * @returns {number} Normalized number value
+ */
+export const normalizePosition = (value, defaultValue = 0) => {
+    if (value === undefined || value === null) return defaultValue;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+        // Remove 'px' suffix if present and parse as float
+        const parsed = parseFloat(value.replace('px', ''));
+        return isNaN(parsed) ? defaultValue : parsed;
+    }
+    return defaultValue;
+};
+
+/**
  * Calculates bounds of an element for snapping
  * @param {Object} element - Element object with position and size
  * @returns {Object} Bounds { left, top, right, bottom, centerX, centerY }
  */
-export const getElementBounds = (element) => ({
-    left: element.position?.desktop?.x || 0,
-    top: element.position?.desktop?.y || 0,
-    right: (element.position?.desktop?.x || 0) + (element.size?.width || 200),
-    bottom: (element.position?.desktop?.y || 0) + (element.size?.height || 50),
-    centerX: (element.position?.desktop?.x || 0) + (element.size?.width || 200) / 2,
-    centerY: (element.position?.desktop?.y || 0) + (element.size?.height || 50) / 2,
-});
+export const getElementBounds = (element) => {
+    const x = normalizePosition(element.position?.desktop?.x, 0);
+    const y = normalizePosition(element.position?.desktop?.y, 0);
+    const width = normalizePosition(element.size?.width, 200);
+    const height = normalizePosition(element.size?.height, 50);
+
+    return {
+        left: x,
+        top: y,
+        right: x + width,
+        bottom: y + height,
+        centerX: x + width / 2,
+        centerY: y + height / 2,
+    };
+};
 
 /**
  * Processes styles including pseudo-classes and keyframes into CSS string
@@ -443,9 +468,18 @@ export const renderComponentContent = (
                         height: '100%',
                     }}
                 >
-                    {children.map((child, index) => {
-                        // Get responsive values for child
-                        const childPosition = child.position?.[viewMode] || child.position?.desktop || { x: 0, y: 0 };
+                    {Array.isArray(children) && children.length > 0 && children.map((child, index) => {
+                        // Safety check for child validity
+                        if (!child || !child.type) return null;
+
+                        // Get responsive values for child - ensure positions are normalized to numbers
+                        const rawPosition = child.position?.[viewMode] || child.position?.desktop || { x: 0, y: 0 };
+                        const childPosition = {
+                            x: normalizePosition(rawPosition.x, 0),
+                            y: normalizePosition(rawPosition.y, 0),
+                            z: normalizePosition(rawPosition.z, undefined),
+                        };
+
                         const childSize = viewMode === 'mobile' && child.mobileSize
                             ? child.mobileSize
                             : viewMode === 'tablet' && child.tabletSize
@@ -454,17 +488,17 @@ export const renderComponentContent = (
 
                         // Determine if child should use absolute positioning
                         const childNeedsAbsolute = child.styles?.position === 'absolute' ||
-                            ['icon', 'square', 'star'].includes(child.type?.toLowerCase());
+                            ['icon', 'square', 'star', 'line'].includes(child.type?.toLowerCase());
 
-                        // Merge child styles with position
+                        // Merge child styles with position - positions are guaranteed to be numbers
                         const childStyles = {
                             ...child.styles,
                             position: childNeedsAbsolute ? 'absolute' : (child.styles?.position || 'absolute'), // Children in sections are absolute by default
                             left: childPosition.x !== undefined ? `${childPosition.x}px` : undefined,
                             top: childPosition.y !== undefined ? `${childPosition.y}px` : undefined,
-                            width: childSize.width ? `${childSize.width}px` : child.styles?.width,
-                            height: childSize.height ? `${childSize.height}px` : child.styles?.height,
-                            zIndex: childPosition.z || child.styles?.zIndex || 1,
+                            width: childSize.width ? `${normalizePosition(childSize.width)}px` : child.styles?.width,
+                            height: childSize.height ? `${normalizePosition(childSize.height)}px` : child.styles?.height,
+                            zIndex: childPosition.z !== undefined ? childPosition.z : (child.styles?.zIndex || 1),
                         };
 
                         return React.cloneElement(
@@ -503,18 +537,22 @@ export const renderComponentContent = (
                 }
             };
 
+            // Prioritize componentData.size over baseStyles for proper sizing
+            const width = componentData.size?.width || baseStyles.width || 50;
+            const height = componentData.size?.height || baseStyles.height || 50;
+
             return (
                 <svg
-                    width={baseStyles.width || componentData.size?.width || 50}
-                    height={baseStyles.height || componentData.size?.height || 50}
+                    width={width}
+                    height={height}
                     style={baseStyles}
                     onClick={handleClick}
                 >
                     <rect
                         x="0"
                         y="0"
-                        width={baseStyles.width || componentData.size?.width || 50}
-                        height={baseStyles.height || componentData.size?.height || 50}
+                        width={width}
+                        height={height}
                         fill={baseStyles.fill || componentData.fill || '#000'}
                         stroke={baseStyles.stroke || componentData.stroke || 'currentColor'}
                         strokeWidth={baseStyles.strokeWidth || componentData.strokeWidth || 2}
@@ -538,12 +576,18 @@ export const renderComponentContent = (
                 }
             };
 
+            // Prioritize componentData.size over baseStyles for proper scaling
+            const width = componentData.size?.width || baseStyles.width || 50;
+            const height = componentData.size?.height || baseStyles.height || 50;
+
             return (
                 <svg
-                    width={baseStyles.width || componentData.size?.width || 50}
-                    height={baseStyles.height || componentData.size?.height || 50}
+                    width={width}
+                    height={height}
+                    viewBox="0 0 50 50"
                     style={baseStyles}
                     onClick={handleClick}
+                    preserveAspectRatio="xMidYMid meet"
                 >
                     <path
                         d="M25 5 L32 18 H48 L36 29 L41 44 L25 36 L9 44 L14 29 L2 18 H18 Z"
@@ -990,6 +1034,47 @@ export const renderComponentContent = (
                         ...baseStyles,
                     }}
                 />
+            );
+        }
+
+        case 'line': {
+            const { events = {} } = componentData;
+            const handleClick = (e) => {
+                e.stopPropagation();
+                if (isCanvas && typeof onSelectChild === 'function' && parentId && childId) {
+                    onSelectChild(parentId, childId);
+                }
+                if (events.onClick && !isCanvas) {
+                    eventController.handleEvent(events.onClick, childId || parentId, false);
+                }
+            };
+
+            // Calculate line dimensions
+            const width = componentData.size?.width || baseStyles.width || 100;
+            const height = componentData.size?.height || baseStyles.height || 2;
+            const strokeWidth = componentData.strokeWidth || baseStyles.strokeWidth || height;
+            const stroke = componentData.stroke || baseStyles.stroke || '#000';
+
+            return (
+                <svg
+                    width={width}
+                    height={Math.max(height, strokeWidth)}
+                    style={{
+                        ...baseStyles,
+                        display: 'block',
+                    }}
+                    onClick={handleClick}
+                >
+                    <line
+                        x1="0"
+                        y1={Math.max(height, strokeWidth) / 2}
+                        x2={width}
+                        y2={Math.max(height, strokeWidth) / 2}
+                        stroke={stroke}
+                        strokeWidth={strokeWidth}
+                        strokeLinecap={componentData.strokeLinecap || baseStyles.strokeLinecap || 'round'}
+                    />
+                </svg>
             );
         }
 
@@ -1565,6 +1650,84 @@ export const renderComponentContent = (
         case 'tabs': {
             // Use TabsRenderer component to avoid hooks violation
             return <TabsRenderer componentData={componentData} styles={baseStyles} isCanvas={isCanvas} />;
+        }
+
+        case 'countdown': {
+            return (
+                <CountdownRenderer
+                    componentData={componentData}
+                    styles={baseStyles}
+                    isCanvas={isCanvas}
+                    parentId={parentId}
+                    childId={childId}
+                    onSelectChild={onSelectChild}
+                />
+            );
+        }
+
+        case 'carousel': {
+            return (
+                <CarouselRenderer
+                    componentData={componentData}
+                    styles={baseStyles}
+                    isCanvas={isCanvas}
+                    parentId={parentId}
+                    childId={childId}
+                    onSelectChild={onSelectChild}
+                />
+            );
+        }
+
+        case 'progress': {
+            return (
+                <ProgressRenderer
+                    componentData={componentData}
+                    styles={baseStyles}
+                    isCanvas={isCanvas}
+                    parentId={parentId}
+                    childId={childId}
+                    onSelectChild={onSelectChild}
+                />
+            );
+        }
+
+        case 'rating': {
+            return (
+                <RatingRenderer
+                    componentData={componentData}
+                    styles={baseStyles}
+                    isCanvas={isCanvas}
+                    parentId={parentId}
+                    childId={childId}
+                    onSelectChild={onSelectChild}
+                />
+            );
+        }
+
+        case 'social-proof': {
+            return (
+                <SocialProofRenderer
+                    componentData={componentData}
+                    styles={baseStyles}
+                    isCanvas={isCanvas}
+                    parentId={parentId}
+                    childId={childId}
+                    onSelectChild={onSelectChild}
+                />
+            );
+        }
+
+        case 'social-proof-stats': {
+            return (
+                <SocialProofStatsRenderer
+                    componentData={componentData}
+                    styles={baseStyles}
+                    isCanvas={isCanvas}
+                    parentId={parentId}
+                    childId={childId}
+                    onSelectChild={onSelectChild}
+                />
+            );
         }
 
         default: {
