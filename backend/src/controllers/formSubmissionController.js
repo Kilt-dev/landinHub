@@ -113,11 +113,20 @@ exports.getPageSubmissions = async (req, res) => {
             filter.status = status;
         }
 
-        // Get submissions
+        // Get submissions with page info
         const submissions = await FormSubmission.find(filter)
             .sort(sort)
             .limit(parseInt(limit))
-            .skip(parseInt(offset));
+            .skip(parseInt(offset))
+            .lean(); // Use lean for better performance
+
+        // Attach page info to each submission
+        const submissionsWithPageInfo = submissions.map(sub => ({
+            ...sub,
+            page_name: page.name || 'Untitled Page',
+            page_url: page.url || page.slug || null,
+            page_published_url: page.cloudfront_url || page.published_url || null
+        }));
 
         const total = await FormSubmission.countDocuments(filter);
 
@@ -126,7 +135,13 @@ exports.getPageSubmissions = async (req, res) => {
 
         res.json({
             success: true,
-            submissions,
+            submissions: submissionsWithPageInfo,
+            page: {
+                id: page._id,
+                name: page.name || 'Untitled Page',
+                url: page.url || page.slug,
+                published_url: page.cloudfront_url || page.published_url
+            },
             pagination: {
                 total,
                 limit: parseInt(limit),
@@ -163,13 +178,39 @@ exports.getUserSubmissions = async (req, res) => {
             .sort(sort)
             .limit(parseInt(limit))
             .skip(parseInt(offset))
-            .populate('page_id', 'name url');
+            .lean();
+
+        // Get unique page IDs
+        const pageIds = [...new Set(submissions.map(s => s.page_id).filter(Boolean))];
+
+        // Fetch page info for all pages
+        const pages = await Page.find({ _id: { $in: pageIds } })
+            .select('_id name url slug cloudfront_url published_url')
+            .lean();
+
+        // Create page lookup map
+        const pageMap = {};
+        pages.forEach(page => {
+            pageMap[page._id.toString()] = {
+                name: page.name || 'Untitled Page',
+                url: page.url || page.slug,
+                published_url: page.cloudfront_url || page.published_url
+            };
+        });
+
+        // Attach page info to submissions
+        const submissionsWithPageInfo = submissions.map(sub => ({
+            ...sub,
+            page_name: pageMap[sub.page_id]?.name || 'Unknown Page',
+            page_url: pageMap[sub.page_id]?.url || null,
+            page_published_url: pageMap[sub.page_id]?.published_url || null
+        }));
 
         const total = await FormSubmission.countDocuments(filter);
 
         res.json({
             success: true,
-            submissions,
+            submissions: submissionsWithPageInfo,
             pagination: {
                 total,
                 limit: parseInt(limit),
