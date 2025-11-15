@@ -24,6 +24,20 @@ const FormRenderer = ({
 
     const baseStyles = styles;
 
+    // Debug logging for form rendering issues
+    React.useEffect(() => {
+        if (!isCanvas) {
+            console.log('🎨 FormRenderer Debug:', {
+                hasFields: Array.isArray(componentData.fields),
+                fieldsCount: componentData.fields?.length || 0,
+                fields: componentData.fields,
+                componentData: componentData,
+                isCanvas,
+                parentId
+            });
+        }
+    }, [componentData, isCanvas, parentId]);
+
     // Helper to get clean text styles (remove conflicting properties)
     const getCleanTextStyles = (styles) => {
         const { display, flexDirection, justifyContent, alignItems, gap, ...textStyles } = styles || {};
@@ -328,8 +342,8 @@ const FormRenderer = ({
                 componentData.fields.map((field, index) => renderFormField(field, index))
             ) : (
                 <>
-                    {/* Empty form placeholder in canvas mode - Enhanced with step-by-step guide */}
-                    {isCanvas && children.length === 0 && (
+                    {/* Empty form placeholder in canvas mode ONLY */}
+                    {isCanvas && (
                         <div
                             style={{
                                 padding: '32px 24px',
@@ -414,12 +428,13 @@ const FormRenderer = ({
                             </div>
                         </div>
                     )}
-                    {/* Default input for non-empty children or non-canvas mode */}
-                    {(!isCanvas || children.length > 0) && !children.some((child) => child?.type === 'input') && (
+
+                    {/* Default input for preview/published pages when no fields configured */}
+                    {!isCanvas && !children.some((child) => child?.type === 'input') && (
                         <input
                             type={componentData.inputType || 'text'}
                             name="defaultInput"
-                            placeholder={componentData.placeholder || 'Nhập...'}
+                            placeholder={componentData.placeholder || 'Nhập email của bạn...'}
                             disabled={isCanvas || isSubmitting}
                             style={{
                                 width: '100%',
