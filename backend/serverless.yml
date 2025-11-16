@@ -113,5 +113,6 @@ custom:
     target: node18
     platform: node
     packager: npm
+    external: []
     packagerOptions:
       scripts: false
