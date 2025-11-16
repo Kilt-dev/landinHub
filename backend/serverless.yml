@@ -111,12 +111,26 @@ package:
     - 'src/**'
     - 'package.json'
     - 'node_modules/**'
+    # Exclude heavy packages
     - '!node_modules/puppeteer/**'
     - '!node_modules/sharp/**'
-    - '!node_modules/@aws-sdk/**/.aws-sdk/**'
+    - '!node_modules/@aws-sdk/**'
+    - '!node_modules/@smithy/**'
+    # Exclude unnecessary files
+    - '!node_modules/**/dist-es/**'
+    - '!node_modules/**/esm/**'
     - '!node_modules/**/test/**'
     - '!node_modules/**/tests/**'
+    - '!node_modules/**/*.test.js'
+    - '!node_modules/**/*.spec.js'
     - '!node_modules/**/*.md'
+    - '!node_modules/**/*.map'
+    - '!node_modules/**/*.ts'
+    - '!node_modules/**/LICENSE*'
+    - '!node_modules/**/CHANGELOG*'
+    - '!node_modules/**/.github/**'
     - '!.git/**'
     - '!.serverless/**'
     - '!.esbuild/**'
+  individually: false
+  excludeDevDependencies: true
