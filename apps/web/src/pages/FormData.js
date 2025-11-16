@@ -820,19 +820,72 @@ const FormData = () => {
                                                         <span>{sub.metadata?.device_type || 'N/A'}</span>
                                                     </div>
                                                 </div>
+                                                {sub.metadata?.screen_resolution && (
+                                                    <div className="detail-item">
+                                                        <span className="detail-label">Độ phân giải:</span>
+                                                        <span className="detail-value">{sub.metadata.screen_resolution}</span>
+                                                    </div>
+                                                )}
+                                                {sub.metadata?.language && (
+                                                    <div className="detail-item">
+                                                        <span className="detail-label">Ngôn ngữ:</span>
+                                                        <span className="detail-value">{sub.metadata.language}</span>
+                                                    </div>
+                                                )}
                                                 {sub.metadata?.user_agent && (
                                                     <div className="detail-item full-width">
                                                         <span className="detail-label">User Agent:</span>
                                                         <span className="detail-value code small">{sub.metadata.user_agent}</span>
                                                     </div>
                                                 )}
-                                                {sub.metadata?.utm_source && (
-                                                    <div className="detail-item">
-                                                        <span className="detail-label">UTM Source:</span>
-                                                        <span className="detail-value">{sub.metadata.utm_source}</span>
+                                                {sub.metadata?.referrer && (
+                                                    <div className="detail-item full-width">
+                                                        <span className="detail-label">Referrer:</span>
+                                                        <span className="detail-value code small">{sub.metadata.referrer}</span>
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* UTM Parameters */}
+                                            {(sub.metadata?.utm_source || sub.metadata?.utm_medium || sub.metadata?.utm_campaign) && (
+                                                <div className="detail-subsection" style={{ marginTop: '16px' }}>
+                                                    <h5 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#4b5563' }}>
+                                                        UTM Tracking
+                                                    </h5>
+                                                    <div className="detail-grid">
+                                                        {sub.metadata?.utm_source && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Source:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_source}</span>
+                                                            </div>
+                                                        )}
+                                                        {sub.metadata?.utm_medium && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Medium:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_medium}</span>
+                                                            </div>
+                                                        )}
+                                                        {sub.metadata?.utm_campaign && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Campaign:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_campaign}</span>
+                                                            </div>
+                                                        )}
+                                                        {sub.metadata?.utm_term && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Term:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_term}</span>
+                                                            </div>
+                                                        )}
+                                                        {sub.metadata?.utm_content && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Content:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_content}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </>
                                 );
