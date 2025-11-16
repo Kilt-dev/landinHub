@@ -126,14 +126,68 @@ router.get('/summary', async (req, res) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        const [todayChats, openChats, todayMessages, totalUsers, totalChats, resolvedToday] = await Promise.all([
+        const [
+            todayChats,
+            openChats,
+            todayMessages,
+            totalUsers,
+            totalChats,
+            resolvedToday,
+            totalMessages,
+            aiMessageStats
+        ] = await Promise.all([
             ChatRoom.countDocuments({ created_at: { $gte: today } }),
             ChatRoom.countDocuments({ status: { $in: ['open', 'assigned'] } }),
             ChatMessage.countDocuments({ created_at: { $gte: today } }),
             ChatRoom.distinct('user_id').then(users => users.length),
             ChatRoom.countDocuments(),
-            ChatRoom.countDocuments({ status: 'resolved', updated_at: { $gte: today } })
+            ChatRoom.countDocuments({ status: 'resolved', updated_at: { $gte: today } }),
+            // 📊 TOTAL MESSAGE COUNT
+            ChatMessage.countDocuments(),
+            // 🤖 AI MESSAGE STATISTICS
+            ChatMessage.aggregate([
+                {
+                    $facet: {
+                        aiMessages: [
+                            { $match: { 'ai_metadata.is_ai_generated': true } },
+                            { $count: 'count' }
+                        ],
+                        humanMessages: [
+                            { $match: { 'ai_metadata.is_ai_generated': { $ne: true } } },
+                            { $count: 'count' }
+                        ],
+                        messagesBySenderType: [
+                            {
+                                $group: {
+                                    _id: '$sender_type',
+                                    count: { $sum: 1 }
+                                }
+                            }
+                        ],
+                        aiMessagesToday: [
+                            {
+                                $match: {
+                                    'ai_metadata.is_ai_generated': true,
+                                    created_at: { $gte: today }
+                                }
+                            },
+                            { $count: 'count' }
+                        ]
+                    }
+                }
+            ])
         ]);
+
+        // Process AI stats
+        const aiStats = aiMessageStats[0];
+        const aiMessageCount = aiStats.aiMessages[0]?.count || 0;
+        const humanMessageCount = aiStats.humanMessages[0]?.count || 0;
+        const aiMessagesTodayCount = aiStats.aiMessagesToday[0]?.count || 0;
+
+        const messagesByType = {};
+        aiStats.messagesBySenderType.forEach(item => {
+            messagesByType[item._id] = item.count;
+        });
 
         // 🤖 AI Recommendations
         const recommendations = await getSmartRecommendations({
@@ -151,6 +205,18 @@ router.get('/summary', async (req, res) => {
                 openChats,
                 todayMessages,
                 totalUsers,
+                totalChats,
+                resolvedToday,
+                // 📊 MESSAGE COUNT STATISTICS
+                messageStats: {
+                    total: totalMessages,
+                    today: todayMessages,
+                    aiGenerated: aiMessageCount,
+                    humanWritten: humanMessageCount,
+                    aiToday: aiMessagesTodayCount,
+                    aiPercentage: totalMessages > 0 ? ((aiMessageCount / totalMessages) * 100).toFixed(1) : 0,
+                    byType: messagesByType
+                },
                 aiRecommendations: recommendations
             }
         });

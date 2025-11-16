@@ -40,9 +40,10 @@ const AdminDashboard = () => {
             setLoading(true);
 
             // Fetch multiple endpoints in parallel
-            const [systemReport, transactions] = await Promise.all([
+            const [systemReport, transactions, chatAnalytics] = await Promise.all([
                 api.get('/api/reports/admin/system'),
-                api.get('/api/payment/admin/transactions?limit=5')
+                api.get('/api/payment/admin/transactions?limit=5'),
+                api.get('/api/chat-analytics/summary') // 📊 Message count & AI analysis
             ]);
 
             if (systemReport.data.success) {
@@ -65,6 +66,10 @@ const AdminDashboard = () => {
                     sandbox: paymentMethods.find(p => p.method === 'SANDBOX')?.count || 0
                 };
 
+                // Extract chat analytics data
+                const chatData = chatAnalytics.data?.data || {};
+                const messageStats = chatData.messageStats || {};
+
                 setData({
                     overview: {
                         totalRevenue: report.overview?.totalRevenue || '0đ',
@@ -84,6 +89,20 @@ const AdminDashboard = () => {
                         revenueGrowth: '+12.5%', // Mock - can implement later
                         userGrowth: '+8.3%',
                         transactionGrowth: '+15.2%'
+                    },
+                    // 📊 MESSAGE STATS & AI ANALYSIS
+                    messageStats: {
+                        total: messageStats.total || 0,
+                        today: messageStats.today || 0,
+                        aiGenerated: messageStats.aiGenerated || 0,
+                        humanWritten: messageStats.humanWritten || 0,
+                        aiPercentage: messageStats.aiPercentage || 0,
+                        byType: messageStats.byType || {}
+                    },
+                    chatOverview: {
+                        totalChats: chatData.totalChats || 0,
+                        openChats: chatData.openChats || 0,
+                        resolvedToday: chatData.resolvedToday || 0
                     }
                 });
             }
@@ -165,6 +184,125 @@ const AdminDashboard = () => {
                     <div className="kpi-value">{data.overview.totalUsers}</div>
                     <div className="kpi-footer">
                         <span>Tổng số người dùng đã đăng ký</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* MESSAGE STATS & AI ANALYSIS */}
+            <div className="dashboard-grid-2" style={{ marginBottom: '30px' }}>
+                {/* MESSAGE STATISTICS */}
+                <div className="dashboard-card">
+                    <div className="card-header">
+                        <h2>Thống Kê Tin Nhắn</h2>
+                    </div>
+                    <div style={{ padding: '20px 0' }}>
+                        <div style={{ marginBottom: '24px' }}>
+                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Tổng số tin nhắn</div>
+                            <div style={{ fontSize: '36px', fontWeight: '700', color: '#667eea' }}>
+                                {data.messageStats?.total?.toLocaleString() || 0}
+                            </div>
+                        </div>
+                        <div style={{ marginBottom: '24px' }}>
+                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Tin nhắn hôm nay</div>
+                            <div style={{ fontSize: '28px', fontWeight: '600', color: '#3b82f6' }}>
+                                {data.messageStats?.today?.toLocaleString() || 0}
+                            </div>
+                        </div>
+                        <div className="status-bars" style={{ marginTop: '20px' }}>
+                            <div className="status-bar">
+                                <div className="status-bar-header">
+                                    <span>Tin nhắn từ người dùng</span>
+                                    <span className="status-count">{data.messageStats?.byType?.user || 0}</span>
+                                </div>
+                            </div>
+                            <div className="status-bar">
+                                <div className="status-bar-header">
+                                    <span>Tin nhắn từ admin</span>
+                                    <span className="status-count">{data.messageStats?.byType?.admin || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* AI ANALYSIS */}
+                <div className="dashboard-card">
+                    <div className="card-header">
+                        <h2>Phân Tích AI</h2>
+                    </div>
+                    <div style={{ padding: '20px 0' }}>
+                        <div style={{ marginBottom: '24px' }}>
+                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Tỷ lệ sử dụng AI</div>
+                            <div style={{ fontSize: '36px', fontWeight: '700', color: '#10b981' }}>
+                                {data.messageStats?.aiPercentage || 0}%
+                            </div>
+                        </div>
+
+                        {/* AI vs Human Progress Bar */}
+                        <div style={{ marginBottom: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#666' }}>
+                                <span>AI Generated</span>
+                                <span>Human Written</span>
+                            </div>
+                            <div style={{
+                                height: '32px',
+                                background: '#f3f4f6',
+                                borderRadius: '16px',
+                                overflow: 'hidden',
+                                display: 'flex'
+                            }}>
+                                <div
+                                    style={{
+                                        background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                                        width: `${data.messageStats?.aiPercentage || 0}%`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontSize: '12px',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    {data.messageStats?.aiGenerated > 0 && `${data.messageStats.aiGenerated}`}
+                                </div>
+                                <div
+                                    style={{
+                                        background: 'linear-gradient(90deg, #6b7280 0%, #4b5563 100%)',
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontSize: '12px',
+                                        fontWeight: '600'
+                                    }}
+                                >
+                                    {data.messageStats?.humanWritten > 0 && `${data.messageStats.humanWritten}`}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Chat Overview */}
+                        <div className="status-bars">
+                            <div className="status-bar">
+                                <div className="status-bar-header">
+                                    <span>Tổng số chat</span>
+                                    <span className="status-count">{data.chatOverview?.totalChats || 0}</span>
+                                </div>
+                            </div>
+                            <div className="status-bar">
+                                <div className="status-bar-header">
+                                    <span>Chat đang mở</span>
+                                    <span className="status-count">{data.chatOverview?.openChats || 0}</span>
+                                </div>
+                            </div>
+                            <div className="status-bar">
+                                <div className="status-bar-header">
+                                    <span>Đã giải quyết hôm nay</span>
+                                    <span className="status-count">{data.chatOverview?.resolvedToday || 0}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
