@@ -5,7 +5,7 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs18.x
-  region: us-east-1
+  region: ap-southeast-1
   stage: ${opt:stage, 'prod'}
   memorySize: 512
   timeout: 30
@@ -37,7 +37,7 @@ provider:
     FRONTEND_URL: https://landinghub.shop
     AWS_ACCESS_KEY_ID_CUSTOM: ${env:AWS_ACCESS_KEY_ID, ''}
     AWS_SECRET_ACCESS_KEY_CUSTOM: ${env:AWS_SECRET_ACCESS_KEY, ''}
-    AWS_REGION_CUSTOM: ${env:AWS_REGION, 'us-east-1'}
+    AWS_REGION_CUSTOM: ${env:AWS_REGION, 'ap-southeast-1'}
     AWS_S3_BUCKET: ${env:AWS_S3_BUCKET, 'landinghub-iconic'}
     AWS_CLOUDFRONT_DISTRIBUTION_ID: ${env:AWS_CLOUDFRONT_DISTRIBUTION_ID, 'E3E6ZTC75HGQKN'}
     AWS_CLOUDFRONT_DOMAIN: ${env:AWS_CLOUDFRONT_DOMAIN, 'd197hx8bwkos4.cloudfront.net'}
