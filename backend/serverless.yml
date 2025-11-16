@@ -32,7 +32,7 @@ provider:
       allowCredentials: true
   environment:
     NODE_ENV: production
-    MONGO_URI: ${env:MONGO_URI, 'mongodb://localhost:27017/landinghub'}
+    MONGO_URI: ${env:MONGO_URI, 'mongodb+srv://vi0978294041_db_user:tuongvi0707@landinghub-iconic.ral6urs.mongodb.net/?retryWrites=true&w=majority&appName=Landinghub-iconic'}
     JWT_SECRET: ${env:JWT_SECRET, 'your-secret-key-change-this'}
     FRONTEND_URL: https://landinghub.shop
     AWS_ACCESS_KEY_ID_CUSTOM: ${env:AWS_ACCESS_KEY_ID, ''}
