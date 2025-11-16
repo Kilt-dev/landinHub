@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk');
-const sharp = require('sharp');
+// const sharp = require('sharp'); // Not used, commented out
 const { v4: uuidv4 } = require('uuid');
 
 // Cấu hình AWS - đồng nhất với pages.js
