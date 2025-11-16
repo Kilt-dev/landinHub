@@ -91,8 +91,8 @@ provider:
             - route53:ListResourceRecordSets
           Resource: "arn:aws:route53:::hostedzone/${env:AWS_ROUTE53_HOSTED_ZONE_ID, 'Z05977871D0O3OEPXWL6S'}"
 
-plugins:
-  - serverless-esbuild
+# plugins:
+#   - serverless-esbuild
 
 functions:
   api:
@@ -105,21 +105,18 @@ functions:
           path: /
           method: '*'
 
-custom:
-  esbuild:
-    bundle: true
-    minify: true
-    sourcemap: false
-    target: node18
-    platform: node
-    packager: npm
-    external:
-      - aws-sdk
-      - undici
-      - '@aws-sdk/signature-v4-multi-region'
-    # Do NOT install these packages (too large or native binaries)
-    exclude:
-      - sharp
-      - puppeteer
-    packagerOptions:
-      scripts: false
+package:
+  patterns:
+    - 'lambda.js'
+    - 'src/**'
+    - 'package.json'
+    - 'node_modules/**'
+    - '!node_modules/puppeteer/**'
+    - '!node_modules/sharp/**'
+    - '!node_modules/@aws-sdk/**/.aws-sdk/**'
+    - '!node_modules/**/test/**'
+    - '!node_modules/**/tests/**'
+    - '!node_modules/**/*.md'
+    - '!.git/**'
+    - '!.serverless/**'
+    - '!.esbuild/**'
