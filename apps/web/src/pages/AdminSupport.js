@@ -103,6 +103,8 @@ const AdminSupport = () => {
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
+    const messagesContainerRef = useRef(null);  // NEW: Ref for scroll container
+    const [userScrolledUp, setUserScrolledUp] = useState(false);  // NEW: Track if user scrolled up
 
     const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -170,10 +172,12 @@ const AdminSupport = () => {
                 const latestMessage = newMessages[newMessages.length - 1];
                 lastMessageIdRef.current = latestMessage._id;
 
+                // Only scroll if user is at bottom
                 scrollToBottom();
 
-                // Reload room list to update unread counts
-                loadRooms();
+                // ✅ IMPROVED: Only reload room list occasionally, not on every message
+                // This prevents the room list from scrolling constantly
+                // Room list is already being polled every 5 seconds separately
             }
         } catch (error) {
             console.error('Polling error:', error);
@@ -195,7 +199,7 @@ const AdminSupport = () => {
                 }
             });
             setMessages(response.data.messages);
-            scrollToBottom();
+            scrollToBottom(true); // Force scroll when loading a room
         } catch (error) {
             console.error('Failed to load messages:', error);
         }
@@ -297,7 +301,7 @@ const AdminSupport = () => {
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
-        scrollToBottom();
+        scrollToBottom(true); // Force scroll when sending message
 
         // Send message via HTTP POST
         try {
@@ -379,13 +383,28 @@ const AdminSupport = () => {
         }
     };
 
-    const scrollToBottom = () => {
-        setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+    // ✅ IMPROVED: Only scroll to bottom if user is at bottom
+    const scrollToBottom = (force = false) => {
+        if (force || !userScrolledUp) {
+            setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+    };
+
+    // ✅ NEW: Detect if user scrolled up
+    const handleScroll = () => {
+        if (messagesContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+            const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+            // If user is within 100px from bottom, consider them at bottom
+            setUserScrolledUp(distanceFromBottom > 100);
+        }
     };
 
     useEffect(() => {
+        // Only auto-scroll if user hasn't scrolled up
         scrollToBottom();
     }, [messages]);
 
@@ -658,7 +677,7 @@ const AdminSupport = () => {
                                             </Box>
 
                                             {/* Messages */}
-                                            <MessagesContainer>
+                                            <MessagesContainer ref={messagesContainerRef} onScroll={handleScroll}>
                                                 {messages.map((msg, index) => (
                                                     <Box key={msg._id || index}>
                                                         {msg.message_type === 'system' ? (
