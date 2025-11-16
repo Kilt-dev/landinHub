@@ -114,7 +114,12 @@ custom:
     platform: node
     packager: npm
     external:
-      - sharp
-      - puppeteer
+      - aws-sdk
       - undici
       - '@aws-sdk/signature-v4-multi-region'
+    # Do NOT install these packages (too large or native binaries)
+    exclude:
+      - sharp
+      - puppeteer
+    packagerOptions:
+      scripts: false
