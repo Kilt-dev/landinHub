@@ -536,7 +536,11 @@ exports.getPages = async (req, res) => {
             return res.status(400).json({ error: 'Invalid userId format' });
         }
 
-        const pages = await Page.find({ user_id: userId }).sort({ updated_at: -1 });
+        // Exclude archived pages from regular list (archived pages kept for analytics/SEO)
+        const pages = await Page.find({
+            user_id: userId,
+            status: { $ne: 'ARCHIVED' }
+        }).sort({ updated_at: -1 });
         const result = pages.map(page => ({
             _id: page._id.toString(), // ✅ Thêm _id để SellPage có thể dùng
             id: page._id.toString(),
@@ -1197,24 +1201,49 @@ exports.deletePage = async (req, res) => {
             return res.status(404).json({ error: 'Không tìm thấy landing page' });
         }
 
-        if (page.file_path) {
-            const s3Key = getS3KeyFromFilePath(page.file_path);
-            console.log('Deleting from S3:', s3Key);
-            try {
-                await s3.deleteObject({
-                    Bucket: process.env.AWS_S3_BUCKET,
-                    Key: s3Key,
-                }).promise();
-                console.log('S3 delete successful:', s3Key);
-            } catch (err) {
-                console.error('S3 delete failed:', s3Key, err.message);
+        // IMPORTANT: Published pages with CloudFront domains should be ARCHIVED, not deleted
+        // This preserves SEO, analytics, and prevents broken links
+        const isPublished = page.status === 'ĐÃ XUẤT BẢN';
+        const hasCloudFront = page.cloudfrontDomain && page.cloudfrontDomain.length > 0;
+
+        if (isPublished || hasCloudFront) {
+            // Soft delete: Archive the page but keep all data
+            page.status = 'ARCHIVED';
+            page.updated_at = new Date();
+            await page.save();
+
+            console.log('Page archived (soft delete) successfully:', id);
+
+            res.json({
+                success: true,
+                archived: true,
+                message: 'Page đã được lưu trữ (archived). Dữ liệu được giữ lại cho mục đích thống kê và SEO.'
+            });
+        } else {
+            // Hard delete: Only for unpublished pages without CloudFront
+            if (page.file_path) {
+                const s3Key = getS3KeyFromFilePath(page.file_path);
+                console.log('Deleting from S3:', s3Key);
+                try {
+                    await s3.deleteObject({
+                        Bucket: process.env.AWS_S3_BUCKET,
+                        Key: s3Key,
+                    }).promise();
+                    console.log('S3 delete successful:', s3Key);
+                } catch (err) {
+                    console.error('S3 delete failed:', s3Key, err.message);
+                }
             }
+
+            await page.deleteOne();
+            console.log('Page deleted permanently (hard delete):', id);
+
+            res.json({
+                success: true,
+                deleted: true,
+                message: 'Page đã được xóa vĩnh viễn.'
+            });
         }
-
-        await page.deleteOne();
-        console.log('Page deleted successfully:', id);
-
-        res.json({ success: true });
     } catch (err) {
         console.error('Lỗi xóa page:', err.message);
         res.status(500).json({ error: 'Lỗi khi xóa landing page: ' + err.message });

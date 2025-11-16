@@ -32,6 +32,12 @@ const FormData = () => {
     const [itemsPerPage] = useState(20);
     const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
     const [expandedSubmission, setExpandedSubmission] = useState(null);
+    const [showEmailModal, setShowEmailModal] = useState(false);
+    const [emailForm, setEmailForm] = useState({
+        subject: '',
+        content: ''
+    });
+    const [sendingEmail, setSendingEmail] = useState(false);
 
     // Fetch submissions
     useEffect(() => {
@@ -179,6 +185,45 @@ const FormData = () => {
         } catch (error) {
             console.error('Error exporting submissions:', error);
             alert('Không thể export dữ liệu. Vui lòng thử lại.');
+        }
+    };
+
+    // Handle send marketing email
+    const handleSendEmail = async () => {
+        if (!emailForm.subject || !emailForm.content) {
+            alert('Vui lòng nhập tiêu đề và nội dung email');
+            return;
+        }
+
+        if (selectedSubmissions.length === 0) {
+            alert('Vui lòng chọn ít nhất một submission để gửi email');
+            return;
+        }
+
+        setSendingEmail(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.post(
+                `${process.env.REACT_APP_API_URL}/api/forms/leads/send-email`,
+                {
+                    submissionIds: selectedSubmissions,
+                    subject: emailForm.subject,
+                    content: emailForm.content
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            alert(response.data.message || 'Đã gửi email thành công!');
+            setShowEmailModal(false);
+            setEmailForm({ subject: '', content: '' });
+            setSelectedSubmissions([]);
+            fetchSubmissions();
+
+        } catch (error) {
+            console.error('Error sending email:', error);
+            alert(error.response?.data?.message || 'Không thể gửi email. Vui lòng thử lại.');
+        } finally {
+            setSendingEmail(false);
         }
     };
 
@@ -432,6 +477,17 @@ const FormData = () => {
                                     <line x1="10" y1="12" x2="14" y2="12"/>
                                 </svg>
                                 Lưu trữ ({selectedSubmissions.length})
+                            </button>
+                            <button
+                                className="btn-bulk-action btn-email"
+                                onClick={() => setShowEmailModal(true)}
+                                style={{ background: '#667eea', color: 'white' }}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                    <polyline points="22,6 12,13 2,6"/>
+                                </svg>
+                                Gửi Email ({selectedSubmissions.length})
                             </button>
                         </>
                     )}
@@ -820,23 +876,186 @@ const FormData = () => {
                                                         <span>{sub.metadata?.device_type || 'N/A'}</span>
                                                     </div>
                                                 </div>
+                                                {sub.metadata?.screen_resolution && (
+                                                    <div className="detail-item">
+                                                        <span className="detail-label">Độ phân giải:</span>
+                                                        <span className="detail-value">{sub.metadata.screen_resolution}</span>
+                                                    </div>
+                                                )}
+                                                {sub.metadata?.language && (
+                                                    <div className="detail-item">
+                                                        <span className="detail-label">Ngôn ngữ:</span>
+                                                        <span className="detail-value">{sub.metadata.language}</span>
+                                                    </div>
+                                                )}
                                                 {sub.metadata?.user_agent && (
                                                     <div className="detail-item full-width">
                                                         <span className="detail-label">User Agent:</span>
                                                         <span className="detail-value code small">{sub.metadata.user_agent}</span>
                                                     </div>
                                                 )}
-                                                {sub.metadata?.utm_source && (
-                                                    <div className="detail-item">
-                                                        <span className="detail-label">UTM Source:</span>
-                                                        <span className="detail-value">{sub.metadata.utm_source}</span>
+                                                {sub.metadata?.referrer && (
+                                                    <div className="detail-item full-width">
+                                                        <span className="detail-label">Referrer:</span>
+                                                        <span className="detail-value code small">{sub.metadata.referrer}</span>
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* UTM Parameters */}
+                                            {(sub.metadata?.utm_source || sub.metadata?.utm_medium || sub.metadata?.utm_campaign) && (
+                                                <div className="detail-subsection" style={{ marginTop: '16px' }}>
+                                                    <h5 style={{ fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#4b5563' }}>
+                                                        UTM Tracking
+                                                    </h5>
+                                                    <div className="detail-grid">
+                                                        {sub.metadata?.utm_source && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Source:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_source}</span>
+                                                            </div>
+                                                        )}
+                                                        {sub.metadata?.utm_medium && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Medium:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_medium}</span>
+                                                            </div>
+                                                        )}
+                                                        {sub.metadata?.utm_campaign && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Campaign:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_campaign}</span>
+                                                            </div>
+                                                        )}
+                                                        {sub.metadata?.utm_term && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Term:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_term}</span>
+                                                            </div>
+                                                        )}
+                                                        {sub.metadata?.utm_content && (
+                                                            <div className="detail-item">
+                                                                <span className="detail-label">Content:</span>
+                                                                <span className="detail-value">{sub.metadata.utm_content}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </>
                                 );
                             })()}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Email Marketing Modal */}
+            {showEmailModal && (
+                <div className="submission-detail-modal" onClick={() => setShowEmailModal(false)}>
+                    <div className="submission-detail-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+                        <div className="modal-header">
+                            <h3>Gửi Email Marketing</h3>
+                            <button className="btn-close" onClick={() => setShowEmailModal(false)}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="modal-body" style={{ padding: '24px' }}>
+                            <p style={{ marginBottom: '20px', color: '#6b7280' }}>
+                                Gửi email cho <strong>{selectedSubmissions.length}</strong> leads đã chọn
+                            </p>
+
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+                                    Tiêu đề email:
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="VD: Ưu đãi đặc biệt dành cho bạn!"
+                                    value={emailForm.subject}
+                                    onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#374151' }}>
+                                    Nội dung email (HTML):
+                                </label>
+                                <textarea
+                                    placeholder="VD: <p>Chúng tôi có một ưu đãi đặc biệt dành cho bạn!</p><p><a href='...'>Xem ngay</a></p>"
+                                    value={emailForm.content}
+                                    onChange={(e) => setEmailForm({ ...emailForm, content: e.target.value })}
+                                    rows="8"
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        fontSize: '14px',
+                                        fontFamily: 'monospace',
+                                        resize: 'vertical'
+                                    }}
+                                />
+                                <small style={{ color: '#6b7280', fontSize: '12px' }}>
+                                    Hỗ trợ HTML. Email sẽ tự động được format với template đẹp.
+                                </small>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                                <button
+                                    onClick={() => setShowEmailModal(false)}
+                                    style={{
+                                        padding: '10px 20px',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        background: 'white',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleSendEmail}
+                                    disabled={sendingEmail}
+                                    style={{
+                                        padding: '10px 24px',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        background: sendingEmail ? '#9ca3af' : '#667eea',
+                                        color: 'white',
+                                        cursor: sendingEmail ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px'
+                                    }}
+                                >
+                                    {sendingEmail ? (
+                                        <>
+                                            <div className="spinner" style={{ width: '16px', height: '16px' }}></div>
+                                            Đang gửi...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                <path d="M22 2L11 13"/>
+                                                <path d="M22 2L15 22L11 13L2 9L22 2z"/>
+                                            </svg>
+                                            Gửi Email
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

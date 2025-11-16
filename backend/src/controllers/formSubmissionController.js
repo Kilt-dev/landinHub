@@ -551,3 +551,122 @@ exports.getSubmissionStats = async (req, res) => {
         });
     }
 };
+
+/**
+ * Send marketing email to leads
+ * POST /api/forms/leads/send-email
+ */
+exports.sendMarketingEmail = async (req, res) => {
+    try {
+        const { submissionIds, subject, content, options } = req.body;
+
+        if (!submissionIds || !Array.isArray(submissionIds) || submissionIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'submissionIds array is required'
+            });
+        }
+
+        if (!subject || !content) {
+            return res.status(400).json({
+                success: false,
+                message: 'subject and content are required'
+            });
+        }
+
+        // Get submissions for the current user only
+        const submissions = await FormSubmission.find({
+            _id: { $in: submissionIds },
+            user_id: req.userId
+        }).lean();
+
+        if (submissions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'No submissions found for the given IDs'
+            });
+        }
+
+        // Extract leads with email addresses
+        const leads = submissions.map(sub => {
+            // Try to find email in form_data
+            let email = null;
+            let name = null;
+
+            if (sub.form_data) {
+                // Common email field names
+                const emailFields = ['email', 'Email', 'EMAIL', 'mail', 'e-mail'];
+                for (const field of emailFields) {
+                    if (sub.form_data[field]) {
+                        email = sub.form_data[field];
+                        break;
+                    }
+                }
+
+                // Common name field names
+                const nameFields = ['name', 'Name', 'fullname', 'full_name', 'fullName'];
+                for (const field of nameFields) {
+                    if (sub.form_data[field]) {
+                        name = sub.form_data[field];
+                        break;
+                    }
+                }
+            }
+
+            return {
+                submissionId: sub._id,
+                email,
+                name
+            };
+        }).filter(lead => lead.email && lead.email.includes('@'));
+
+        if (leads.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No valid email addresses found in selected submissions'
+            });
+        }
+
+        // Send emails using email service
+        const { sendBulkLeadEmails } = require('../services/email');
+        const results = await sendBulkLeadEmails(leads, subject, content, options);
+
+        // Update integration status for sent emails
+        const sentSubmissionIds = leads
+            .filter(lead => results.success.includes(lead.email))
+            .map(lead => lead.submissionId);
+
+        if (sentSubmissionIds.length > 0) {
+            await FormSubmission.updateMany(
+                { _id: { $in: sentSubmissionIds } },
+                {
+                    $set: {
+                        'integrations.email.sent': true,
+                        'integrations.email.sent_at': new Date(),
+                        'integrations.email.recipient': 'marketing',
+                        updated_at: new Date()
+                    }
+                }
+            );
+        }
+
+        res.json({
+            success: true,
+            message: `Đã gửi email cho ${results.success.length}/${leads.length} leads`,
+            results: {
+                total: leads.length,
+                sent: results.success.length,
+                failed: results.failed.length,
+                details: results
+            }
+        });
+
+    } catch (error) {
+        console.error('Send marketing email error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error sending marketing emails',
+            error: error.message
+        });
+    }
+};

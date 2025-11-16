@@ -9,6 +9,11 @@ const userSchema = new mongoose.Schema({
     googleId: { type: String },
     subscription: { type: String, enum: ['free', 'premium'], default: 'free' },
     createdAt: { type: Date, default: Date.now },
+
+    // 🔐 LOGIN TRACKING
+    last_login: { type: Date, default: null },
+    login_count: { type: Number, default: 0 },
+    last_login_ip: { type: String, default: null },
 });
 
 // Middleware để hash password chỉ khi password tồn tại và được sửa đổi
@@ -26,6 +31,16 @@ userSchema.pre('save', async function (next) {
 userSchema.methods.comparePassword = async function (candidatePassword) {
     if (!this.password) return false; // Trả về false nếu không có password (Google login)
     return bcrypt.compare(candidatePassword, this.password);
+};
+
+// 🔐 LOGIN TRACKING METHOD
+userSchema.methods.trackLogin = async function (ipAddress = null) {
+    this.last_login = new Date();
+    this.login_count = (this.login_count || 0) + 1;
+    if (ipAddress) {
+        this.last_login_ip = ipAddress;
+    }
+    return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);

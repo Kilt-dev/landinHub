@@ -38,6 +38,10 @@ exports.login = async (req, res) => {
         const isMatch = await user.comparePassword(password);
         if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
 
+        // 🔐 Track login
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        await user.trackLogin(ipAddress);
+
         const token = jwt.sign(
             { userId: user._id, role: user.role, subscription: user.subscription },
             process.env.JWT_SECRET,
@@ -70,6 +74,10 @@ exports.googleCallback = async (req, res) => {
             user.name = name;
             await user.save();
         }
+
+        // 🔐 Track login for Google authentication
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        await user.trackLogin(ipAddress);
 
         const jwtToken = jwt.sign(
             { userId: user._id, role: user.role, subscription: user.subscription },
