@@ -1,0 +1,71 @@
+name: Deploy Backend Only
+
+on:
+  workflow_dispatch: # Chỉ chạy manual
+  push:
+    branches:
+      - backend/*
+    paths:
+      - 'backend/**'
+
+env:
+  AWS_REGION: ap-southeast-1
+  NODE_VERSION: '18'
+
+jobs:
+  deploy-backend:
+    name: 🚀 Deploy Backend to Lambda
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 📦 Install Dependencies
+        working-directory: backend
+        run: npm ci --production
+
+      - name: ⚙️ Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 📝 Create .env file
+        working-directory: backend
+        run: |
+          cat > .env << EOF
+          NODE_ENV=production
+          MONGO_URI=${{ secrets.MONGO_URI }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          FRONTEND_URL=https://landinghub.shop
+          AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
+          AWS_CLOUDFRONT_DISTRIBUTION_ID=${{ secrets.AWS_CLOUDFRONT_DISTRIBUTION_ID }}
+          DEEPSEEK_API_KEY=${{ secrets.DEEPSEEK_API_KEY }}
+          GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          EMAIL_USER=${{ secrets.EMAIL_USER }}
+          EMAIL_PASS=${{ secrets.EMAIL_PASS }}
+          EOF
+
+      - name: 🚀 Deploy to Lambda
+        working-directory: backend
+        run: npx serverless deploy --stage prod --verbose
+
+      - name: 📊 Get API Info
+        working-directory: backend
+        run: |
+          echo "### 🎉 Backend Deployed!" >> $GITHUB_STEP_SUMMARY
+          npx serverless info --stage prod >> $GITHUB_STEP_SUMMARY
+
+      - name: ✅ Success
+        run: echo "🎉 Backend deployed to https://api.landinghub.shop"

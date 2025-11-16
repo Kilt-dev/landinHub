@@ -4,8 +4,12 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
-
+    "dev": "nodemon src/server.js",
+    "deploy": "serverless deploy --stage prod",
+    "deploy:dev": "serverless deploy --stage dev",
+    "remove": "serverless remove --stage prod",
+    "logs": "serverless logs -f api --stage prod --tail",
+    "offline": "serverless offline"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -14,6 +18,7 @@
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cheerio": "^1.1.2",
+    "chrome-aws-lambda": "^10.1.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
@@ -31,13 +36,18 @@
     "nodemailer": "^7.0.9",
     "openai": "^5.20.3",
     "puppeteer": "^24.21.0",
+    "puppeteer-core": "^10.1.0",
     "qs": "^6.14.0",
+    "serverless-http": "^4.0.0",
     "sharp": "^0.34.4",
     "socket.io": "^4.8.1",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
     "eslint": "^9.38.0",
-    "nodemon": "^3.0.0"
+    "nodemon": "^3.0.0",
+    "serverless": "^3.40.0",
+    "serverless-dotenv-plugin": "^6.0.0",
+    "serverless-offline": "^13.0.0"
   }
 }

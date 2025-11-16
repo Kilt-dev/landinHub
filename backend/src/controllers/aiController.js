@@ -74,10 +74,13 @@ if (process.env.GROQ_API_KEY) {
 }
 
 // Initialize OpenAI client for DeepSeek (Backup)
-const openai = new OpenAI({
-    baseURL: 'https://api.deepseek.com',
-    apiKey: process.env.DEEPSEEK_API_KEY
-});
+let openai = null;
+if (process.env.DEEPSEEK_API_KEY) {
+    openai = new OpenAI({
+        baseURL: 'https://api.deepseek.com',
+        apiKey: process.env.DEEPSEEK_API_KEY
+    });
+}
 
 // Initialize Google Gemini client (Backup)
 let gemini = null;

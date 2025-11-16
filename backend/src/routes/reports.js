@@ -5,8 +5,8 @@ const {
     getAdminSystemReport,
     getPagePerformanceReport
 } = require('../controllers/reportsController');
-const { authenticateToken } = require('../middleware/authMiddleware');
-const { requireAdmin } = require('../middleware/adminMiddleware');
+const authMiddleware = require('../middleware/authMiddleware');
+const requireAdmin = require('../middleware/adminMiddleware');
 
 /**
  * ========== USER REPORTS ==========
@@ -14,11 +14,11 @@ const { requireAdmin } = require('../middleware/adminMiddleware');
 
 // Báo cáo tài chính cá nhân
 // GET /api/reports/financial?period=month&startDate=2024-01-01&endDate=2024-12-31
-router.get('/financial', authenticateToken, getUserFinancialReport);
+router.get('/financial', authMiddleware, getUserFinancialReport);
 
 // Báo cáo hiệu suất pages
 // GET /api/reports/pages
-router.get('/pages', authenticateToken, getPagePerformanceReport);
+router.get('/pages', authMiddleware, getPagePerformanceReport);
 
 /**
  * ========== ADMIN REPORTS ==========
@@ -26,6 +26,6 @@ router.get('/pages', authenticateToken, getPagePerformanceReport);
 
 // Báo cáo tổng quan hệ thống (chỉ admin)
 // GET /api/reports/admin/system?startDate=2024-01-01&endDate=2024-12-31
-router.get('/admin/system', authenticateToken, requireAdmin, getAdminSystemReport);
+router.get('/admin/system', authMiddleware, requireAdmin, getAdminSystemReport);
 
 module.exports = router;

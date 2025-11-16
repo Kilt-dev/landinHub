@@ -6,16 +6,16 @@ import React from 'react';
  * Moved from helpers.js to fix hooks violation
  */
 const FormRenderer = ({
-                          componentData = {},
-                          styles = {},
-                          children = [],
-                          isCanvas = false,
-                          parentId,
-                          renderComponentContent,
-                          onSelectChild,
-                          isTemplateMode,
-                          viewMode
-                      }) => {
+    componentData = {},
+    styles = {},
+    children = [],
+    isCanvas = false,
+    parentId,
+    renderComponentContent,
+    onSelectChild,
+    isTemplateMode,
+    viewMode
+}) => {
     // Form submission state management - SAFE TO USE HOOKS HERE
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [submitStatus, setSubmitStatus] = React.useState(null); // 'success' | 'error' | null
@@ -262,7 +262,7 @@ const FormRenderer = ({
         try {
             // Get API URL from config (injected by backend) or fallback
             const systemApiUrl = (window.LPB_CONFIG && window.LPB_CONFIG.apiUrl) ||
-                `http://localhost:5000/api/forms/submit`;
+                                 `http://localhost:5000/api/forms/submit`;
 
             const response = await fetch(systemApiUrl, {
                 method: 'POST',

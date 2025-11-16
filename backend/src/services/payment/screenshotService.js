@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+// const puppeteer = require('puppeteer'); // Lazy load when needed
 const s3CopyService = require('./s3CopyService');
 
 class ScreenshotService {
@@ -11,6 +11,9 @@ class ScreenshotService {
         try {
             // Convert page_data to HTML
             const html = this.pageDataToHTML(pageData);
+
+            // Lazy load puppeteer only when needed
+            const puppeteer = require('puppeteer');
 
             // Launch puppeteer
             browser = await puppeteer.launch({
