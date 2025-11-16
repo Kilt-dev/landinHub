@@ -22,7 +22,7 @@ const UserDashboard = () => {
             setError(null);
             console.log('📡 Fetching dashboard data...');
 
-            const response = await api.get('api/dashboard/data');
+            const response = await api.get('/api/dashboard/data');
             console.log('✅ Dashboard API Response:', response.data);
             console.log('📊 Pages Data:', response.data.data.pages);
             console.log('📋 Pages List Length:', response.data.data.pagesList?.length);

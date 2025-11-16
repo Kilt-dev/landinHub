@@ -126,7 +126,18 @@ const FormSubmissionSchema = new mongoose.Schema({
     }
 }, {
     collection: 'form_submissions',
-    timestamps: false
+    timestamps: false,
+    // Ensure Map fields are properly serialized to JSON
+    toJSON: {
+        virtuals: false,
+        transform: function(doc, ret) {
+            // Convert form_data Map to plain object for JSON response
+            if (ret.form_data && ret.form_data instanceof Map) {
+                ret.form_data = Object.fromEntries(ret.form_data);
+            }
+            return ret;
+        }
+    }
 });
 
 // Compound indexes for efficient queries

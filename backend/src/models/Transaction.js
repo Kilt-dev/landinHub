@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 const TransactionSchema = new mongoose.Schema({
-    is_deleted: { type: Boolean, default: false, index: true },    _id: {
+    // DEPRECATED: is_deleted field is kept for backward compatibility but should NEVER be set to true
+    // Transactions are permanent records and must not be deleted (hard or soft delete)
+    is_deleted: { type: Boolean, default: false, index: true },
+    _id: {
         type: String,
         default: uuidv4,
         match: [/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, 'Invalid UUID']
@@ -143,13 +146,10 @@ const TransactionSchema = new mongoose.Schema({
     updated_at: {
         type: Date,
         default: Date.now
-    },
-    expires_at: {
-        type: Date,
-        default: function() {
-            return new Date(Date.now() + 30 * 60 * 1000);
-        }
     }
+    // IMPORTANT: Transactions are permanent records and should NEVER expire or be deleted
+    // All transaction statuses (PENDING, COMPLETED, FAILED, REFUNDED, etc.) must be preserved
+    // for legal compliance, accounting, and audit purposes
 }, {
     collection: 'transactions',
     timestamps: false
@@ -302,7 +302,44 @@ TransactionSchema.methods.requestRefund = async function(reason) {
         reason: reason,
         requested_at: new Date()
     };
-    return this.save();
+    await this.save();
+
+    // 🔔 Send email notification to admin
+    try {
+        const { sendRefundRequestNotification } = require('../services/email');
+        await sendRefundRequestNotification(this);
+    } catch (emailError) {
+        console.error('Failed to send refund request email:', emailError.message);
+        // Don't block the refund request if email fails
+    }
+
+    // 🔔 Create in-app notification for admin
+    try {
+        const Notification = require('./Notification');
+        const User = require('./User');
+
+        // Find admin users
+        const admins = await User.find({ role: 'admin' });
+
+        // Create notification for each admin
+        for (const admin of admins) {
+            await Notification.create({
+                recipientId: admin._id,
+                type: 'refund_requested',
+                title: 'Yêu cầu hoàn tiền mới',
+                message: `Có yêu cầu hoàn tiền cho giao dịch ${this._id}. Số tiền: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(this.amount)}`,
+                metadata: {
+                    transactionId: this._id,
+                    buyerId: this.buyer_id,
+                    reason: reason
+                }
+            });
+        }
+    } catch (notifError) {
+        console.error('Failed to create refund notification:', notifError.message);
+    }
+
+    return this;
 };
 
 TransactionSchema.methods.processRefund = async function(refundTransactionId) {
@@ -321,10 +358,11 @@ TransactionSchema.methods.setCreatedPage = async function(pageId) {
 };
 
 // Static methods
+// Note: All PENDING transactions are kept permanently for audit trail
+// Admin should manually review and handle old pending transactions
 TransactionSchema.statics.findPendingTransactions = function() {
     return this.find({
-        status: 'PENDING',
-        expires_at: { $gt: new Date() }
+        status: 'PENDING'
     }).sort({ created_at: -1 });
 };
 

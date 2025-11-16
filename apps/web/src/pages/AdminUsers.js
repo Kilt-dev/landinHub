@@ -168,6 +168,8 @@ const AdminUser = () => {
                                     <th>Role</th>
                                     <th>Gói</th>
                                     <th>Ngày tạo</th>
+                                    <th>Đăng nhập cuối</th>
+                                    <th>Số lần đăng nhập</th>
                                     <th>Hành động</th>
                                 </tr>
                                 </thead>
@@ -176,9 +178,39 @@ const AdminUser = () => {
                                     <tr key={u._id}>
                                         <td>{u.name}</td>
                                         <td>{u.email}</td>
-                                        <td>{u.role}</td>
-                                        <td>{u.subscription}</td>
+                                        <td>
+                                            <span className={`role-badge ${u.role}`}>
+                                                {u.role}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={`sub-badge ${u.subscription}`}>
+                                                {u.subscription}
+                                            </span>
+                                        </td>
                                         <td>{new Date(u.createdAt).toLocaleDateString('vi-VN')}</td>
+                                        <td>
+                                            {u.last_login ? (
+                                                <div style={{ fontSize: '13px' }}>
+                                                    <div>{new Date(u.last_login).toLocaleDateString('vi-VN')}</div>
+                                                    <div style={{ color: '#666', fontSize: '11px' }}>
+                                                        {new Date(u.last_login).toLocaleTimeString('vi-VN')}
+                                                    </div>
+                                                    {u.last_login_ip && (
+                                                        <div style={{ color: '#999', fontSize: '10px' }}>
+                                                            IP: {u.last_login_ip}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span style={{ color: '#999' }}>Chưa đăng nhập</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <span className="login-count-badge">
+                                                {u.login_count || 0}
+                                            </span>
+                                        </td>
                                         <td className="action-cell">
                                             <button className="btn-edit" onClick={() => handleEdit(u)}>
                                                 Sửa

@@ -4,7 +4,20 @@ const Notification = require('../models/Notification');
 exports.getMyNotifications = async (req, res) => {
     try {
         const userId = req.user.id;
-        const list = await Notification.find({ recipientId: userId })
+        const { after } = req.query;
+
+        // Build query
+        const query = { recipientId: userId };
+
+        // If 'after' parameter exists, only get notifications newer than that ID
+        if (after) {
+            const afterNotif = await Notification.findById(after);
+            if (afterNotif) {
+                query.createdAt = { $gt: afterNotif.createdAt };
+            }
+        }
+
+        const list = await Notification.find(query)
             .sort({ createdAt: -1 })
             .limit(50);
 
