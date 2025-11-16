@@ -92,8 +92,7 @@ provider:
           Resource: "arn:aws:route53:::hostedzone/${env:AWS_ROUTE53_HOSTED_ZONE_ID, 'Z05977871D0O3OEPXWL6S'}"
 
 plugins:
-  - serverless-offline
-  - serverless-dotenv-plugin
+  - serverless-esbuild
 
 functions:
   api:
@@ -107,19 +106,14 @@ functions:
           method: '*'
 
 custom:
-  serverless-offline:
-    httpPort: 5000
-    lambdaPort: 3002
-
-package:
-  patterns:
-    - '!.env'
-    - '!.git/**'
-    - '!.gitignore'
-    - '!README.md'
-    - '!package-lock.json'
-    - '!node_modules/aws-sdk/**'
-    - 'src/**'
-    - 'lambda.js'
-    - 'package.json'
-    - 'node_modules/**'
+  esbuild:
+    bundle: true
+    minify: true
+    sourcemap: false
+    exclude:
+      - aws-sdk
+    target: node18
+    platform: node
+    packager: npm
+    packagerOptions:
+      scripts: false
