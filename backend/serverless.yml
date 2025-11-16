@@ -7,8 +7,8 @@ provider:
   runtime: nodejs18.x
   region: ap-southeast-1
   stage: ${opt:stage, 'prod'}
-  memorySize: 512
-  timeout: 30
+  memorySize: 1024
+  timeout: 60
   httpApi:
     cors:
       allowedOrigins:
