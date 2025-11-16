@@ -198,6 +198,16 @@ const SupportChatbox = () => {
     useEffect(() => {
         if (!user) return;
 
+        // ⚠️ Socket.IO không hoạt động trên Lambda production
+        // Chỉ bật socket khi local development
+        const isLocal = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+
+        if (!isLocal) {
+            console.log('ℹ️ Socket.IO disabled on production (Lambda không hỗ trợ WebSocket)');
+            console.log('💡 Sử dụng polling/refresh thay thế cho real-time updates');
+            return;
+        }
+
         const token = localStorage.getItem('token');
         const newSocket = io(API_URL, {
             auth: { token }

@@ -120,6 +120,14 @@ const AdminSupport = () => {
     useEffect(() => {
         if (!user || user.role !== 'admin') return;
 
+        // ⚠️ Socket.IO không hoạt động trên Lambda production
+        const isLocal = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+
+        if (!isLocal) {
+            console.log('ℹ️ Admin Socket.IO disabled on production');
+            return;
+        }
+
         const token = localStorage.getItem('token');
         const newSocket = io(API_URL, {
             auth: { token }
