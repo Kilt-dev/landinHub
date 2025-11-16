@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-    DollarSign, TrendingUp, ShoppingBag, Award, Eye, Calendar,
     RefreshCw, AlertCircle
 } from 'lucide-react';
 import api from '@landinghub/api';
@@ -72,101 +71,124 @@ const UserDashboard = () => {
         <div className="user-dashboard">
             {/* HEADER */}
             <div className="dashboard-header">
-                <div className="header-content">
-                    <h1>👋 Chào mừng quay lại!</h1>
-                    <p>
-                        Bạn có <strong>{data.pages.total} landing pages</strong>
-                        ({data.pages.live} LIVE • {data.pages.draft} Draft)
-                        với <strong>{data.pages.totalViews} lượt xem</strong>
+                <div>
+                    <h1 className="dashboard-title">Tổng Quan</h1>
+                    <p className="dashboard-subtitle">
+                        Thống kê landing pages và giao dịch của bạn
                     </p>
                 </div>
                 <button onClick={fetchData} className="btn-refresh">
-                    <RefreshCw size={18} /> Làm mới
+                    Làm mới
                 </button>
             </div>
 
-            {/* STATS CARDS */}
-            <div className="stats-grid">
-                <div className="stat-card pages">
-                    <div className="card-icon"><Eye size={32} /></div>
-                    <div className="card-content">
-                        <h3>Landing Pages</h3>
-                        <div className="value">{data.pages.total}</div>
-                        <div className="meta">
-                            <span className="live">{data.pages.live} LIVE</span>
-                            <span className="separator">•</span>
-                            <span className="draft">{data.pages.draft} Draft</span>
-                        </div>
-                        <div className="footer">{data.pages.totalViews} lượt xem</div>
-                    </div>
+            {/* WELCOME BANNER */}
+            <div className="welcome-banner">
+                <div className="banner-content">
+                    <h2>Chào mừng quay lại!</h2>
+                    <p>
+                        Bạn có <strong>{data.pages.total} landing pages</strong> với{' '}
+                        <strong>{data.pages.totalViews} lượt xem</strong>
+                    </p>
                 </div>
-
-                <div className="stat-card purchases">
-                    <div className="card-icon"><ShoppingBag size={32} /></div>
-                    <div className="card-content">
-                        <h3>Đã Mua</h3>
-                        <div className="value">{data.purchases.totalSpent}</div>
-                        <div className="meta"><span>{data.purchases.count} giao dịch</span></div>
-                        <div className="footer">TB: {data.purchases.avgPerPurchase}/GD</div>
+                <div className="banner-stats">
+                    <div className="banner-stat">
+                        <div className="banner-stat-value">{data.pages.live}</div>
+                        <div className="banner-stat-label">LIVE</div>
                     </div>
-                </div>
-
-                <div className="stat-card sales">
-                    <div className="card-icon"><DollarSign size={32} /></div>
-                    <div className="card-content">
-                        <h3>Đã Bán</h3>
-                        <div className="value">{data.sales.totalEarned}</div>
-                        <div className="meta"><span>{data.sales.count} giao dịch</span></div>
-                        <div className="footer">TB: {data.sales.avgPerSale}/GD</div>
-                    </div>
-                </div>
-
-                <div className={`stat-card balance ${data.balance.status}`}>
-                    <div className="card-icon">
-                        {data.balance.status === 'positive' ? <TrendingUp size={32} /> : <Award size={32} />}
-                    </div>
-                    <div className="card-content">
-                        <h3>Số Dư Ròng</h3>
-                        <div className="value">{data.balance.amount}</div>
-                        <div className="meta"><span>Bán - Mua</span></div>
-                        <div className="footer">
-                            {data.balance.status === 'positive' ? '✅ Lợi nhuận dương' : '💰 Đang đầu tư'}
-                        </div>
+                    <div className="banner-stat">
+                        <div className="banner-stat-value">{data.pages.draft}</div>
+                        <div className="banner-stat-label">Draft</div>
                     </div>
                 </div>
             </div>
 
-            {/* PAGES LIST */}
-            {data.pagesList && data.pagesList.length > 0 && (
-                <div className="pages-section">
-                    <div className="section-header">
-                        <h2>📋 Landing Pages Gần Đây</h2>
-                        <span className="page-count">
-                            Hiển thị {Math.min(6, data.pagesList.length)} trong tổng số {data.pages.total} pages
-                        </span>
+            {/* STATS CARDS - MODERN DESIGN */}
+            <div className="stats-grid">
+                {/* Pages Views */}
+                <div className="stat-card modern views">
+                    <div className="stat-header">
+                        <span className="stat-label">Lượt Xem</span>
                     </div>
-                    <div className="pages-grid">
-                        {data.pagesList.slice(0, 6).map(page => (
-                            <div key={page.id} className="page-card">
-                                <div className="page-image">
-                                    <img src={page.screenshot || '/images/placeholder.jpg'} alt={page.title} />
-                                    <div className={`page-status ${page.status === 'ĐÃ XUẤT BẢN' ? 'live' : 'draft'}`}>
-                                        {page.status === 'ĐÃ XUẤT BẢN' ? 'LIVE' : 'DRAFT'}
-                                    </div>
-                                </div>
-                                <div className="page-content">
-                                    <h3>{page.title}</h3>
-                                    <div className="page-stats">
-                                        <span><Eye size={14} /> {page.views}</span>
-                                        <span><DollarSign size={14} /> {page.revenue}</span>
-                                        <span><Calendar size={14} /> {page.created}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="stat-value">{data.pages.totalViews}</div>
+                    <div className="stat-footer">
+                        <span className="stat-meta">{data.pages.total} trang</span>
                     </div>
                 </div>
-            )}
+
+                {/* Revenue */}
+                <div className="stat-card modern revenue">
+                    <div className="stat-header">
+                        <span className="stat-label">Doanh Thu</span>
+                    </div>
+                    <div className="stat-value">{data.pages.totalRevenue}</div>
+                    <div className="stat-footer">
+                        <span className="stat-meta">Từ landing pages</span>
+                    </div>
+                </div>
+
+                {/* Purchases */}
+                <div className="stat-card modern purchases">
+                    <div className="stat-header">
+                        <span className="stat-label">Đã Mua</span>
+                    </div>
+                    <div className="stat-value">{data.purchases.totalSpent}</div>
+                    <div className="stat-footer">
+                        <span className="stat-meta">{data.purchases.count} giao dịch</span>
+                        <span className="stat-secondary">TB: {data.purchases.avgPerPurchase}</span>
+                    </div>
+                </div>
+
+                {/* Sales */}
+                <div className="stat-card modern sales">
+                    <div className="stat-header">
+                        <span className="stat-label">Đã Bán</span>
+                    </div>
+                    <div className="stat-value">{data.sales.totalEarned}</div>
+                    <div className="stat-footer">
+                        <span className="stat-meta">{data.sales.count} giao dịch</span>
+                        <span className="stat-secondary">TB: {data.sales.avgPerSale}</span>
+                    </div>
+                </div>
+
+                {/* Balance */}
+                <div className={`stat-card modern balance ${data.balance.status}`}>
+                    <div className="stat-header">
+                        <span className="stat-label">Số Dư Ròng</span>
+                        <span className={`balance-badge ${data.balance.status}`}>
+                            {data.balance.status === 'positive' ? 'Lợi nhuận' : 'Đầu tư'}
+                        </span>
+                    </div>
+                    <div className="stat-value">{data.balance.amount}</div>
+                    <div className="stat-footer">
+                        <span className="stat-meta">Bán - Mua</span>
+                    </div>
+                </div>
+
+                {/* Activity Summary */}
+                <div className="stat-card modern activity">
+                    <div className="stat-header">
+                        <span className="stat-label">Hoạt Động</span>
+                    </div>
+                    <div className="stat-value">{data.purchases.count + data.sales.count}</div>
+                    <div className="stat-footer">
+                        <span className="stat-meta">Tổng giao dịch</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* QUICK ACTIONS */}
+            <div className="quick-actions">
+                <a href="/pages" className="action-btn primary">
+                    Quản lý Pages
+                </a>
+                <a href="/create-landing" className="action-btn secondary">
+                    Tạo Page Mới
+                </a>
+                <a href="/marketplace" className="action-btn secondary">
+                    Marketplace
+                </a>
+            </div>
         </div>
     );
 };

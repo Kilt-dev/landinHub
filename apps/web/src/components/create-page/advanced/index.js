@@ -1,5 +1,6 @@
 export { default as CountdownRenderer } from './CountdownRenderer';
 export { default as CarouselRenderer } from './CarouselRenderer';
+export { default as FormRenderer } from './FormRenderer';
 
 // Placeholder renderers for other components
 import React from 'react';

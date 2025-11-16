@@ -9,9 +9,13 @@ const s3 = new AWS.S3();
 
 class ExportService {
     constructor() {
-        this.tempDir = path.join(__dirname, '../../temp');
-        // Ensure temp directory exists
-        if (!fs.existsSync(this.tempDir)) {
+        // Use /tmp on Lambda (writable), fallback to local ./temp for development
+        this.tempDir = process.env.AWS_LAMBDA_FUNCTION_NAME
+            ? '/tmp'
+            : path.join(__dirname, '../../temp');
+
+        // Ensure temp directory exists (only for local dev)
+        if (!process.env.AWS_LAMBDA_FUNCTION_NAME && !fs.existsSync(this.tempDir)) {
             fs.mkdirSync(this.tempDir, { recursive: true });
         }
     }

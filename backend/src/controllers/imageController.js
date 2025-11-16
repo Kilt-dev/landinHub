@@ -2,7 +2,7 @@
 const AWS = require('aws-sdk');
 const multer = require('multer');
 const multerS3 = require('multer-s3');
-const sharp = require('sharp');
+// const sharp = require('sharp'); // Lazy load when needed
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Page = require('../models/Page');
@@ -81,6 +81,9 @@ const processAndUploadImage = async (req, res, next) => {
                 error: 'Không tìm thấy thông tin người dùng'
             });
         }
+
+        // Lazy load sharp only when needed
+        const sharp = require('sharp');
 
         // Xử lý ảnh với sharp
         const processedImage = await sharp(req.file.buffer)
@@ -166,6 +169,9 @@ const processAndUploadMultipleImages = async (req, res, next) => {
                 error: 'Không tìm thấy thông tin người dùng'
             });
         }
+
+        // Lazy load sharp only when needed
+        const sharp = require('sharp');
 
         const processedFiles = [];
         for (const file of req.files) {

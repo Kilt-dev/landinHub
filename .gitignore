@@ -43,3 +43,12 @@ pnpm-lock.yaml
 # Build Artifacts
 *.zip
 *.tar.gz
+
+# GitHub Secrets (generated file)
+GITHUB_SECRETS_LIST.md
+route53-*.json
+cloudfront-config.json
+
+# Serverless Framework
+.serverless/
+backend/.serverless/

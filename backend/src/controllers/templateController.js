@@ -3,7 +3,7 @@ const Page = require('../models/Page');
 const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
 const mongoose = require('mongoose');
-const puppeteer = require('puppeteer');
+// const puppeteer = require('puppeteer'); // Lazy load when needed
 const cheerio = require('cheerio'); // Thêm cheerio để parse HTML
 // Cấu hình AWS
 AWS.config.update({ region: process.env.AWS_REGION || 'ap-southeast-1' });
@@ -21,18 +21,32 @@ const getBrowser = async () => {
     if (!browserPool.browser) {
         console.log('Launching Puppeteer browser for templates');
         try {
-            browserPool.browser = await puppeteer.launch({
-                headless: 'new',
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-web-security',
-                    '--disable-features=VizDisplayCompositor',
-                    '--disable-extensions',
-                    '--disable-plugins',
-                ],
-                timeout: 30000,
-            });
+            const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+            if (isLambda) {
+                const chromium = require('chrome-aws-lambda');
+                browserPool.browser = await chromium.puppeteer.launch({
+                    args: chromium.args,
+                    defaultViewport: chromium.defaultViewport,
+                    executablePath: await chromium.executablePath,
+                    headless: chromium.headless,
+                    ignoreHTTPSErrors: true
+                });
+            } else {
+                const puppeteer = require('puppeteer');
+                browserPool.browser = await puppeteer.launch({
+                    headless: 'new',
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-web-security',
+                        '--disable-features=VizDisplayCompositor',
+                        '--disable-extensions',
+                        '--disable-plugins',
+                    ],
+                    timeout: 30000,
+                });
+            }
 
             browserPool.browser.on('disconnected', () => {
                 console.log('Browser disconnected, clearing pool');

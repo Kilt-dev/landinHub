@@ -24,9 +24,11 @@ const FormSubmissionSchema = new mongoose.Schema({
         index: true
     },
     // Owner of the page (for quick access)
+    // Can be null if page lookup fails or for public submissions
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true,
+        required: false,
+        default: null,
         ref: 'User',
         index: true
     },

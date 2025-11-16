@@ -624,6 +624,32 @@ const renderElementHTML = (element, isChild = false) => {
                 />
             `;
 
+        case 'line':
+            const lineWidth = size.width || componentData.size?.width || 100;
+            const lineHeight = size.height || componentData.size?.height || 2;
+            const lineStrokeWidth = componentData.strokeWidth || styles.strokeWidth || lineHeight;
+            const lineStroke = componentData.stroke || styles.stroke || styles.borderColor || '#000';
+            const lineStrokeLinecap = componentData.strokeLinecap || styles.strokeLinecap || 'round';
+            const svgHeight = Math.max(lineHeight, lineStrokeWidth);
+            return `
+                <svg
+                    ${baseAttrs}
+                    width="${lineWidth}"
+                    height="${svgHeight}"
+                    style="${inlineStyles}; ${positionStyles}; display:block;"
+                >
+                    <line
+                        x1="0"
+                        y1="${svgHeight / 2}"
+                        x2="${lineWidth}"
+                        y2="${svgHeight / 2}"
+                        stroke="${lineStroke}"
+                        stroke-width="${lineStrokeWidth}"
+                        stroke-linecap="${lineStrokeLinecap}"
+                    />
+                </svg>
+            `;
+
         case 'link':
         case 'anchor':
             return `
@@ -639,16 +665,310 @@ const renderElementHTML = (element, isChild = false) => {
             `;
 
         case 'form':
+            // Render children elements (if any)
             const formChildren = children.map(child => renderElementHTML(child, true)).join('\n');
+
+            // Render configured fields from componentData.fields (form builder style)
+            const renderFormFields = (fields) => {
+                if (!Array.isArray(fields) || fields.length === 0) return '';
+
+                return fields.map(field => {
+                    const fieldId = field.id || `field-${Math.random().toString(36).substr(2, 9)}`;
+                    const fieldName = field.name || fieldId;
+                    const fieldLabel = field.label || '';
+                    const required = field.required || false;
+                    const requiredAttr = required ? 'required' : '';
+                    const requiredMark = required ? '<span style="color:#ef4444;margin-left:4px;">*</span>' : '';
+
+                    const fieldWrapperStyle = 'margin-bottom:16px; display:flex; flex-direction:column; gap:6px;';
+                    const labelStyle = 'font-size:14px; font-weight:500; color:#374151;';
+                    const inputStyle = 'width:100%; padding:12px 16px; border-radius:8px; border:1px solid #d1d5db; font-size:16px; outline:none; transition:all 0.3s ease; box-sizing:border-box;';
+
+                    switch (field.type) {
+                        case 'text':
+                        case 'email':
+                        case 'tel':
+                        case 'number':
+                        case 'date':
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}">
+                                    ${fieldLabel ? `<label for="${fieldId}" style="${labelStyle}">${fieldLabel}${requiredMark}</label>` : ''}
+                                    <input
+                                        type="${field.type}"
+                                        id="${fieldId}"
+                                        name="${fieldName}"
+                                        placeholder="${field.placeholder || ''}"
+                                        ${requiredAttr}
+                                        style="${inputStyle}"
+                                    />
+                                </div>
+                            `;
+
+                        case 'textarea':
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}">
+                                    ${fieldLabel ? `<label for="${fieldId}" style="${labelStyle}">${fieldLabel}${requiredMark}</label>` : ''}
+                                    <textarea
+                                        id="${fieldId}"
+                                        name="${fieldName}"
+                                        rows="${field.rows || 4}"
+                                        placeholder="${field.placeholder || ''}"
+                                        ${requiredAttr}
+                                        style="${inputStyle} resize:vertical; font-family:inherit;"
+                                    ></textarea>
+                                </div>
+                            `;
+
+                        case 'select':
+                            const options = Array.isArray(field.options) ? field.options : [];
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}">
+                                    ${fieldLabel ? `<label for="${fieldId}" style="${labelStyle}">${fieldLabel}${requiredMark}</label>` : ''}
+                                    <select
+                                        id="${fieldId}"
+                                        name="${fieldName}"
+                                        ${requiredAttr}
+                                        style="${inputStyle} cursor:pointer; background-color:#fff;"
+                                    >
+                                        ${options.map(opt => `<option value="${opt.value || opt}">${opt.label || opt}</option>`).join('')}
+                                    </select>
+                                </div>
+                            `;
+
+                        case 'checkbox':
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}; flex-direction:row; align-items:center; gap:8px;">
+                                    <input
+                                        type="checkbox"
+                                        id="${fieldId}"
+                                        name="${fieldName}"
+                                        ${requiredAttr}
+                                        style="width:18px; height:18px; cursor:pointer;"
+                                    />
+                                    <label for="${fieldId}" style="font-size:16px; color:#374151; cursor:pointer;">
+                                        ${fieldLabel}${requiredMark}
+                                    </label>
+                                </div>
+                            `;
+
+                        case 'radio':
+                            const radioOptions = Array.isArray(field.options) ? field.options : [];
+                            return `
+                                <div class="form-field-wrapper" style="${fieldWrapperStyle}">
+                                    ${fieldLabel ? `<label style="${labelStyle}">${fieldLabel}${requiredMark}</label>` : ''}
+                                    ${radioOptions.map((opt, idx) => `
+                                        <div style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                            <input
+                                                type="radio"
+                                                id="${fieldId}-${idx}"
+                                                name="${fieldName}"
+                                                value="${opt.value || opt}"
+                                                ${idx === 0 && required ? 'required' : ''}
+                                                style="width:18px; height:18px; cursor:pointer;"
+                                            />
+                                            <label for="${fieldId}-${idx}" style="font-size:16px; color:#374151; cursor:pointer;">
+                                                ${opt.label || opt}
+                                            </label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+
+                        default:
+                            return '';
+                    }
+                }).join('\n');
+            };
+
+            const configuredFields = renderFormFields(componentData.fields);
+            const hasFields = configuredFields || formChildren;
+            const formContent = configuredFields || formChildren || '<div style="padding:20px; text-align:center; color:#9ca3af; border:2px dashed #e5e7eb; border-radius:8px;"><p>Please configure form fields</p></div>';
+
+            // Form title
+            const formTitle = componentData.title ? `
+                <h3 style="margin:0 0 20px 0; font-size:24px; font-weight:700; color:#1f2937; text-align:${componentData.titleAlign || 'left'};">
+                    ${componentData.title}
+                </h3>
+            ` : '';
+
+            // Form subtitle/description
+            const formDescription = componentData.description ? `
+                <p style="margin:0 0 24px 0; font-size:16px; color:#6b7280; line-height:1.5; text-align:${componentData.descriptionAlign || 'left'};">
+                    ${componentData.description}
+                </p>
+            ` : '';
+
+            // Submit button (only if there are fields)
+            const submitButton = hasFields ? `
+                <button
+                    type="submit"
+                    class="lpb-form-submit"
+                    style="
+                        width:${componentData.submitButtonFullWidth !== false ? '100%' : 'auto'};
+                        padding:${componentData.submitButtonPadding || '14px 32px'};
+                        background:${componentData.submitButtonBackground || '#2563eb'};
+                        color:${componentData.submitButtonColor || '#ffffff'};
+                        border:${componentData.submitButtonBorder || 'none'};
+                        border-radius:${componentData.submitButtonBorderRadius || '8px'};
+                        font-size:${componentData.submitButtonFontSize || '16px'};
+                        font-weight:${componentData.submitButtonFontWeight || '600'};
+                        cursor:pointer;
+                        transition:all 0.3s ease;
+                        margin-top:8px;
+                        box-shadow:0 1px 2px rgba(0,0,0,0.05);
+                    "
+                    onmouseover="this.style.opacity='0.9'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.1)';"
+                    onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)';"
+                >
+                    ${componentData.submitButtonText || 'Gửi'}
+                </button>
+            ` : '';
+
+            // Message containers
+            const messageContainers = `
+                <div class="lpb-form-messages" style="margin-top:16px;"></div>
+            `;
+
+            // Form submission JavaScript
+            const formScript = hasFields ? `
+                <script>
+                (function() {
+                    const form = document.getElementById('${id}');
+                    if (!form) return;
+
+                    form.addEventListener('submit', async function(e) {
+                        e.preventDefault();
+
+                        const submitBtn = form.querySelector('.lpb-form-submit');
+                        const messagesContainer = form.querySelector('.lpb-form-messages');
+
+                        // Disable submit button
+                        if (submitBtn) {
+                            submitBtn.disabled = true;
+                            submitBtn.textContent = 'Đang gửi...';
+                            submitBtn.style.opacity = '0.6';
+                            submitBtn.style.cursor = 'not-allowed';
+                        }
+
+                        // Clear previous messages
+                        if (messagesContainer) messagesContainer.innerHTML = '';
+
+                        try {
+                            // Collect form data
+                            const formData = new FormData(form);
+                            const data = {};
+                            formData.forEach((value, key) => {
+                                data[key] = value;
+                            });
+
+                            // Get UTM parameters from URL
+                            const urlParams = new URLSearchParams(window.location.search);
+                            const utmParams = {};
+                            ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'].forEach(param => {
+                                if (urlParams.has(param)) {
+                                    utmParams[param] = urlParams.get(param);
+                                }
+                            });
+
+                            // Detect device type
+                            const getDeviceType = () => {
+                                const ua = navigator.userAgent;
+                                if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) return 'tablet';
+                                if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) return 'mobile';
+                                return 'desktop';
+                            };
+
+                            // Prepare submission payload
+                            const payload = {
+                                page_id: '${element?.page_id || 'unknown'}',
+                                form_id: '${id}',
+                                form_data: data,
+                                metadata: {
+                                    referrer: document.referrer || '',
+                                    user_agent: navigator.userAgent,
+                                    language: navigator.language,
+                                    device_type: getDeviceType(),
+                                    screen_resolution: window.screen.width + 'x' + window.screen.height,
+                                    ...utmParams
+                                }
+                            };
+
+                            // Get API endpoint (priority: custom config > window config > default backend)
+                            const apiEndpoint = '${componentData.apiEndpoint || ''}' ||
+                                                (window.LPB_CONFIG && window.LPB_CONFIG.apiUrl) ||
+                                                'https://api.landinghub.shop/api/forms/submit';
+
+                            // Submit to backend
+                            const response = await fetch(apiEndpoint, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(payload)
+                            });
+
+                            const result = await response.json();
+
+                            if (response.ok) {
+                                // Success
+                                if (messagesContainer) {
+                                    messagesContainer.innerHTML = \`
+                                        <div style="padding:12px 16px; background:#d1fae5; border:1px solid #10b981; border-radius:8px; color:#065f46; font-size:14px;">
+                                            ✓ ${componentData.successMessage || 'Cảm ơn bạn! Chúng tôi đã nhận được thông tin của bạn.'}
+                                        </div>
+                                    \`;
+                                }
+
+                                // Reset form
+                                form.reset();
+
+                                // Redirect if configured
+                                const redirectUrl = '${componentData.redirectUrl || ''}';
+                                if (redirectUrl) {
+                                    setTimeout(() => {
+                                        window.location.href = redirectUrl;
+                                    }, 2000);
+                                }
+                            } else {
+                                throw new Error(result.message || 'Submission failed');
+                            }
+                        } catch (error) {
+                            console.error('Form submission error:', error);
+                            if (messagesContainer) {
+                                messagesContainer.innerHTML = \`
+                                    <div style="padding:12px 16px; background:#fee2e2; border:1px solid #ef4444; border-radius:8px; color:#991b1b; font-size:14px;">
+                                        ✗ ${componentData.errorMessage || 'Có lỗi xảy ra. Vui lòng thử lại sau.'}
+                                    </div>
+                                \`;
+                            }
+                        } finally {
+                            // Re-enable submit button
+                            if (submitBtn) {
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = '${componentData.submitButtonText || 'Gửi'}';
+                                submitBtn.style.opacity = '1';
+                                submitBtn.style.cursor = 'pointer';
+                            }
+                        }
+                    });
+                })();
+                </script>
+            ` : '';
+
             return `
                 <form
                     ${baseAttrs}
-                    action="${componentData.action || '#'}"
-                    method="${componentData.method || 'POST'}"
                     style="${inlineStyles}; ${positionStyles}"
+                    class="lpb-form"
+                    novalidate
                 >
-                    ${formChildren || '<p>Empty form</p>'}
+                    ${formTitle}
+                    ${formDescription}
+                    ${formContent}
+                    ${submitButton}
+                    ${messageContainers}
                 </form>
+                ${formScript}
             `;
 
         case 'input':
@@ -1895,6 +2215,15 @@ export const renderStaticHTML = (pageData) => {
             }
         }
     </style>
+
+    <!-- Landing Page Builder Configuration -->
+    <script>
+        window.LPB_CONFIG = {
+            apiUrl: '${process.env.REACT_APP_API_URL || 'https://api.landinghub.shop'}/api/forms/submit',
+            pageId: '${pageData._id || pageData.id || ''}',
+            environment: '${process.env.NODE_ENV || 'production'}'
+        };
+    </script>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
     <!-- Canvas -->

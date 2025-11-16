@@ -8,12 +8,28 @@ const { Parser } = require('json2csv');
  */
 
 /**
+ * Helper function to build published URL from page data
+ * @param {Object} page - Page object
+ * @returns {string|null} - Published URL
+ */
+const buildPublishedUrl = (page) => {
+    // Priority: cloudfrontDomain > url.landinghub.shop
+    if (page.cloudfrontDomain) {
+        return `https://${page.cloudfrontDomain}`;
+    }
+    if (page.url) {
+        return `https://${page.url}.landinghub.shop`;
+    }
+    return null;
+};
+
+/**
  * Submit a form (called by end users from landing pages)
  * POST /api/forms/submit
  */
 exports.submitForm = async (req, res) => {
     try {
-        const { page_id, form_id, form_data } = req.body;
+        const { page_id, form_id, form_data, metadata: clientMetadata } = req.body;
 
         if (!page_id || !form_id || !form_data) {
             return res.status(400).json({
@@ -22,35 +38,41 @@ exports.submitForm = async (req, res) => {
             });
         }
 
-        // Get page info to find owner
-        const page = await Page.findById(page_id);
-        if (!page) {
-            return res.status(404).json({
-                success: false,
-                message: 'Page not found'
-            });
+        // Try to get page info to find owner (but don't fail if page not found)
+        let user_id = null;
+        try {
+            const page = await Page.findById(page_id).select('user_id').lean();
+            if (page) {
+                user_id = page.user_id;
+            }
+        } catch (pageError) {
+            console.warn('Could not fetch page info:', pageError.message);
+            // Continue anyway - we'll store the submission without user_id for now
         }
 
-        // Extract metadata from request
+        // Merge metadata from request body and headers
         const metadata = {
             ip_address: req.ip || req.connection.remoteAddress,
             user_agent: req.get('user-agent'),
             referrer: req.get('referer'),
-            utm_source: req.body.utm_source,
-            utm_medium: req.body.utm_medium,
-            utm_campaign: req.body.utm_campaign,
-            utm_term: req.body.utm_term,
-            utm_content: req.body.utm_content,
-            device_type: req.body.device_type || 'unknown',
             language: req.get('accept-language')?.split(',')[0],
-            screen_resolution: req.body.screen_resolution
+            // Metadata from client (includes UTM params, device type, screen resolution)
+            ...(clientMetadata || {}),
+            // Backward compatibility - check root level too
+            utm_source: clientMetadata?.utm_source || req.body.utm_source,
+            utm_medium: clientMetadata?.utm_medium || req.body.utm_medium,
+            utm_campaign: clientMetadata?.utm_campaign || req.body.utm_campaign,
+            utm_term: clientMetadata?.utm_term || req.body.utm_term,
+            utm_content: clientMetadata?.utm_content || req.body.utm_content,
+            device_type: clientMetadata?.device_type || req.body.device_type || 'unknown',
+            screen_resolution: clientMetadata?.screen_resolution || req.body.screen_resolution
         };
 
-        // Create submission
+        // Create submission (user_id might be null if page fetch failed)
         const submission = new FormSubmission({
             page_id,
             form_id,
-            user_id: page.user_id,
+            user_id: user_id || null, // null if page not found (public submission)
             form_data,
             metadata
         });
@@ -107,11 +129,20 @@ exports.getPageSubmissions = async (req, res) => {
             filter.status = status;
         }
 
-        // Get submissions
+        // Get submissions with page info
         const submissions = await FormSubmission.find(filter)
             .sort(sort)
             .limit(parseInt(limit))
-            .skip(parseInt(offset));
+            .skip(parseInt(offset))
+            .lean(); // Use lean for better performance
+
+        // Attach page info to each submission
+        const submissionsWithPageInfo = submissions.map(sub => ({
+            ...sub,
+            page_name: page.name || 'Untitled Page',
+            page_url: page.url || null,
+            page_published_url: buildPublishedUrl(page)
+        }));
 
         const total = await FormSubmission.countDocuments(filter);
 
@@ -120,7 +151,13 @@ exports.getPageSubmissions = async (req, res) => {
 
         res.json({
             success: true,
-            submissions,
+            submissions: submissionsWithPageInfo,
+            page: {
+                id: page._id,
+                name: page.name || 'Untitled Page',
+                url: page.url,
+                published_url: buildPublishedUrl(page)
+            },
             pagination: {
                 total,
                 limit: parseInt(limit),
@@ -157,13 +194,44 @@ exports.getUserSubmissions = async (req, res) => {
             .sort(sort)
             .limit(parseInt(limit))
             .skip(parseInt(offset))
-            .populate('page_id', 'name url');
+            .lean();
+
+        // Get unique page IDs
+        const pageIds = [...new Set(submissions.map(s => s.page_id).filter(Boolean))];
+
+        // Fetch page info for all pages
+        const pages = await Page.find({ _id: { $in: pageIds } })
+            .select('_id name url cloudfrontDomain')
+            .lean();
+
+        // Create page lookup map
+        const pageMap = {};
+        pages.forEach(page => {
+            pageMap[page._id.toString()] = {
+                name: page.name || 'Untitled Page',
+                url: page.url,
+                published_url: buildPublishedUrl(page)
+            };
+        });
+
+        // Attach page info to submissions
+        const submissionsWithPageInfo = submissions.map(sub => {
+            const pageId = sub.page_id ? sub.page_id.toString() : null;
+            const pageInfo = pageId ? pageMap[pageId] : null;
+
+            return {
+                ...sub,
+                page_name: pageInfo?.name || 'Unknown Page',
+                page_url: pageInfo?.url || null,
+                page_published_url: pageInfo?.published_url || null
+            };
+        });
 
         const total = await FormSubmission.countDocuments(filter);
 
         res.json({
             success: true,
-            submissions,
+            submissions: submissionsWithPageInfo,
             pagination: {
                 total,
                 limit: parseInt(limit),
