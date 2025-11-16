@@ -113,6 +113,8 @@ custom:
     target: node18
     platform: node
     packager: npm
-    external: []
+    external:
+      - undici
+      - '@aws-sdk/signature-v4-multi-region'
     packagerOptions:
       scripts: false
