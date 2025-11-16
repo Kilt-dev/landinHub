@@ -2,7 +2,10 @@ const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 
 const TransactionSchema = new mongoose.Schema({
-    is_deleted: { type: Boolean, default: false, index: true },    _id: {
+    // DEPRECATED: is_deleted field is kept for backward compatibility but should NEVER be set to true
+    // Transactions are permanent records and must not be deleted (hard or soft delete)
+    is_deleted: { type: Boolean, default: false, index: true },
+    _id: {
         type: String,
         default: uuidv4,
         match: [/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, 'Invalid UUID']
@@ -143,13 +146,10 @@ const TransactionSchema = new mongoose.Schema({
     updated_at: {
         type: Date,
         default: Date.now
-    },
-    expires_at: {
-        type: Date,
-        default: function() {
-            return new Date(Date.now() + 30 * 60 * 1000);
-        }
     }
+    // IMPORTANT: Transactions are permanent records and should NEVER expire or be deleted
+    // All transaction statuses (PENDING, COMPLETED, FAILED, REFUNDED, etc.) must be preserved
+    // for legal compliance, accounting, and audit purposes
 }, {
     collection: 'transactions',
     timestamps: false
@@ -321,10 +321,11 @@ TransactionSchema.methods.setCreatedPage = async function(pageId) {
 };
 
 // Static methods
+// Note: All PENDING transactions are kept permanently for audit trail
+// Admin should manually review and handle old pending transactions
 TransactionSchema.statics.findPendingTransactions = function() {
     return this.find({
-        status: 'PENDING',
-        expires_at: { $gt: new Date() }
+        status: 'PENDING'
     }).sort({ created_at: -1 });
 };
 

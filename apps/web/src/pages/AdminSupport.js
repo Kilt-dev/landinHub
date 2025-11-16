@@ -117,6 +117,28 @@ const AdminSupport = () => {
 
     const lastMessageIdRef = useRef(null);
 
+    // Load rooms - Defined first to avoid initialization errors
+    const loadRooms = async () => {
+        try {
+            setLoading(true);
+            const statusMap = ['', 'open', 'assigned', 'resolved'];
+            const status = statusMap[tabValue];
+
+            const response = await axios.get(`${API_URL}/api/chat/admin/rooms`, {
+                params: status ? { status } : {},
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            setRooms(response.data.rooms);
+        } catch (error) {
+            console.error('Failed to load rooms:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // 🔄 Polling: Poll messages for selected room
     const pollMessages = async () => {
         if (!selectedRoom) return;
@@ -176,28 +198,6 @@ const AdminSupport = () => {
             scrollToBottom();
         } catch (error) {
             console.error('Failed to load messages:', error);
-        }
-    };
-
-    // Load rooms
-    const loadRooms = async () => {
-        try {
-            setLoading(true);
-            const statusMap = ['', 'open', 'assigned', 'resolved'];
-            const status = statusMap[tabValue];
-
-            const response = await axios.get(`${API_URL}/api/chat/admin/rooms`, {
-                params: status ? { status } : {},
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-
-            setRooms(response.data.rooms);
-        } catch (error) {
-            console.error('Failed to load rooms:', error);
-        } finally {
-            setLoading(false);
         }
     };
 

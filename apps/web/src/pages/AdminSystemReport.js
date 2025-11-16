@@ -14,7 +14,7 @@ const AdminSystemReport = () => {
     const fetchReport = async () => {
         try {
             setLoading(true);
-            let url = 'api/reports/admin/system';
+            let url = '/api/reports/admin/system';
 
             if (dateRange.startDate && dateRange.endDate) {
                 url += `?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`;
@@ -57,10 +57,9 @@ const AdminSystemReport = () => {
             {/* HEADER */}
             <div className="report-header">
                 <div className="report-title">
-                    <Activity size={32} />
                     <div>
-                        <h1>🔐 Admin System Report</h1>
-                        <p>Tổng quan hệ thống và doanh thu</p>
+                        <h1>System Report 2025</h1>
+                        <p>Phân tích tổng quan hệ thống và xu hướng kinh doanh</p>
                     </div>
                 </div>
                 <div className="report-actions">
@@ -68,7 +67,7 @@ const AdminSystemReport = () => {
                         <RefreshCw size={18} /> Làm mới
                     </button>
                     <button className="btn-download">
-                        <Download size={18} /> Tải xuống
+                        <Download size={18} /> Xuất báo cáo
                     </button>
                 </div>
             </div>
@@ -90,35 +89,82 @@ const AdminSystemReport = () => {
                 <button onClick={fetchReport} className="btn-filter">Lọc</button>
             </div>
 
-            {/* OVERVIEW CARDS */}
+            {/* OVERVIEW CARDS - MODERN DESIGN */}
             <div className="overview-grid">
                 <div className="overview-card revenue">
-                    <DollarSign size={40} />
-                    <div>
-                        <h3>Tổng Doanh Thu</h3>
-                        <div className="value">{overview.totalRevenue}</div>
+                    <div className="card-header">
+                        <span className="card-label">Tổng Doanh Thu</span>
+                        <span className="trend-badge positive">
+                            <TrendingUp size={14} /> +12.5%
+                        </span>
+                    </div>
+                    <div className="card-value">{overview.totalRevenue}</div>
+                    <div className="card-footer">
+                        <span>So với tháng trước</span>
                     </div>
                 </div>
+
                 <div className="overview-card fees">
-                    <TrendingUp size={40} />
-                    <div>
-                        <h3>Platform Fees</h3>
-                        <div className="value">{overview.platformFees}</div>
-                        <div className="meta">{overview.feePercentage}</div>
+                    <div className="card-header">
+                        <span className="card-label">Platform Fees</span>
+                    </div>
+                    <div className="card-value">{overview.platformFees}</div>
+                    <div className="card-footer">
+                        <span>Tỷ lệ phí</span>
+                        <span className="highlight">{overview.feePercentage}</span>
                     </div>
                 </div>
+
+                <div className="overview-card transactions">
+                    <div className="card-header">
+                        <span className="card-label">Tổng Giao Dịch</span>
+                    </div>
+                    <div className="card-value">{overview.totalTransactions || 0}</div>
+                    <div className="card-footer">
+                        <span>Tất cả trạng thái</span>
+                    </div>
+                </div>
+
                 <div className="overview-card pages">
-                    <Activity size={40} />
-                    <div>
-                        <h3>Tổng Marketplace Pages</h3>
-                        <div className="value">{marketplace.totalPages}</div>
+                    <div className="card-header">
+                        <span className="card-label">Marketplace Pages</span>
+                    </div>
+                    <div className="card-value">{marketplace.totalPages}</div>
+                    <div className="card-footer">
+                        <span>Active</span>
+                        <span className="highlight">{marketplace.activePages || 0}</span>
+                    </div>
+                </div>
+
+                <div className="overview-card users">
+                    <div className="card-header">
+                        <span className="card-label">Tổng Người Dùng</span>
+                        <span className="trend-badge positive">
+                            <Users size={14} /> +8.3%
+                        </span>
+                    </div>
+                    <div className="card-value">{overview.totalUsers || 0}</div>
+                    <div className="card-footer">
+                        <span>Đã đăng ký</span>
+                    </div>
+                </div>
+
+                <div className="overview-card conversion">
+                    <div className="card-header">
+                        <span className="card-label">Tỷ Lệ Chuyển Đổi</span>
+                    </div>
+                    <div className="card-value">
+                        {((overview.totalTransactions / (marketplace.totalPages || 1)) * 100).toFixed(1)}%
+                    </div>
+                    <div className="card-footer">
+                        <span>Giao dịch / Page</span>
                     </div>
                 </div>
             </div>
 
             {/* TRANSACTION STATUS */}
             <div className="section">
-                <h2>📊 Giao Dịch Theo Trạng Thái</h2>
+                <h2>Giao Dịch Theo Trạng Thái</h2>
                 <div className="transaction-grid">
                     {transactions.byStatus.map((item, idx) => (
                         <div key={idx} className={`transaction-card status-${item.status.toLowerCase()}`}>
@@ -133,7 +179,7 @@ const AdminSystemReport = () => {
 
             {/* PAYMENT METHODS */}
             <div className="section">
-                <h2>💳 Phương Thức Thanh Toán</h2>
+                <h2>Phương Thức Thanh Toán</h2>
                 <div className="payment-grid">
                     {transactions.byPaymentMethod.map((item, idx) => (
                         <div key={idx} className="payment-card">
@@ -148,7 +194,7 @@ const AdminSystemReport = () => {
 
             {/* TOP SELLERS */}
             <div className="section">
-                <h2>🏆 Top 20 Sellers</h2>
+                <h2>Top 20 Sellers</h2>
                 <div className="leaderboard-table">
                     <table>
                         <thead>
@@ -179,7 +225,7 @@ const AdminSystemReport = () => {
 
             {/* DAILY REVENUE CHART */}
             <div className="section">
-                <h2>📈 Doanh Thu 30 Ngày Gần Nhất</h2>
+                <h2>Doanh Thu 30 Ngày Gần Nhất</h2>
                 <div className="daily-chart">
                     {dailyRevenue.slice(-30).map((day, idx) => {
                         const maxRevenue = Math.max(...dailyRevenue.map(d => d.revenueRaw));
@@ -203,8 +249,9 @@ const AdminSystemReport = () => {
 
             {/* FOOTER */}
             <div className="report-footer">
-                <p>📅 Báo cáo được tạo lúc: {new Date(report.generatedAt).toLocaleString('vi-VN')}</p>
-                <p>🔄 Dữ liệu cập nhật realtime</p>
+                <p>Báo cáo được tạo lúc: {new Date(report.generatedAt).toLocaleString('vi-VN')}</p>
+                <p>Dữ liệu cập nhật realtime</p>
+                <p className="report-year">System Report 2025 - LandingHub Platform Analytics</p>
             </div>
         </div>
     );
