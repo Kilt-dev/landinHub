@@ -1,7 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const AWS = require('aws-sdk');
-const puppeteer = require('puppeteer');
+// const puppeteer = require('puppeteer'); // Lazy load when needed
 const Page = require('../models/Page');
 const mongoose = require('mongoose');
 const { OpenAI } = require('openai');
@@ -42,6 +42,8 @@ const getBrowser = async () => {
     if (!browserPool.browser) {
         console.log('Launching Puppeteer browser');
         try {
+            // Lazy load puppeteer only when needed
+            const puppeteer = require('puppeteer');
             browserPool.browser = await puppeteer.launch({
                 headless: 'new',
                 args: [

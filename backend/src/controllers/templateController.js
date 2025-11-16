@@ -3,7 +3,7 @@ const Page = require('../models/Page');
 const { v4: uuidv4 } = require('uuid');
 const AWS = require('aws-sdk');
 const mongoose = require('mongoose');
-const puppeteer = require('puppeteer');
+// const puppeteer = require('puppeteer'); // Lazy load when needed
 const cheerio = require('cheerio'); // Thêm cheerio để parse HTML
 // Cấu hình AWS
 AWS.config.update({ region: process.env.AWS_REGION || 'ap-southeast-1' });
@@ -21,6 +21,8 @@ const getBrowser = async () => {
     if (!browserPool.browser) {
         console.log('Launching Puppeteer browser for templates');
         try {
+            // Lazy load puppeteer only when needed
+            const puppeteer = require('puppeteer');
             browserPool.browser = await puppeteer.launch({
                 headless: 'new',
                 args: [
