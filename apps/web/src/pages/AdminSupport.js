@@ -3,8 +3,8 @@ import { UserContext } from '../context/UserContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import '../styles/Dashboard.css';
-import io from 'socket.io-client';
 import axios from 'axios';
+import { usePolling } from '../hooks/usePolling';
 import {
     Box,
     Container,
@@ -95,7 +95,6 @@ const AdminSupport = () => {
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState('');
-    const [socket, setSocket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [tabValue, setTabValue] = useState(0); // 0: All, 1: Open, 2: Assigned, 3: Resolved
     const [stats, setStats] = useState(null);
@@ -116,93 +115,54 @@ const AdminSupport = () => {
         setSnackbar({ ...snackbar, open: false });
     };
 
-    // Initialize socket
-    useEffect(() => {
-        if (!user || user.role !== 'admin') return;
+    const lastMessageIdRef = useRef(null);
 
-        // ⚠️ Socket.IO không hoạt động trên Lambda production
-        const isLocal = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+    // 🔄 Polling: Poll messages for selected room
+    const pollMessages = async () => {
+        if (!selectedRoom) return;
 
-        if (!isLocal) {
-            console.log('ℹ️ Admin Socket.IO disabled on production');
-            return;
-        }
+        try {
+            const params = lastMessageIdRef.current
+                ? `?after=${lastMessageIdRef.current}`
+                : '';
 
-        const token = localStorage.getItem('token');
-        const newSocket = io(API_URL, {
-            auth: { token }
-        });
+            const response = await axios.get(
+                `${API_URL}/api/chat/rooms/${selectedRoom._id}/messages${params}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
 
-        newSocket.on('connect', () => {
-            console.log('✅ Admin socket connected');
-        });
+            if (response.data.messages && response.data.messages.length > 0) {
+                const newMessages = response.data.messages;
 
-        // Handle reconnection - rejoin room automatically
-        newSocket.on('reconnect', (attemptNumber) => {
-            console.log('🔄 Admin socket reconnected after', attemptNumber, 'attempts');
-            showToast('Đã kết nối lại! 🎉', 'success');
-            // Re-join room if exists
-            if (selectedRoom) {
-                console.log('🔄 Admin re-joining room:', selectedRoom._id);
-                newSocket.emit('chat:join_room', { roomId: selectedRoom._id });
-                // Reload messages
-                loadMessagesForRoom(selectedRoom._id);
-            }
-            // Reload room list
-            loadRooms();
-        });
-
-        newSocket.on('connect_error', (error) => {
-            console.error('❌ Admin socket connection error:', error.message);
-            showToast('Lỗi kết nối. Đang thử lại...', 'warning');
-        });
-
-        newSocket.on('disconnect', (reason) => {
-            console.log('⚠️ Admin socket disconnected:', reason);
-            if (reason === 'io server disconnect') {
-                // Server forcefully disconnected, reconnect manually
-                showToast('Mất kết nối. Đang kết nối lại...', 'info');
-                newSocket.connect();
-            } else if (reason !== 'io client disconnect') {
-                showToast('Mất kết nối. Đang tự động kết nối lại...', 'warning');
-            }
-        });
-
-        // Listen for new messages
-        newSocket.on('chat:new_message', (data) => {
-            if (selectedRoom && data.message.room_id === selectedRoom._id) {
                 setMessages(prev => {
-                    // Remove optimistic messages with temp IDs
-                    const filtered = prev.filter(msg =>
-                        !(msg.__optimistic && msg._id && msg._id.toString().startsWith('temp-'))
-                    );
-                    // Add real message from server
-                    return [...filtered, data.message];
+                    // Remove optimistic messages
+                    const filtered = prev.filter(msg => !msg.__optimistic);
+                    return [...filtered, ...newMessages];
                 });
+
+                // Update last message ID
+                const latestMessage = newMessages[newMessages.length - 1];
+                lastMessageIdRef.current = latestMessage._id;
+
                 scrollToBottom();
+
+                // Reload room list to update unread counts
+                loadRooms();
             }
+        } catch (error) {
+            console.error('Polling error:', error);
+        }
+    };
 
-            // Update room in list
-            loadRooms();
-        });
+    // Poll messages every 3 seconds when room is selected
+    usePolling(pollMessages, 3000, !!selectedRoom);
 
-        // Listen for room updates
-        newSocket.on('chat:room_tagged', () => {
-            loadRooms();
-        });
-
-        newSocket.on('chat:user_typing', (data) => {
-            if (selectedRoom && data.roomId === selectedRoom._id && data.userId !== user.id) {
-                setIsTyping(data.isTyping);
-            }
-        });
-
-        setSocket(newSocket);
-
-        return () => {
-            newSocket.disconnect();
-        };
-    }, [user, API_URL, selectedRoom]);
+    // 🔄 Polling: Poll room list every 5 seconds
+    usePolling(loadRooms, 5000, true);
 
     // Helper function to load messages for a room
     const loadMessagesForRoom = async (roomId) => {
@@ -267,9 +227,7 @@ const AdminSupport = () => {
     const handleSelectRoom = async (room) => {
         try {
             setSelectedRoom(room);
-
-            // Join socket room
-            socket.emit('chat:join_room', { roomId: room._id });
+            lastMessageIdRef.current = null; // Reset for new room
 
             // Load messages
             const response = await axios.get(`${API_URL}/api/chat/rooms/${room._id}/messages`, {
@@ -279,6 +237,13 @@ const AdminSupport = () => {
             });
 
             setMessages(response.data.messages);
+
+            // Set last message ID
+            if (response.data.messages.length > 0) {
+                const lastMsg = response.data.messages[response.data.messages.length - 1];
+                lastMessageIdRef.current = lastMsg._id;
+            }
+
             scrollToBottom();
         } catch (error) {
             console.error('Failed to load messages:', error);
@@ -290,7 +255,17 @@ const AdminSupport = () => {
         if (!selectedRoom) return;
 
         try {
-            socket.emit('chat:admin_assign', { roomId: selectedRoom._id });
+            await axios.post(
+                `${API_URL}/api/chat/admin/assign`,
+                { roomId: selectedRoom._id },
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
+
+            showToast('Đã nhận hỗ trợ! 👨‍💼', 'success');
 
             // Reload rooms
             setTimeout(() => {
@@ -298,18 +273,16 @@ const AdminSupport = () => {
             }, 500);
         } catch (error) {
             console.error('Failed to assign room:', error);
+            showToast('Không thể nhận hỗ trợ. Vui lòng thử lại.', 'error');
         }
     };
 
     // Send message
-    const handleSendMessage = () => {
-        if (!inputMessage.trim() || !selectedRoom || !socket) return;
+    const handleSendMessage = async () => {
+        if (!inputMessage.trim() || !selectedRoom) return;
 
         const messageText = inputMessage.trim();
         setInputMessage('');
-
-        // Stop typing indicator
-        socket.emit('chat:typing', { roomId: selectedRoom._id, isTyping: false });
 
         // 🚀 OPTIMISTIC UPDATE: Add message to UI immediately
         const optimisticMessage = {
@@ -326,40 +299,61 @@ const AdminSupport = () => {
         setMessages(prev => [...prev, optimisticMessage]);
         scrollToBottom();
 
-        // Send message
-        socket.emit('chat:send_message', {
-            roomId: selectedRoom._id,
-            message: messageText,
-            message_type: 'text',
-            enableAI: false
-        });
+        // Send message via HTTP POST
+        try {
+            await axios.post(
+                `${API_URL}/api/chat/rooms/${selectedRoom._id}/messages`,
+                {
+                    message: messageText,
+                    message_type: 'text',
+                    enableAI: false
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
+        } catch (error) {
+            console.error('Send message error:', error);
+            showToast('Không thể gửi tin nhắn. Vui lòng thử lại.', 'error');
+            // Remove optimistic message
+            setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
+        }
     };
 
     // Handle typing
     const handleTyping = (e) => {
         setInputMessage(e.target.value);
-
-        if (!socket || !selectedRoom) return;
-
-        socket.emit('chat:typing', { roomId: selectedRoom._id, isTyping: true });
-
-        // Debounce typing indicator
-        setTimeout(() => {
-            socket.emit('chat:typing', { roomId: selectedRoom._id, isTyping: false });
-        }, 2000);
+        // Typing indicator disabled (không cần với polling)
     };
 
     // Close room
-    const handleCloseRoom = () => {
-        if (!selectedRoom || !socket) return;
+    const handleCloseRoom = async () => {
+        if (!selectedRoom) return;
 
-        socket.emit('chat:close_room', { roomId: selectedRoom._id });
+        try {
+            await axios.post(
+                `${API_URL}/api/chat/admin/close-room`,
+                { roomId: selectedRoom._id },
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
 
-        setTimeout(() => {
-            setSelectedRoom(null);
-            setMessages([]);
-            loadRooms();
-        }, 500);
+            showToast('Đã đóng cuộc hội thoại! ✅', 'success');
+
+            setTimeout(() => {
+                setSelectedRoom(null);
+                setMessages([]);
+                loadRooms();
+            }, 500);
+        } catch (error) {
+            console.error('Failed to close room:', error);
+            showToast('Không thể đóng cuộc hội thoại. Vui lòng thử lại.', 'error');
+        }
     };
 
     // Update priority

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { UserContext } from '../context/UserContext';
-import io from 'socket.io-client';
 import axios from 'axios';
+import { usePolling } from '../hooks/usePolling';
 import {
     Box,
     IconButton,
@@ -165,7 +165,6 @@ const SupportChatbox = () => {
     const [inputMessage, setInputMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [room, setRoom] = useState(null);
-    const [socket, setSocket] = useState(null);
     const [isTyping, setIsTyping] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [adminOnline, setAdminOnline] = useState(false);
@@ -194,133 +193,106 @@ const SupportChatbox = () => {
         setSnackbar({ ...snackbar, open: false });
     };
 
-    // Initialize socket connection
-    useEffect(() => {
-        if (!user) return;
+    const lastMessageIdRef = useRef(null);
+    const lastRoomStatusRef = useRef(null);
 
-        // ⚠️ Socket.IO không hoạt động trên Lambda production
-        // Chỉ bật socket khi local development
-        const isLocal = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+    // 🔄 Polling: Poll messages khi chat box đang mở
+    const pollMessages = async () => {
+        if (!room || !isOpen) return;
 
-        if (!isLocal) {
-            console.log('ℹ️ Socket.IO disabled on production (Lambda không hỗ trợ WebSocket)');
-            console.log('💡 Sử dụng polling/refresh thay thế cho real-time updates');
-            return;
+        try {
+            const params = lastMessageIdRef.current
+                ? `?after=${lastMessageIdRef.current}`
+                : '';
+
+            const response = await axios.get(
+                `${API_URL}/api/chat/rooms/${room._id}/messages${params}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
+
+            if (response.data.messages && response.data.messages.length > 0) {
+                const newMessages = response.data.messages;
+
+                setMessages(prev => {
+                    // Remove optimistic messages that got confirmed
+                    const filtered = prev.filter(msg => !msg.__optimistic);
+
+                    // Add new messages
+                    return [...filtered, ...newMessages];
+                });
+
+                // Update last message ID
+                const latestMessage = newMessages[newMessages.length - 1];
+                lastMessageIdRef.current = latestMessage._id;
+
+                scrollToBottom();
+            }
+
+            // Also poll room status to check if admin assigned or room closed
+            const roomResponse = await axios.get(
+                `${API_URL}/api/chat/rooms/${room._id}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
+
+            if (roomResponse.data.room) {
+                const updatedRoom = roomResponse.data.room;
+
+                // Check if admin was assigned
+                if (!room.admin_id && updatedRoom.admin_id) {
+                    setAdminOnline(true);
+                    showToast('Admin đã vào hỗ trợ! 👨‍💼', 'success');
+                }
+
+                // Check if room was closed
+                if (room.status !== 'resolved' && updatedRoom.status === 'resolved') {
+                    showToast('Cuộc hội thoại đã kết thúc', 'info');
+                    setTimeout(() => {
+                        setRatingDialog(true);
+                    }, 1000);
+                }
+
+                setRoom(updatedRoom);
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
         }
+    };
 
-        const token = localStorage.getItem('token');
-        const newSocket = io(API_URL, {
-            auth: { token }
-        });
+    // Poll messages every 3 seconds when chat is open
+    usePolling(pollMessages, 3000, isOpen && !!room);
 
-        newSocket.on('connect', () => {
-            console.log('✅ Socket connected');
-            // Check admin online status
-            newSocket.emit('chat:get_admin_status');
-        });
+    // 🔄 Polling: Check admin online status every 10 seconds
+    const pollAdminStatus = async () => {
+        if (!room || !isOpen) return;
 
-        // Handle reconnection - rejoin room automatically
-        newSocket.on('reconnect', (attemptNumber) => {
-            console.log('🔄 Socket reconnected after', attemptNumber, 'attempts');
-            showToast('Đã kết nối lại! 🎉', 'success');
-            // Re-join room if exists
-            if (room) {
-                console.log('🔄 Re-joining room:', room._id);
-                newSocket.emit('chat:join_room', { roomId: room._id });
-                // Reload messages to get any missed messages
-                loadMessagesForRoom(room._id);
+        try {
+            const response = await axios.get(
+                `${API_URL}/api/chat/admin/online-status`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
+
+            if (response.data.hasOnlineAdmin !== undefined) {
+                setAdminOnline(response.data.hasOnlineAdmin);
             }
-            // Re-check admin status
-            newSocket.emit('chat:get_admin_status');
-        });
+        } catch (error) {
+            // Silently fail - không quan trọng lắm
+        }
+    };
 
-        newSocket.on('connect_error', (error) => {
-            console.error('❌ Socket connection error:', error.message);
-            showToast('Lỗi kết nối. Đang thử lại...', 'warning');
-        });
-
-        newSocket.on('disconnect', (reason) => {
-            console.log('⚠️ Socket disconnected:', reason);
-            if (reason === 'io server disconnect') {
-                // Server forcefully disconnected, reconnect manually
-                showToast('Mất kết nối. Đang kết nối lại...', 'info');
-                newSocket.connect();
-            } else if (reason === 'io client disconnect') {
-                // Manual disconnect, no action needed
-            } else {
-                showToast('Mất kết nối. Đang tự động kết nối lại...', 'warning');
-            }
-        });
-
-        // Listen to global admin status broadcasts
-        newSocket.on('chat:admin_status', (data) => {
-            console.log('📡 Admin status update:', data.admins);
-            const hasOnlineAdmin = data.admins.some(admin => admin.isOnline);
-            setAdminOnline(hasOnlineAdmin);
-        });
-
-        newSocket.on('chat:new_message', (data) => {
-            setMessages(prev => {
-                // Remove optimistic messages with temp IDs
-                const filtered = prev.filter(msg =>
-                    !(msg.__optimistic && msg._id && msg._id.toString().startsWith('temp-'))
-                );
-                // Add real message from server
-                return [...filtered, data.message];
-            });
-            scrollToBottom();
-
-            // Update unread count if chat is closed
-            if (!isOpen) {
-                setUnreadCount(prev => prev + 1);
-            }
-        });
-
-        newSocket.on('chat:joined_room', (data) => {
-            console.log('✅ Joined room:', data.room);
-            setRoom(data.room);
-
-            // Update admin info if available
-            if (data.room.admin_info) {
-                console.log('👨‍💼 Admin assigned:', data.room.admin_info);
-                setAdminOnline(data.room.admin_info.isOnline);
-            }
-        });
-
-        newSocket.on('chat:user_typing', (data) => {
-            if (data.userId !== user.id) {
-                setIsTyping(data.isTyping);
-            }
-        });
-
-        newSocket.on('chat:admin_assigned', (data) => {
-            setRoom(data.room);
-            setMessages(prev => [...prev, data.systemMessage]);
-            setAdminOnline(true);
-        });
-
-        newSocket.on('chat:room_closed', (data) => {
-            setMessages(prev => [...prev, data.systemMessage]);
-            setRoom(prev => ({ ...prev, status: 'resolved' }));
-            // Show rating dialog after a short delay
-            setTimeout(() => {
-                setRatingDialog(true);
-            }, 1000);
-        });
-
-        newSocket.on('chat:error', (data) => {
-            console.error('Chat error:', data.message);
-            showToast(data.message, 'error');
-        });
-
-        setSocket(newSocket);
-
-        return () => {
-            if (newSocket) {
-                newSocket.disconnect();
-            }
-        };
-    }, [user, API_URL]); // Remove isOpen from dependencies to prevent disconnects
+    // Poll admin status every 10 seconds
+    usePolling(pollAdminStatus, 10000, isOpen);
 
     // Helper function to load messages for a room
     const loadMessagesForRoom = async (roomId) => {
@@ -361,22 +333,6 @@ const SupportChatbox = () => {
             const roomData = response.data.room;
             setRoom(roomData);
 
-            // Join socket room if connected
-            if (socket && socket.connected) {
-                socket.emit('chat:join_room', { roomId: roomData._id });
-            } else {
-                console.warn('Socket not connected, waiting...');
-                // Wait for connection and retry
-                const retryJoin = () => {
-                    if (socket && socket.connected) {
-                        socket.emit('chat:join_room', { roomId: roomData._id });
-                    } else {
-                        setTimeout(retryJoin, 500);
-                    }
-                };
-                setTimeout(retryJoin, 500);
-            }
-
             // Load messages
             const messagesResponse = await axios.get(`${API_URL}/api/chat/rooms/${roomData._id}/messages`, {
                 headers: {
@@ -416,26 +372,15 @@ const SupportChatbox = () => {
     // Close chat
     const handleClose = () => {
         setIsOpen(false);
-        if (room && socket) {
-            socket.emit('chat:leave_room', { roomId: room._id });
-        }
+        // Polling sẽ tự động dừng khi isOpen = false
     };
 
     // Send message
     const handleSendMessage = async () => {
-        if (!inputMessage.trim() || !room || !socket) return;
-
-        // Check socket connection
-        if (!socket.connected) {
-            showToast('Đang kết nối lại... Vui lòng đợi', 'warning');
-            return;
-        }
+        if (!inputMessage.trim() || !room) return;
 
         const messageText = inputMessage.trim();
         setInputMessage('');
-
-        // Stop typing indicator
-        socket.emit('chat:typing', { roomId: room._id, isTyping: false });
 
         // 🚀 OPTIMISTIC UPDATE: Add message to UI immediately
         const optimisticMessage = {
@@ -452,40 +397,35 @@ const SupportChatbox = () => {
         setMessages(prev => [...prev, optimisticMessage]);
         scrollToBottom();
 
-        // Send message via socket
-        socket.emit('chat:send_message', {
-            roomId: room._id,
-            message: messageText,
-            message_type: 'text',
-            enableAI: !room.admin_id // Enable AI only if no admin assigned
-        }, (error) => {
-            if (error) {
-                console.error('Send message error:', error);
-                showToast('Không thể gửi tin nhắn. Vui lòng thử lại.', 'error');
-                // Remove optimistic message
-                setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
-            }
-        });
+        // Send message via HTTP POST
+        try {
+            await axios.post(
+                `${API_URL}/api/chat/rooms/${room._id}/messages`,
+                {
+                    message: messageText,
+                    message_type: 'text',
+                    enableAI: !room.admin_id // Enable AI only if no admin assigned
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
+
+            // Polling sẽ tự động fetch message mới trong 3s
+        } catch (error) {
+            console.error('Send message error:', error);
+            showToast('Không thể gửi tin nhắn. Vui lòng thử lại.', 'error');
+            // Remove optimistic message
+            setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
+        }
     };
 
     // Handle typing
     const handleTyping = (e) => {
         setInputMessage(e.target.value);
-
-        if (!socket || !room) return;
-
-        // Clear existing timeout
-        if (typingTimeoutRef.current) {
-            clearTimeout(typingTimeoutRef.current);
-        }
-
-        // Emit typing start
-        socket.emit('chat:typing', { roomId: room._id, isTyping: true });
-
-        // Set timeout to stop typing indicator
-        typingTimeoutRef.current = setTimeout(() => {
-            socket.emit('chat:typing', { roomId: room._id, isTyping: false });
-        }, 2000);
+        // Typing indicator disabled (không cần thiết với polling)
     };
 
     // Handle file upload
@@ -530,13 +470,20 @@ const SupportChatbox = () => {
                 }
             );
 
-            // Send message with attachment
-            socket.emit('chat:send_message', {
-                roomId: room._id,
-                message: file.type.startsWith('image/') ? `🖼️ ${file.name}` : `📎 ${file.name}`,
-                message_type: response.data.file.type,
-                attachments: [response.data.file]
-            });
+            // Send message with attachment via HTTP POST
+            await axios.post(
+                `${API_URL}/api/chat/rooms/${room._id}/messages`,
+                {
+                    message: file.type.startsWith('image/') ? `🖼️ ${file.name}` : `📎 ${file.name}`,
+                    message_type: response.data.file.type,
+                    attachments: [response.data.file]
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                }
+            );
 
             showToast('Upload thành công! ✅', 'success');
             setImagePreview(null);
