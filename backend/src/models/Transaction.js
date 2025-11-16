@@ -302,7 +302,44 @@ TransactionSchema.methods.requestRefund = async function(reason) {
         reason: reason,
         requested_at: new Date()
     };
-    return this.save();
+    await this.save();
+
+    // 🔔 Send email notification to admin
+    try {
+        const { sendRefundRequestNotification } = require('../services/email');
+        await sendRefundRequestNotification(this);
+    } catch (emailError) {
+        console.error('Failed to send refund request email:', emailError.message);
+        // Don't block the refund request if email fails
+    }
+
+    // 🔔 Create in-app notification for admin
+    try {
+        const Notification = require('./Notification');
+        const User = require('./User');
+
+        // Find admin users
+        const admins = await User.find({ role: 'admin' });
+
+        // Create notification for each admin
+        for (const admin of admins) {
+            await Notification.create({
+                recipientId: admin._id,
+                type: 'refund_requested',
+                title: 'Yêu cầu hoàn tiền mới',
+                message: `Có yêu cầu hoàn tiền cho giao dịch ${this._id}. Số tiền: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(this.amount)}`,
+                metadata: {
+                    transactionId: this._id,
+                    buyerId: this.buyer_id,
+                    reason: reason
+                }
+            });
+        }
+    } catch (notifError) {
+        console.error('Failed to create refund notification:', notifError.message);
+    }
+
+    return this;
 };
 
 TransactionSchema.methods.processRefund = async function(refundTransactionId) {

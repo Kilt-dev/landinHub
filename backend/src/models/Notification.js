@@ -4,7 +4,14 @@ const notificationSchema = new mongoose.Schema({
     recipientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     type: {
         type: String,
-        enum: ['refund_requested', 'order_cancelled', 'order_delivered', 'review_received'],
+        enum: [
+            'refund_requested',
+            'order_cancelled',
+            'order_delivered',
+            'review_received',
+            'admin_replied',
+            'refund_processed'
+        ],
         required: true
     },
     title: String,

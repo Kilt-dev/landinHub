@@ -156,6 +156,34 @@ exports.sendMessage = async (req, res) => {
     await chatMessage.save();
     await chatMessage.populate('sender_id', 'name role');
 
+    // 💬 Send Gmail notification when admin replies
+    if (isAdmin) {
+      try {
+        const { sendAdminReplyNotification } = require('../services/email');
+        await sendAdminReplyNotification(room, chatMessage);
+      } catch (emailError) {
+        console.error('Failed to send admin reply email:', emailError.message);
+        // Don't block the message if email fails
+      }
+
+      // 🔔 Create in-app notification for user
+      try {
+        const Notification = require('../models/Notification');
+        await Notification.create({
+          recipientId: room.user_id,
+          type: 'admin_replied',
+          title: 'Admin đã trả lời',
+          message: `Admin đã trả lời yêu cầu hỗ trợ: "${room.subject}"`,
+          metadata: {
+            roomId: room._id,
+            messagePreview: chatMessage.message.substring(0, 100)
+          }
+        });
+      } catch (notifError) {
+        console.error('Failed to create admin reply notification:', notifError.message);
+      }
+    }
+
     // Update room
     if (senderType === 'user') {
       await room.incrementUnreadAdmin();
