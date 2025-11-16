@@ -195,10 +195,153 @@ const sendAdminReplyNotification = async (chatRoom, message) => {
     }
 };
 
+// 📧 LEAD EMAIL MARKETING
+const sendLeadEmail = async (leadEmail, subject, content, options = {}) => {
+    try {
+        if (!leadEmail || !leadEmail.includes('@')) {
+            throw new Error('Invalid email address');
+        }
+
+        const {
+            leadName = '',
+            senderName = 'LandingHub Team',
+            includeUnsubscribe = true
+        } = options;
+
+        const mailOptions = {
+            from: `"${senderName}" <${process.env.EMAIL_USER}>`,
+            to: leadEmail.trim(),
+            subject: subject,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body {
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            line-height: 1.6;
+                            color: #333;
+                            max-width: 600px;
+                            margin: 0 auto;
+                            padding: 20px;
+                        }
+                        .header {
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            padding: 30px;
+                            border-radius: 8px 8px 0 0;
+                            text-align: center;
+                        }
+                        .content {
+                            background: #ffffff;
+                            padding: 30px;
+                            border: 1px solid #e5e7eb;
+                            border-top: none;
+                        }
+                        .footer {
+                            background: #f9fafb;
+                            padding: 20px;
+                            text-align: center;
+                            border-radius: 0 0 8px 8px;
+                            font-size: 13px;
+                            color: #6b7280;
+                        }
+                        .button {
+                            display: inline-block;
+                            background: #667eea;
+                            color: white;
+                            padding: 12px 30px;
+                            text-decoration: none;
+                            border-radius: 8px;
+                            margin: 20px 0;
+                        }
+                        .unsubscribe {
+                            font-size: 12px;
+                            color: #9ca3af;
+                            margin-top: 10px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1 style="margin: 0; font-size: 24px;">LandingHub</h1>
+                    </div>
+                    <div class="content">
+                        ${leadName ? `<p>Xin chào <strong>${leadName}</strong>,</p>` : '<p>Xin chào,</p>'}
+                        ${content}
+                    </div>
+                    <div class="footer">
+                        <p>© ${new Date().getFullYear()} LandingHub. All rights reserved.</p>
+                        ${includeUnsubscribe ? `
+                            <p class="unsubscribe">
+                                Bạn nhận email này vì đã đăng ký hoặc gửi form tại LandingHub.
+                                <br/>
+                                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/unsubscribe" style="color: #9ca3af;">Hủy đăng ký</a>
+                            </p>
+                        ` : ''}
+                    </div>
+                </body>
+                </html>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log('✅ Marketing email sent to:', leadEmail);
+        return { success: true, email: leadEmail };
+
+    } catch (error) {
+        console.error('❌ Marketing email error:', error.message);
+        throw error;
+    }
+};
+
+// 📧 BULK EMAIL TO MULTIPLE LEADS
+const sendBulkLeadEmails = async (leads, subject, content, options = {}) => {
+    try {
+        const results = {
+            success: [],
+            failed: []
+        };
+
+        for (const lead of leads) {
+            try {
+                await sendLeadEmail(
+                    lead.email,
+                    subject,
+                    content,
+                    {
+                        leadName: lead.name || '',
+                        ...options
+                    }
+                );
+                results.success.push(lead.email);
+
+                // Add small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+            } catch (error) {
+                results.failed.push({
+                    email: lead.email,
+                    error: error.message
+                });
+            }
+        }
+
+        console.log(`✅ Bulk email completed: ${results.success.length} sent, ${results.failed.length} failed`);
+        return results;
+
+    } catch (error) {
+        console.error('❌ Bulk email error:', error.message);
+        throw error;
+    }
+};
+
 module.exports = {
     sendOrderConfirmation,
     sendDeliveryConfirmation,
     sendOrderCancellation,
     sendRefundRequestNotification,
-    sendAdminReplyNotification
+    sendAdminReplyNotification,
+    sendLeadEmail,
+    sendBulkLeadEmails
 };

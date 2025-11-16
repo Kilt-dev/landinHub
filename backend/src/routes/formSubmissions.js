@@ -38,4 +38,7 @@ router.get('/export/:pageId', formSubmissionController.exportSubmissions);
 // Get submission statistics for a page
 router.get('/stats/:pageId', formSubmissionController.getSubmissionStats);
 
+// Send marketing email to leads
+router.post('/leads/send-email', formSubmissionController.sendMarketingEmail);
+
 module.exports = router;
