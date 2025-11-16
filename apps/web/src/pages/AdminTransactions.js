@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Search, Filter, Download, RefreshCw, DollarSign, TrendingUp,
     Calendar, CreditCard, User, Package, CheckCircle, XCircle,
-    Clock, AlertCircle
+    Clock, AlertCircle, RotateCcw
 } from 'lucide-react';
 import api from '@landinghub/api';
 import '../styles/AdminTransactions.css';
@@ -28,6 +28,11 @@ const AdminTransactions = () => {
         page: 1,
         limit: 20,
         totalPages: 1
+    });
+    const [refundModal, setRefundModal] = useState({
+        show: false,
+        transactionId: null,
+        refundTxId: ''
     });
 
     const fetchTransactions = async () => {
@@ -87,6 +92,28 @@ const AdminTransactions = () => {
     const handleExport = () => {
         // TODO: Implement export to CSV/Excel
         alert('Export functionality coming soon!');
+    };
+
+    const handleRefund = async () => {
+        if (!refundModal.refundTxId.trim()) {
+            alert('Vui lòng nhập Refund Transaction ID');
+            return;
+        }
+
+        try {
+            const response = await api.post(`/api/orders/refund/${refundModal.transactionId}`, {
+                refundTransactionId: refundModal.refundTxId
+            });
+
+            if (response.data.success) {
+                alert('✅ Hoàn tiền thành công!');
+                setRefundModal({ show: false, transactionId: null, refundTxId: '' });
+                fetchTransactions(); // Reload list
+            }
+        } catch (error) {
+            console.error('Refund Error:', error);
+            alert('❌ Lỗi: ' + (error.response?.data?.message || error.message));
+        }
     };
 
     return (
@@ -216,6 +243,7 @@ const AdminTransactions = () => {
                         <th>Method</th>
                         <th>Status</th>
                         <th>Date</th>
+                        <th>Actions</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -278,6 +306,21 @@ const AdminTransactions = () => {
                                         minute: '2-digit'
                                     })}
                                 </td>
+                                <td className="actions">
+                                    {tx.status === 'REFUND_PENDING' && (
+                                        <button
+                                            className="btn-refund"
+                                            onClick={() => setRefundModal({
+                                                show: true,
+                                                transactionId: tx._id,
+                                                refundTxId: ''
+                                            })}
+                                            title="Process Refund"
+                                        >
+                                            <RotateCcw size={16} /> Refund
+                                        </button>
+                                    )}
+                                </td>
                             </tr>
                         ))
                     ) : (
@@ -312,6 +355,45 @@ const AdminTransactions = () => {
                     >
                         Next →
                     </button>
+                </div>
+            )}
+
+            {/* REFUND MODAL */}
+            {refundModal.show && (
+                <div className="modal-overlay" onClick={() => setRefundModal({ show: false, transactionId: null, refundTxId: '' })}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <h2>🔄 Process Refund</h2>
+                        <p style={{ color: '#666', marginBottom: '20px' }}>
+                            Enter the refund transaction ID from your payment gateway (VNPay/Momo)
+                        </p>
+
+                        <div className="form-group">
+                            <label>Refund Transaction ID</label>
+                            <input
+                                type="text"
+                                value={refundModal.refundTxId}
+                                onChange={(e) => setRefundModal(prev => ({ ...prev, refundTxId: e.target.value }))}
+                                placeholder="Enter refund transaction ID from gateway"
+                                className="input-refund"
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="modal-actions">
+                            <button
+                                onClick={() => setRefundModal({ show: false, transactionId: null, refundTxId: '' })}
+                                className="btn-cancel"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleRefund}
+                                className="btn-confirm-refund"
+                            >
+                                <RotateCcw size={16} /> Confirm Refund
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
