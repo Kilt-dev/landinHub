@@ -18,6 +18,7 @@ import PopupLayerManager from './create-page/PopupLayerManager';
 import api from '@landinghub/api';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+import { initializeResponsiveData } from '../utils/responsiveSync';
 import { parseHTMLToPageData, renderStaticHTML } from '../utils/pageUtils';
 import { syncElementBetweenModes } from '../utils/responsiveSync';
 import { applyMobileVerticalStacking, applySectionMobileStacking } from '../utils/dragDropCore';
@@ -91,6 +92,11 @@ const usePageContent = (pageId, navigate, setPageData, setHistory, setHistoryInd
                         elements: [],
                         meta: { created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
                     });
+
+                    // ⚡ FIX: Initialize responsive data for elements that don't have mobile/tablet positions
+                    // This ensures elements scale properly when switching from desktop to mobile/tablet
+                    finalPageData = initializeResponsiveData(finalPageData);
+
                     setPageData(finalPageData);
                     setHistory([finalPageData]);
                     setHistoryIndex(0);

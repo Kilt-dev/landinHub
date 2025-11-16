@@ -6,7 +6,7 @@ import api from '@landinghub/api';
 import logo from '../assets/logo.png';
 import '../styles/header.css';
 import { FiBell, FiX } from 'react-icons/fi';
-import { io } from 'socket.io-client';
+import { usePolling } from '../hooks/usePolling';
 
 
 const Header = () => {
@@ -18,7 +18,7 @@ const Header = () => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const navigate = useNavigate();
-    const socket = useRef();
+    const lastNotifIdRef = useRef(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -41,29 +41,48 @@ const Header = () => {
             const res = await api.get('/api/notifications');
             setNotifications(res.data.data);
             setUnreadCount(res.data.data.filter(n => !n.isRead).length);
+
+            // Update last notification ID for polling
+            if (res.data.data.length > 0) {
+                lastNotifIdRef.current = res.data.data[0]._id;
+            }
         } catch (err) {
             console.error('Lỗi tải thông báo:', err);
         }
     };
-    useEffect(() => {
+
+    // 🔄 Polling: Poll new notifications every 10 seconds
+    const pollNewNotifications = async () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        socket.current = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
-            auth: { token }
-        });
+        try {
+            const params = lastNotifIdRef.current
+                ? `?after=${lastNotifIdRef.current}`
+                : '';
 
-        socket.current.on('new_notification', payload => {
-            setNotifications(prev => [payload, ...prev]);
-            setUnreadCount(prev => prev + 1);
-        });
+            const res = await api.get(`/api/notifications${params}`);
 
-        socket.current.on('connect', () => console.log('Socket connected', socket.current.id));
-        socket.current.on('connect_error', err => console.error('Socket error:', err.message));
+            if (res.data.data && res.data.data.length > 0) {
+                const newNotifs = res.data.data;
 
-        // cleanup
-        return () => socket.current.disconnect();
-    }, []);   // <- để [] để chỉ chạy 1 lần
+                // Add new notifications to the beginning
+                setNotifications(prev => [...newNotifs, ...prev]);
+
+                // Update unread count
+                const newUnread = newNotifs.filter(n => !n.isRead).length;
+                setUnreadCount(prev => prev + newUnread);
+
+                // Update last notification ID
+                lastNotifIdRef.current = newNotifs[0]._id;
+            }
+        } catch (err) {
+            console.error('Lỗi poll thông báo:', err);
+        }
+    };
+
+    // Poll notifications every 10 seconds
+    usePolling(pollNewNotifications, 10000, !!localStorage.getItem('token'));
 
     const markAsRead = async (id) => {
         try {
