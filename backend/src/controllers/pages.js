@@ -42,26 +42,43 @@ const getBrowser = async () => {
     if (!browserPool.browser) {
         console.log('Launching Puppeteer browser');
         try {
-            // Lazy load puppeteer only when needed
-            const puppeteer = require('puppeteer');
-            browserPool.browser = await puppeteer.launch({
-                headless: 'new',
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-web-security',
-                    '--disable-features=VizDisplayCompositor',
-                    '--disable-extensions',
-                    '--disable-plugins',
-                    '--disable-dev-shm-usage', // Fix shared memory issues
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process', // Important for stability
-                    '--disable-gpu'
-                ],
-                timeout: 30000,
-            });
+            // Detect Lambda environment
+            const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+            if (isLambda) {
+                // Use chrome-aws-lambda on Lambda
+                const chromium = require('chrome-aws-lambda');
+                browserPool.browser = await chromium.puppeteer.launch({
+                    args: chromium.args,
+                    defaultViewport: chromium.defaultViewport,
+                    executablePath: await chromium.executablePath,
+                    headless: chromium.headless,
+                    ignoreHTTPSErrors: true
+                });
+                console.log('✅ Launched Chrome on Lambda');
+            } else {
+                // Use regular puppeteer locally
+                const puppeteer = require('puppeteer');
+                browserPool.browser = await puppeteer.launch({
+                    headless: 'new',
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-web-security',
+                        '--disable-features=VizDisplayCompositor',
+                        '--disable-extensions',
+                        '--disable-plugins',
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--no-first-run',
+                        '--no-zygote',
+                        '--single-process',
+                        '--disable-gpu'
+                    ],
+                    timeout: 30000,
+                });
+                console.log('✅ Launched Puppeteer locally');
+            }
 
             browserPool.browser.on('disconnected', () => {
                 console.log('Browser disconnected, clearing pool');
