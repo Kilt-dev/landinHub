@@ -71,6 +71,9 @@ provider:
     SMTP_USER: ${env:SMTP_USER, ''}
     SMTP_PASSWORD: ${env:SMTP_PASSWORD, ''}
     PLATFORM_FEE_PERCENTAGE: ${env:PLATFORM_FEE_PERCENTAGE, '10'}
+    # WebSocket configuration
+    WEBSOCKET_CONNECTIONS_TABLE: landinghub-websocket-connections-${self:provider.stage}
+    WEBSOCKET_API_ENDPOINT: wss://${WebsocketsApi}.execute-api.${self:provider.region}.amazonaws.com/${self:provider.stage}
 
   iam:
     role:
@@ -90,11 +93,29 @@ provider:
             - route53:GetHostedZone
             - route53:ListResourceRecordSets
           Resource: "arn:aws:route53:::hostedzone/${env:AWS_ROUTE53_HOSTED_ZONE_ID, 'Z05977871D0O3OEPXWL6S'}"
+        # WebSocket permissions
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:Scan
+          Resource:
+            - !GetAtt WebSocketConnectionsTable.Arn
+            - !Join ['/', [!GetAtt WebSocketConnectionsTable.Arn, 'index/*']]
+        - Effect: Allow
+          Action:
+            - execute-api:ManageConnections
+          Resource:
+            - arn:aws:execute-api:${self:provider.region}:*:*/*
 
 # plugins:
 #   - serverless-esbuild
 
 functions:
+  # HTTP API
   api:
     handler: lambda.handler
     events:
@@ -104,6 +125,27 @@ functions:
       - httpApi:
           path: /
           method: '*'
+
+  # WebSocket Connect
+  websocketConnect:
+    handler: src/lambda/websocket/connect.handler
+    events:
+      - websocket:
+          route: $connect
+
+  # WebSocket Disconnect
+  websocketDisconnect:
+    handler: src/lambda/websocket/disconnect.handler
+    events:
+      - websocket:
+          route: $disconnect
+
+  # WebSocket Default (handles all custom messages)
+  websocketDefault:
+    handler: src/lambda/websocket/default.handler
+    events:
+      - websocket:
+          route: $default
 
 package:
   patterns:
@@ -138,3 +180,37 @@ package:
     - '!chromium-layer.zip'
   individually: false
   excludeDevDependencies: true
+
+resources:
+  Resources:
+    # DynamoDB Table for WebSocket Connections
+    WebSocketConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.WEBSOCKET_CONNECTIONS_TABLE}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
+  Outputs:
+    WebSocketAPIUrl:
+      Description: WebSocket API URL
+      Value: !Sub 'wss://${WebsocketsApi}.execute-api.${self:provider.region}.amazonaws.com/${self:provider.stage}'
+      Export:
+        Name: ${self:service}-websocket-url-${self:provider.stage}

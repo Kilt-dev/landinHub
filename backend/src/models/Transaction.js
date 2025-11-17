@@ -244,36 +244,42 @@ TransactionSchema.methods.markAsPaid = async function(paymentGatewayData = {}) {
 
         if (order.status === 'pending') {
             await order.deliverPage();
-            // 1. Emit real-time cho buyer
-            global._io.to(`user_${order.buyerId}`).emit('order_delivered', {
-                orderId: order.orderId,
-                marketplacePageId: order.marketplacePageId,
-                createdPageId: order.createdPageId
-            });
 
-            global._io.to(`user_${order.sellerId}`).emit('new_sale', {
-                orderId: order.orderId,
-                marketplacePageId: order.marketplacePageId,
-                amount: this.amount
-            });
+            // Send real-time notifications via WebSocket (serverless)
+            if (global._websocket) {
+                // 1. Notify buyer about order delivered
+                await global._websocket.notifyOrderDelivered(order.buyerId.toString(), {
+                    orderId: order.orderId,
+                    marketplacePageId: order.marketplacePageId,
+                    createdPageId: order.createdPageId
+                });
 
-            // 2. Emit dashboard refresh events
-            global._io.to(`dashboard_user_${order.buyerId}`).emit('dashboard:update', {
-                type: 'order_delivered',
-                orderId: order.orderId
-            });
+                // 2. Notify seller about new sale
+                await global._websocket.notifyNewSale(order.sellerId.toString(), {
+                    orderId: order.orderId,
+                    marketplacePageId: order.marketplacePageId,
+                    amount: this.amount
+                });
 
-            global._io.to(`dashboard_user_${order.sellerId}`).emit('dashboard:update', {
-                type: 'new_sale',
-                orderId: order.orderId,
-                amount: this.amount
-            });
+                // 3. Notify buyer's dashboard
+                await global._websocket.notifyUserDashboard(order.buyerId.toString(), {
+                    type: 'order_delivered',
+                    orderId: order.orderId
+                });
 
-            // 3. Emit admin dashboard update
-            global._io.to('dashboard_admin').emit('dashboard:update', {
-                type: 'new_order',
-                orderId: order.orderId
-            });
+                // 4. Notify seller's dashboard
+                await global._websocket.notifyUserDashboard(order.sellerId.toString(), {
+                    type: 'new_sale',
+                    orderId: order.orderId,
+                    amount: this.amount
+                });
+
+                // 5. Notify admin dashboard
+                await global._websocket.notifyAdminDashboard({
+                    type: 'new_order',
+                    orderId: order.orderId
+                });
+            }
 
             console.log('Order delivered:', order.orderId);
         } else {
