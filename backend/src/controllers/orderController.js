@@ -391,3 +391,116 @@ exports.getOrderTransactions = async (req, res) => {
         res.status(500).json({ success: false, message: 'Lỗi khi lấy giao dịch từ đơn hàng', error: error.message });
     }
 };
+
+/**
+ * Admin: Thống kê đơn hàng marketplace
+ * GET /api/orders/admin/stats
+ */
+exports.getOrderStats = async (req, res) => {
+    try {
+        // 📊 Orders by status
+        const ordersByStatus = await Order.aggregate([
+            { $match: { is_deleted: false } },
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // 💰 Revenue statistics
+        const revenueStats = await Order.aggregate([
+            { $match: { status: 'delivered', is_deleted: false } },
+            {
+                $lookup: {
+                    from: 'transactions',
+                    localField: 'transactionId',
+                    foreignField: '_id',
+                    as: 'transaction'
+                }
+            },
+            { $unwind: { path: '$transaction', preserveNullAndEmptyArrays: true } },
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: '$transaction.amount' },
+                    totalOrders: { $sum: 1 },
+                    platformFees: { $sum: '$transaction.platform_fee' }
+                }
+            }
+        ]);
+
+        // 📦 Recent orders
+        const recentOrders = await Order.find({ is_deleted: false })
+            .populate('marketplacePageId', 'title price')
+            .populate('buyerId', 'name email')
+            .populate('sellerId', 'name email')
+            .populate('transactionId', 'amount status payment_method')
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .lean();
+
+        // 🎯 Top selling pages
+        const topPages = await Order.aggregate([
+            { $match: { status: 'delivered', is_deleted: false } },
+            {
+                $group: {
+                    _id: '$marketplacePageId',
+                    totalSales: { $sum: 1 }
+                }
+            },
+            { $sort: { totalSales: -1 } },
+            { $limit: 5 },
+            {
+                $lookup: {
+                    from: 'marketplace_pages',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'page'
+                }
+            },
+            { $unwind: '$page' },
+            {
+                $project: {
+                    pageId: '$_id',
+                    title: '$page.title',
+                    price: '$page.price',
+                    totalSales: 1
+                }
+            }
+        ]);
+
+        const formatVND = (amount) => {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(amount || 0);
+        };
+
+        const stats = revenueStats[0] || { totalRevenue: 0, totalOrders: 0, platformFees: 0 };
+
+        res.json({
+            success: true,
+            data: {
+                overview: {
+                    totalRevenue: formatVND(stats.totalRevenue),
+                    totalRevenueRaw: stats.totalRevenue || 0,
+                    platformFees: formatVND(stats.platformFees),
+                    platformFeesRaw: stats.platformFees || 0,
+                    totalOrders: stats.totalOrders || 0
+                },
+                ordersByStatus: ordersByStatus.reduce((acc, item) => {
+                    acc[item._id] = item.count;
+                    return acc;
+                }, {}),
+                recentOrders,
+                topPages
+            }
+        });
+
+    } catch (error) {
+        console.error('Get Order Stats Error:', error);
+        res.status(500).json({ success: false, message: 'Lỗi khi lấy thống kê đơn hàng', error: error.message });
+    }
+};

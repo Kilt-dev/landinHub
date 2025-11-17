@@ -17,6 +17,7 @@ router.patch('/:id/refund', authMiddleware, orderController.requestRefund);
 
 // ✅ ADMIN ROUTES
 router.get('/admin/all', authMiddleware, isAdmin, orderController.getAllOrders);
+router.get('/admin/stats', authMiddleware, isAdmin, orderController.getOrderStats);
 router.patch('/admin/:id/status', authMiddleware, isAdmin, orderController.updateOrderStatus);
 router.patch('/admin/:id/refund/process', authMiddleware, isAdmin, orderController.processRefund);
 
