@@ -223,8 +223,14 @@ const SupportChatbox = () => {
                     // Remove optimistic messages that got confirmed
                     const filtered = prev.filter(msg => !msg.__optimistic);
 
-                    // Add new messages
-                    return [...filtered, ...newMessages];
+                    // Create a Set of existing message IDs for fast lookup
+                    const existingIds = new Set(filtered.map(msg => msg._id));
+
+                    // Only add truly new messages (not already in the list)
+                    const uniqueNewMessages = newMessages.filter(msg => !existingIds.has(msg._id));
+
+                    // Merge and return
+                    return [...filtered, ...uniqueNewMessages];
                 });
 
                 // Update last message ID
@@ -705,7 +711,7 @@ const SupportChatbox = () => {
                                     )}
 
                                     {messages.map((msg, index) => (
-                                        <Box key={msg._id || index}>
+                                        <Box key={msg._id || `msg-${index}-${msg.createdAt}`}>
                                             {msg.message_type === 'system' ? (
                                                 <Box textAlign="center" my={1}>
                                                     <Chip label={msg.message} size="small" />

@@ -26,6 +26,9 @@ async function testWebSocketService() {
     log('  WebSocket Service Test', 'cyan');
     log('========================================\n', 'cyan');
 
+    // Store connections for summary
+    let connections = [];
+
     // Test 1: Check configuration
     log('Test 1: Checking configuration...', 'yellow');
     const endpoint = process.env.WEBSOCKET_API_ENDPOINT;
@@ -111,7 +114,7 @@ async function testWebSocketService() {
     // Test 6: Test sending message (if connections exist)
     log('\nTest 6: Testing message sending...', 'yellow');
     try {
-        const connections = await connectionManager.getAllConnections();
+        connections = await connectionManager.getAllConnections();
 
         if (connections.length === 0) {
             log('⚠️  No active connections to test with', 'yellow');
