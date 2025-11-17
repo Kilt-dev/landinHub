@@ -54,5 +54,9 @@ io.on('connection', socket => {
 const chatSocket = require('./sockets/chatSocket');
 chatSocket(io);
 
+// 4.2. Tích hợp Dashboard Socket Handler
+const dashboardSocket = require('./sockets/dashboardSocket');
+dashboardSocket(io);
+
 // 5. Khởi động server
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -256,6 +256,25 @@ TransactionSchema.methods.markAsPaid = async function(paymentGatewayData = {}) {
                 marketplacePageId: order.marketplacePageId,
                 amount: this.amount
             });
+
+            // 2. Emit dashboard refresh events
+            global._io.to(`dashboard_user_${order.buyerId}`).emit('dashboard:update', {
+                type: 'order_delivered',
+                orderId: order.orderId
+            });
+
+            global._io.to(`dashboard_user_${order.sellerId}`).emit('dashboard:update', {
+                type: 'new_sale',
+                orderId: order.orderId,
+                amount: this.amount
+            });
+
+            // 3. Emit admin dashboard update
+            global._io.to('dashboard_admin').emit('dashboard:update', {
+                type: 'new_order',
+                orderId: order.orderId
+            });
+
             console.log('Order delivered:', order.orderId);
         } else {
             console.log('Order already processed:', order.status);

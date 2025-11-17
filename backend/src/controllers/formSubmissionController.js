@@ -79,6 +79,22 @@ exports.submitForm = async (req, res) => {
 
         await submission.save();
 
+        // Emit real-time event for new lead
+        if (global._io && user_id) {
+            // Notify user's dashboard
+            global._io.to(`dashboard_user_${user_id}`).emit('dashboard:update', {
+                type: 'new_lead',
+                submissionId: submission._id,
+                pageId: page_id
+            });
+
+            // Notify admin dashboard
+            global._io.to('dashboard_admin').emit('dashboard:update', {
+                type: 'new_lead',
+                submissionId: submission._id
+            });
+        }
+
         // TODO: Trigger integrations (email, webhook, Google Sheets, etc.)
         // This will be implemented in the integration service
 

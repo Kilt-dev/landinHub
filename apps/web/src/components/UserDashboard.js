@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import api from '@landinghub/api';
 import '../styles/UserDashboard.css';
+import { initSocket, joinDashboard, leaveDashboard, onDashboardUpdate } from '../utils/socket';
 
 const UserDashboard = () => {
     const [data, setData] = useState({
@@ -43,6 +44,25 @@ const UserDashboard = () => {
 
     useEffect(() => {
         fetchData();
+
+        // Initialize socket connection for real-time updates
+        const socket = initSocket();
+        if (socket) {
+            joinDashboard();
+
+            // Listen for dashboard updates
+            const cleanup = onDashboardUpdate((data) => {
+                console.log('📊 Dashboard update received:', data);
+                // Automatically refresh dashboard data when update is received
+                fetchData();
+            });
+
+            // Cleanup on unmount
+            return () => {
+                cleanup();
+                leaveDashboard();
+            };
+        }
     }, []);
 
     if (loading) {
