@@ -197,6 +197,8 @@ const SupportChatbox = () => {
 
     const lastMessageIdRef = useRef(null);
     const lastRoomStatusRef = useRef(null);
+    const reinitializeAttemptsRef = useRef(0); // Track reinitialize attempts
+    const MAX_REINITIALIZE_ATTEMPTS = 3;
 
     // 🔄 Polling: Poll messages khi chat box đang mở
     const pollMessages = async () => {
@@ -279,18 +281,28 @@ const SupportChatbox = () => {
         } catch (error) {
             console.error('Polling error:', error);
 
-            // If room not found (404), reset room and reinitialize
+            // If room not found (404), reset room and reinitialize (with limit)
             if (error.response?.status === 404) {
-                console.log('Chat room not found, reinitializing...');
-                setRoom(null);
-                setMessages([]);
-                lastMessageIdRef.current = null;
+                reinitializeAttemptsRef.current += 1;
 
-                // Reinitialize if chat is still open
-                if (isOpen) {
-                    setTimeout(() => {
-                        initializeChatRoom();
-                    }, 1000);
+                if (reinitializeAttemptsRef.current <= MAX_REINITIALIZE_ATTEMPTS) {
+                    console.log(`Chat room not found, reinitializing (attempt ${reinitializeAttemptsRef.current}/${MAX_REINITIALIZE_ATTEMPTS})...`);
+                    setRoom(null);
+                    setMessages([]);
+                    lastMessageIdRef.current = null;
+
+                    // Reinitialize if chat is still open
+                    if (isOpen) {
+                        setTimeout(() => {
+                            initializeChatRoom();
+                        }, 1000);
+                    }
+                } else {
+                    // Max attempts reached, stop polling and show error
+                    console.error('Max reinitialize attempts reached. Stopping chat polling.');
+                    setRoom(null);
+                    setMessages([]);
+                    showToast('Không thể kết nối chat. Vui lòng đóng và mở lại chatbox.', 'error');
                 }
             }
         }
@@ -359,9 +371,14 @@ const SupportChatbox = () => {
 
             setMessages(messagesResponse.data.messages);
             setUnreadCount(0);
+
+            // Reset reinitialize counter on success
+            reinitializeAttemptsRef.current = 0;
+
             scrollToBottom(true); // Force scroll on room init
         } catch (error) {
             console.error('Failed to initialize chat:', error);
+            showToast('Không thể khởi tạo chat. Vui lòng thử lại.', 'error');
         } finally {
             setIsLoading(false);
         }
