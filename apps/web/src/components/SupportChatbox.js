@@ -178,7 +178,9 @@ const SupportChatbox = () => {
     const [ratingDialog, setRatingDialog] = useState(false);
     const [rating, setRating] = useState(0);
     const [ratingFeedback, setRatingFeedback] = useState('');
+    const [userScrolledUp, setUserScrolledUp] = useState(false); // Track if user scrolled up
     const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null); // Ref for messages container
     const fileInputRef = useRef(null);
     const typingTimeoutRef = useRef(null);
 
@@ -303,7 +305,7 @@ const SupportChatbox = () => {
                 }
             });
             setMessages(messagesResponse.data.messages);
-            scrollToBottom();
+            scrollToBottom(true); // Force scroll on initial load
         } catch (error) {
             console.error('Failed to load messages:', error);
         }
@@ -342,7 +344,7 @@ const SupportChatbox = () => {
 
             setMessages(messagesResponse.data.messages);
             setUnreadCount(0);
-            scrollToBottom();
+            scrollToBottom(true); // Force scroll on room init
         } catch (error) {
             console.error('Failed to initialize chat:', error);
         } finally {
@@ -395,7 +397,7 @@ const SupportChatbox = () => {
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
-        scrollToBottom();
+        scrollToBottom(true); // Force scroll when user sends message
 
         // Send message via HTTP POST
         try {
@@ -507,13 +509,28 @@ const SupportChatbox = () => {
         setTimeout(() => handleSendMessage(), 100);
     };
 
-    const scrollToBottom = () => {
-        setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
+    // Handle scroll detection
+    const handleScroll = () => {
+        if (messagesContainerRef.current) {
+            const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+            const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+            // User has scrolled up if distance from bottom > 100px
+            setUserScrolledUp(distanceFromBottom > 100);
+        }
+    };
+
+    // Scroll to bottom with optional force parameter
+    const scrollToBottom = (force = false) => {
+        // Only auto-scroll if user is at bottom OR force scroll
+        if (force || !userScrolledUp) {
+            setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
     };
 
     useEffect(() => {
+        // Only auto-scroll if user hasn't scrolled up
         scrollToBottom();
     }, [messages]);
 
@@ -644,7 +661,7 @@ const SupportChatbox = () => {
                         </ChatHeader>
 
                         {/* Messages */}
-                        <MessagesContainer>
+                        <MessagesContainer ref={messagesContainerRef} onScroll={handleScroll}>
                             {isLoading ? (
                                 <Box display="flex" justifyContent="center" alignItems="center" height="100%">
                                     <CircularProgress />
