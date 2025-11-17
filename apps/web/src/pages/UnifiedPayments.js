@@ -10,7 +10,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/UnifiedPayments.css';
 import DogLoader from '../components/Loader';
-import PayoutRequest from '../components/PayoutRequest';
+import ModernPayoutRequest from '../components/ModernPayoutRequest';
 import {
     DollarSign, TrendingUp, CheckCircle, Clock, Filter,
     Download, CreditCard, Eye, RotateCcw, BarChart3, Package, AlertCircle
@@ -638,7 +638,7 @@ const UnifiedPayments = () => {
 
             {/* Payout Modal */}
             {showPayoutModal && pendingPayout > 0 && (
-                <PayoutRequest
+                <ModernPayoutRequest
                     isOpen={showPayoutModal}
                     onClose={() => setShowPayoutModal(false)}
                     pendingAmount={pendingPayout}

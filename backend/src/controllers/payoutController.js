@@ -9,14 +9,43 @@ const User = require('../models/User');
 exports.requestPayout = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { bank_name, account_number, account_name, notes } = req.body;
+        const { payment_method = 'BANK_TRANSFER', bank_info, momo_info, notes } = req.body;
 
-        // Kiểm tra thông tin ngân hàng
-        if (!bank_name || !account_number || !account_name) {
+        // Validate payment method
+        if (!['BANK_TRANSFER', 'MOMO'].includes(payment_method)) {
             return res.status(400).json({
                 success: false,
-                message: 'Vui lòng cung cấp đầy đủ thông tin ngân hàng'
+                message: 'Phương thức thanh toán không hợp lệ'
             });
+        }
+
+        // Validate bank transfer info
+        if (payment_method === 'BANK_TRANSFER') {
+            if (!bank_info || !bank_info.bank_name || !bank_info.account_number || !bank_info.account_name) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Vui lòng cung cấp đầy đủ thông tin ngân hàng (tên ngân hàng, số tài khoản, tên chủ tài khoản)'
+                });
+            }
+        }
+
+        // Validate Momo info
+        if (payment_method === 'MOMO') {
+            if (!momo_info || !momo_info.phone_number || !momo_info.account_name) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Vui lòng cung cấp đầy đủ thông tin Momo (số điện thoại, tên chủ tài khoản)'
+                });
+            }
+
+            // Validate phone number format
+            const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/;
+            if (!phoneRegex.test(momo_info.phone_number.replace(/\s/g, ''))) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Số điện thoại Momo không hợp lệ'
+                });
+            }
         }
 
         // Tính số tiền chờ rút
@@ -35,20 +64,38 @@ exports.requestPayout = async (req, res) => {
 
         const totalAmount = pendingTransactions.reduce((sum, txn) => sum + txn.seller_amount, 0);
 
+        // Minimum withdrawal amount: 50,000 VND
+        if (totalAmount < 50000) {
+            return res.status(400).json({
+                success: false,
+                message: 'Số tiền rút tối thiểu là 50,000đ'
+            });
+        }
+
         // Tạo payout request
-        const payout = new Payout({
+        const payoutData = {
             seller_id: userId,
             amount: totalAmount,
             transaction_ids: pendingTransactions.map(txn => txn._id),
-            bank_info: {
-                bank_name,
-                account_number,
-                account_name
-            },
+            payout_method: payment_method,
             notes: notes || '',
             status: 'PENDING'
-        });
+        };
 
+        if (payment_method === 'BANK_TRANSFER') {
+            payoutData.bank_info = {
+                bank_name: bank_info.bank_name,
+                account_number: bank_info.account_number.trim(),
+                account_name: bank_info.account_name.trim().toUpperCase()
+            };
+        } else if (payment_method === 'MOMO') {
+            payoutData.momo_info = {
+                phone_number: momo_info.phone_number.replace(/\s/g, ''),
+                account_name: momo_info.account_name.trim()
+            };
+        }
+
+        const payout = new Payout(payoutData);
         await payout.save();
 
         // Cập nhật transaction status
@@ -59,7 +106,7 @@ exports.requestPayout = async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Yêu cầu rút tiền đã được gửi. Admin sẽ xử lý trong thời gian sớm nhất.',
+            message: `Yêu cầu rút tiền qua ${payment_method === 'MOMO' ? 'Momo' : 'chuyển khoản ngân hàng'} đã được gửi. Admin sẽ xử lý trong 1-3 ngày làm việc.`,
             data: payout
         });
     } catch (error) {
