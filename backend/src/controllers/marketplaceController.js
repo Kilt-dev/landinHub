@@ -1039,12 +1039,18 @@ exports.getPageDetailWithOrder = async (req, res) => {
                 : null;
 
             if (buyerObjectId) {
+                // ✅ Lấy order bất kỳ status nào, populate đầy đủ các field
                 order = await Order.findOne({
                     buyerId: buyerObjectId,      // ObjectId
-                    marketplacePageId: id,       // string (UUID)
-                    status: 'delivered'
+                    marketplacePageId: id        // string (UUID)
+                    // ❌ Không filter theo status - lấy tất cả orders
                 })
                     .populate('createdPageId')
+                    .populate('transactionId', 'amount payment_method status created_at')
+                    .populate('buyerId', 'name email')
+                    .populate('sellerId', 'name email')
+                    .populate('marketplacePageId', 'title price description')
+                    .sort({ createdAt: -1 }) // Lấy order mới nhất
                     .lean();
             }
         }
