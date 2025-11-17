@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '@landinghub/api';
 import '../styles/AdminDashboard.css';
+import { initSocket, joinDashboard, leaveDashboard, onDashboardUpdate } from '../utils/socket';
 
 const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
@@ -118,6 +119,14 @@ const AdminDashboard = () => {
                         ordersByStatus: marketplaceData.ordersByStatus || {},
                         recentOrders: marketplaceData.recentOrders || [],
                         topPages: marketplaceData.topPages || []
+                    },
+                    // 📊 LEADS STATS
+                    leads: {
+                        total: report.leads?.total || 0,
+                        today: report.leads?.today || 0,
+                        thisWeek: report.leads?.thisWeek || 0,
+                        thisMonth: report.leads?.thisMonth || 0,
+                        topPages: report.leads?.topPages || []
                     }
                 });
             }
@@ -130,6 +139,25 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         fetchAdminData();
+
+        // Initialize socket connection for real-time updates
+        const socket = initSocket();
+        if (socket) {
+            joinDashboard();
+
+            // Listen for dashboard updates
+            const cleanup = onDashboardUpdate((data) => {
+                console.log('📊 Dashboard update received:', data);
+                // Automatically refresh dashboard data when update is received
+                fetchAdminData();
+            });
+
+            // Cleanup on unmount
+            return () => {
+                cleanup();
+                leaveDashboard();
+            };
+        }
     }, []);
 
     if (loading) {
@@ -199,6 +227,17 @@ const AdminDashboard = () => {
                     <div className="kpi-value">{data.overview.totalUsers}</div>
                     <div className="kpi-footer">
                         <span>Tổng số người dùng đã đăng ký</span>
+                    </div>
+                </div>
+
+                <div className="kpi-card leads">
+                    <div className="kpi-header">
+                        <span className="kpi-label">📊 Leads</span>
+                    </div>
+                    <div className="kpi-value">{data.leads?.total?.toLocaleString() || 0}</div>
+                    <div className="kpi-footer">
+                        <span className="kpi-status active">{data.leads?.today || 0} Hôm nay</span>
+                        <span className="kpi-status pending">{data.leads?.thisWeek || 0} Tuần này</span>
                     </div>
                 </div>
             </div>
