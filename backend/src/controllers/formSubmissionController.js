@@ -79,6 +79,22 @@ exports.submitForm = async (req, res) => {
 
         await submission.save();
 
+        // Send real-time notification for new lead via WebSocket (serverless)
+        if (global._websocket && user_id) {
+            // Notify user's dashboard
+            await global._websocket.notifyUserDashboard(user_id.toString(), {
+                type: 'new_lead',
+                submissionId: submission._id,
+                pageId: page_id
+            });
+
+            // Notify admin dashboard
+            await global._websocket.notifyAdminDashboard({
+                type: 'new_lead',
+                submissionId: submission._id
+            });
+        }
+
         // TODO: Trigger integrations (email, webhook, Google Sheets, etc.)
         // This will be implemented in the integration service
 

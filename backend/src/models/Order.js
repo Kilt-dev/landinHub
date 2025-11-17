@@ -10,8 +10,9 @@ const orderSchema = new mongoose.Schema({
     },
     transactionId: {
         type: String,
-        required: true,
-        ref: 'Transaction'
+        required: false, // ✅ Không bắt buộc để handle orders cũ không có transaction
+        ref: 'Transaction',
+        default: null
     },
     buyerId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -33,6 +34,11 @@ const orderSchema = new mongoose.Schema({
         required: true,
         min: 0
     },
+    payment_method: {
+        type: String,
+        enum: ['MOMO', 'VNPAY', 'SANDBOX', 'BANK_TRANSFER', null],
+        default: null
+    },
     createdPageId: {
         type: String,
         default: null,
@@ -40,8 +46,12 @@ const orderSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'delivered', 'cancelled', 'refunded'],
+        enum: ['pending', 'processing', 'delivered', 'cancelled', 'refunded'],
         default: 'pending'
+    },
+    refund_reason: {
+        type: String,
+        default: null
     },
     createdAt: {
         type: Date,

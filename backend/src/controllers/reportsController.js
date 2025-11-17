@@ -1,6 +1,7 @@
 const Transaction = require('../models/Transaction');
 const Page = require('../models/Page');
 const MarketplacePage = require('../models/MarketplacePage');
+const FormSubmission = require('../models/FormSubmission');
 const mongoose = require('mongoose');
 /**
  * ========== BÁO CÁO TÀI CHÍNH CHO USER ==========
@@ -393,6 +394,56 @@ const getAdminSystemReport = async (req, res) => {
             }
         ]);
 
+        // ========== 7. THỐNG KÊ LEADS (Form Submissions) ==========
+        const leadsStats = await FormSubmission.aggregate([
+            {
+                $facet: {
+                    total: [{ $count: 'count' }],
+                    today: [
+                        {
+                            $match: {
+                                created_at: {
+                                    $gte: new Date(new Date().setHours(0, 0, 0, 0))
+                                }
+                            }
+                        },
+                        { $count: 'count' }
+                    ],
+                    thisWeek: [
+                        {
+                            $match: {
+                                created_at: {
+                                    $gte: new Date(new Date().setDate(new Date().getDate() - 7))
+                                }
+                            }
+                        },
+                        { $count: 'count' }
+                    ],
+                    thisMonth: [
+                        {
+                            $match: {
+                                created_at: {
+                                    $gte: new Date(new Date().setMonth(new Date().getMonth() - 1))
+                                }
+                            }
+                        },
+                        { $count: 'count' }
+                    ],
+                    byPage: [
+                        {
+                            $group: {
+                                _id: '$page_id',
+                                count: { $sum: 1 },
+                                latestSubmission: { $max: '$created_at' }
+                            }
+                        },
+                        { $sort: { count: -1 } },
+                        { $limit: 10 }
+                    ]
+                }
+            }
+        ]);
+
         const formatVND = (amount) => {
             return new Intl.NumberFormat('vi-VN', {
                 style: 'currency',
@@ -473,6 +524,20 @@ const getAdminSystemReport = async (req, res) => {
                     platformFeesRaw: item.platformFees,
                     count: item.count
                 })),
+
+                // 📊 Leads Statistics (Form Submissions)
+                leads: {
+                    total: leadsStats[0].total[0]?.count || 0,
+                    today: leadsStats[0].today[0]?.count || 0,
+                    thisWeek: leadsStats[0].thisWeek[0]?.count || 0,
+                    thisMonth: leadsStats[0].thisMonth[0]?.count || 0,
+                    topPages: leadsStats[0].byPage.map((item, index) => ({
+                        rank: index + 1,
+                        pageId: item._id,
+                        leadsCount: item.count,
+                        latestSubmission: item.latestSubmission
+                    }))
+                },
 
                 // Metadata
                 dateRange: startDate && endDate ? { startDate, endDate } : null,
