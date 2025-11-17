@@ -594,20 +594,26 @@ exports.sendMarketingEmail = async (req, res) => {
             let name = null;
 
             if (sub.form_data) {
+                // ✅ Convert Map to Object if needed
+                let formDataObj = sub.form_data;
+                if (sub.form_data instanceof Map) {
+                    formDataObj = Object.fromEntries(sub.form_data);
+                }
+
                 // Common email field names
-                const emailFields = ['email', 'Email', 'EMAIL', 'mail', 'e-mail'];
+                const emailFields = ['email', 'Email', 'EMAIL', 'mail', 'e-mail', 'emailAddress', 'e_mail'];
                 for (const field of emailFields) {
-                    if (sub.form_data[field]) {
-                        email = sub.form_data[field];
+                    if (formDataObj[field]) {
+                        email = String(formDataObj[field]).trim();
                         break;
                     }
                 }
 
                 // Common name field names
-                const nameFields = ['name', 'Name', 'fullname', 'full_name', 'fullName'];
+                const nameFields = ['name', 'Name', 'fullname', 'full_name', 'fullName', 'userName', 'user_name'];
                 for (const field of nameFields) {
-                    if (sub.form_data[field]) {
-                        name = sub.form_data[field];
+                    if (formDataObj[field]) {
+                        name = String(formDataObj[field]).trim();
                         break;
                     }
                 }
@@ -623,7 +629,11 @@ exports.sendMarketingEmail = async (req, res) => {
         if (leads.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'No valid email addresses found in selected submissions'
+                message: `Không tìm thấy địa chỉ email hợp lệ trong ${submissions.length} submissions đã chọn. Vui lòng kiểm tra dữ liệu form có trường email.`,
+                debug: {
+                    totalSubmissions: submissions.length,
+                    exampleFormData: submissions[0]?.form_data ? Object.keys(submissions[0].form_data instanceof Map ? Object.fromEntries(submissions[0].form_data) : submissions[0].form_data) : []
+                }
             });
         }
 

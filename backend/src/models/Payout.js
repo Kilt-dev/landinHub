@@ -30,6 +30,10 @@ const PayoutSchema = new mongoose.Schema({
         account_name: String,
         bank_code: String
     },
+    momo_info: {
+        phone_number: String,
+        account_name: String
+    },
     payout_method: {
         type: String,
         enum: ['BANK_TRANSFER', 'MOMO', 'VNPAY', 'MANUAL'],
