@@ -237,6 +237,13 @@ const SupportChatbox = () => {
                 const latestMessage = newMessages[newMessages.length - 1];
                 lastMessageIdRef.current = latestMessage._id;
 
+                // Check if any new message is from admin
+                const hasAdminMessage = newMessages.some(msg => msg.sender_type === 'admin');
+                if (hasAdminMessage && !adminOnline) {
+                    setAdminOnline(true);
+                    showToast('Admin đã vào hỗ trợ! 👨‍💼', 'success');
+                }
+
                 scrollToBottom();
             }
 
@@ -271,6 +278,21 @@ const SupportChatbox = () => {
             }
         } catch (error) {
             console.error('Polling error:', error);
+
+            // If room not found (404), reset room and reinitialize
+            if (error.response?.status === 404) {
+                console.log('Chat room not found, reinitializing...');
+                setRoom(null);
+                setMessages([]);
+                lastMessageIdRef.current = null;
+
+                // Reinitialize if chat is still open
+                if (isOpen) {
+                    setTimeout(() => {
+                        initializeChatRoom();
+                    }, 1000);
+                }
+            }
         }
     };
 
@@ -278,29 +300,16 @@ const SupportChatbox = () => {
     usePolling(pollMessages, 3000, isOpen && !!room);
 
     // 🔄 Polling: Check admin online status every 10 seconds
+    // NOTE: Disabled - API endpoint not implemented yet
+    // Admin status is now detected when admin sends a message
     const pollAdminStatus = async () => {
-        if (!room || !isOpen) return;
-
-        try {
-            const response = await axios.get(
-                `${API_URL}/api/chat/admin/online-status`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
-            );
-
-            if (response.data.hasOnlineAdmin !== undefined) {
-                setAdminOnline(response.data.hasOnlineAdmin);
-            }
-        } catch (error) {
-            // Silently fail - không quan trọng lắm
-        }
+        // Disabled to prevent 404 errors
+        // TODO: Implement backend API endpoint /api/chat/admin/online-status
+        return;
     };
 
-    // Poll admin status every 10 seconds
-    usePolling(pollAdminStatus, 10000, isOpen);
+    // Poll admin status every 10 seconds (currently disabled)
+    // usePolling(pollAdminStatus, 10000, isOpen);
 
     // Helper function to load messages for a room
     const loadMessagesForRoom = async (roomId) => {
