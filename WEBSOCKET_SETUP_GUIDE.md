@@ -4,7 +4,7 @@
 
 WebSocket đã được deploy thành công lên AWS:
 
-- **WebSocket URL**: `wss://j300od695c.execute-api.ap-southeast-1.amazonaws.com/prod`
+- **WebSocket URL**: `wss://nawlc6w1ql.execute-api.ap-southeast-1.amazonaws.com/prod`
 - **DynamoDB Table**: `landinghub-websocket-connections-prod`
 - **AWS Region**: `ap-southeast-1`
 - **Stage**: `prod`
@@ -37,7 +37,7 @@ node scripts/test-websocket.js
 
 Kết quả mong đợi:
 ```
-✅ Endpoint: https://j300od695c.execute-api.ap-southeast-1.amazonaws.com/prod
+✅ Endpoint: https://nawlc6w1ql.execute-api.ap-southeast-1.amazonaws.com/prod
 ✅ Table: landinghub-websocket-connections-prod
 ✅ WebSocket service initialized
 ✅ DynamoDB table exists
@@ -55,7 +55,7 @@ Server sẽ tự động kết nối với WebSocket Gateway:
 ```
 🚀 Server running on port 5000
 📡 WebSocket: Using AWS API Gateway WebSocket (serverless)
-✅ WebSocket client initialized: https://j300od695c.execute-api.ap-southeast-1.amazonaws.com/prod
+✅ WebSocket client initialized: https://nawlc6w1ql.execute-api.ap-southeast-1.amazonaws.com/prod
 ```
 
 ### 4. Frontend Configuration
@@ -64,12 +64,12 @@ Frontend đã được cấu hình sẵn:
 
 **File: `apps/web/.env.production`**
 ```bash
-REACT_APP_WEBSOCKET_URL=wss://j300od695c.execute-api.ap-southeast-1.amazonaws.com/prod
+REACT_APP_WEBSOCKET_URL=wss://nawlc6w1ql.execute-api.ap-southeast-1.amazonaws.com/prod
 ```
 
 **File: `apps/web/.env.local`** (cho development)
 ```bash
-REACT_APP_WEBSOCKET_URL=wss://j300od695c.execute-api.ap-southeast-1.amazonaws.com/prod
+REACT_APP_WEBSOCKET_URL=wss://nawlc6w1ql.execute-api.ap-southeast-1.amazonaws.com/prod
 ```
 
 ### 5. Build và Chạy Frontend
@@ -118,7 +118,7 @@ aws dynamodb scan \
 │  (Browser)       │
 └────────┬─────────┘
          │ WSS Connection
-         │ wss://j300od695c.execute-api...
+         │ wss://nawlc6w1ql.execute-api...
          ↓
 ┌─────────────────────────────────────┐
 │  API Gateway WebSocket (Serverless) │
@@ -203,7 +203,7 @@ aws dynamodb scan \
 
 ---
 
-**WebSocket Endpoint**: `wss://j300od695c.execute-api.ap-southeast-1.amazonaws.com/prod`
+**WebSocket Endpoint**: `wss://nawlc6w1ql.execute-api.ap-southeast-1.amazonaws.com/prod`
 **Status**: ✅ DEPLOYED
 **Region**: ap-southeast-1
 **Stage**: prod
