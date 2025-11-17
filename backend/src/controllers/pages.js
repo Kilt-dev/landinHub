@@ -229,15 +229,31 @@ const generateScreenshot = async (htmlContent, pageId, isUrl = false, options = 
 // Tạo screenshot từ nội dung S3
 const generateScreenshotFromS3 = async (s3Key, pageId) => {
     try {
+        console.log(`[generateScreenshotFromS3] Getting S3 object: ${s3Key}`);
+
         const s3Response = await s3.getObject({
             Bucket: process.env.AWS_S3_BUCKET,
             Key: s3Key
         }).promise();
 
         const htmlContent = s3Response.Body.toString('utf-8');
-        return await generateScreenshot(htmlContent, pageId, false);
+        console.log(`[generateScreenshotFromS3] HTML size: ${htmlContent.length} bytes`);
+
+        // ✅ IMPROVED: Add timeout wrapper for screenshot generation
+        const screenshotPromise = generateScreenshot(htmlContent, pageId, false);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Screenshot generation timeout after 30s')), 30000)
+        );
+
+        return await Promise.race([screenshotPromise, timeoutPromise]);
     } catch (err) {
-        console.error('Failed to generate screenshot from S3:', err.message);
+        console.error('[generateScreenshotFromS3] Failed:', err.message);
+
+        // Log more details for debugging
+        if (err.code) {
+            console.error('[generateScreenshotFromS3] Error code:', err.code);
+        }
+
         return null;
     }
 };
@@ -1270,7 +1286,12 @@ exports.regenerateScreenshot = async (req, res) => {
             return res.status(400).json({ error: 'Page chưa có HTML content' });
         }
 
+        console.log(`[Screenshot] Regenerating for page ${id}, file_path: ${page.file_path}`);
+
         const s3Key = getS3KeyFromFilePath(page.file_path);
+        console.log(`[Screenshot] S3 key: ${s3Key}`);
+
+        // ✅ IMPROVED: Better error handling and graceful degradation
         const screenshotUrl = await generateScreenshotFromS3(s3Key, id);
 
         if (screenshotUrl) {
@@ -1278,17 +1299,32 @@ exports.regenerateScreenshot = async (req, res) => {
             page.updated_at = new Date();
             await page.save();
 
+            console.log(`[Screenshot] Success: ${screenshotUrl}`);
             res.json({
                 success: true,
                 screenshot_url: screenshotUrl,
                 message: 'Screenshot đã được tạo lại thành công'
             });
         } else {
-            res.status(500).json({ error: 'Không thể tạo screenshot' });
+            // ✅ Return 200 with warning instead of 500, page can still function without screenshot
+            console.warn(`[Screenshot] Failed for page ${id}, but page is still usable`);
+            res.json({
+                success: false,
+                warning: 'Không thể tạo screenshot tự động. Page vẫn hoạt động bình thường.',
+                message: 'Screenshot sẽ được tạo lại sau khi chỉnh sửa page.',
+                page_id: id
+            });
         }
     } catch (err) {
-        console.error('Lỗi tạo lại screenshot:', err);
-        res.status(500).json({ error: 'Lỗi khi tạo lại screenshot: ' + err.message });
+        console.error('[Screenshot] Error:', err.message, err.stack);
+
+        // ✅ Return detailed error for debugging
+        res.status(500).json({
+            error: 'Lỗi khi tạo lại screenshot',
+            details: err.message,
+            suggestion: 'Hãy thử lại sau hoặc chỉnh sửa page để tự động tạo screenshot mới.',
+            isLambda: !!process.env.AWS_LAMBDA_FUNCTION_NAME
+        });
     }
 };
 
