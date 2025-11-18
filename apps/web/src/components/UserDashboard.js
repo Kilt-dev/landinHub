@@ -128,41 +128,41 @@ const UserDashboard = () => {
                 {/* Marketplace Revenue - HIGHLIGHTED */}
                 <div className="stat-card modern marketplace-revenue highlighted">
                     <div className="stat-header">
-                        <span className="stat-label">💰 Doanh Thu Marketplace</span>
+                        <span className="stat-label">Doanh Thu Marketplace</span>
                     </div>
                     <div className="stat-value">{data.sales.totalEarned}</div>
                     <div className="stat-footer">
                         <span className="stat-meta">{data.sales.count} sản phẩm đã bán</span>
-                        <span className="stat-secondary">Trung bình: {data.sales.avgPerSale}</span>
+                        <span className="stat-secondary">TB: {data.sales.avgPerSale}</span>
                     </div>
                 </div>
 
-                {/* Pages Views */}
+                {/* Marketplace Views */}
                 <div className="stat-card modern views">
                     <div className="stat-header">
-                        <span className="stat-label">👁️ Lượt Truy Cập</span>
+                        <span className="stat-label">Lượt Xem Marketplace</span>
                     </div>
                     <div className="stat-value">{data.pages.totalViews}</div>
                     <div className="stat-footer">
-                        <span className="stat-meta">{data.pages.total} landing pages</span>
+                        <span className="stat-meta">{data.sales.count} sản phẩm trên marketplace</span>
                     </div>
                 </div>
 
-                {/* Landing Page Revenue */}
-                <div className="stat-card modern revenue">
+                {/* Total Leads */}
+                <div className="stat-card modern leads">
                     <div className="stat-header">
-                        <span className="stat-label">📊 Doanh Thu Landing Page</span>
+                        <span className="stat-label">Tổng Số Leads</span>
                     </div>
                     <div className="stat-value">{data.pages.totalRevenue}</div>
                     <div className="stat-footer">
-                        <span className="stat-meta">Từ form & tương tác</span>
+                        <span className="stat-meta">Leads thu thập được</span>
                     </div>
                 </div>
 
                 {/* Purchases */}
                 <div className="stat-card modern purchases">
                     <div className="stat-header">
-                        <span className="stat-label">🛒 Đầu Tư Mua Sắm</span>
+                        <span className="stat-label">Đầu Tư Mua Sắm</span>
                     </div>
                     <div className="stat-value">{data.purchases.totalSpent}</div>
                     <div className="stat-footer">
@@ -174,9 +174,9 @@ const UserDashboard = () => {
                 {/* Balance */}
                 <div className={`stat-card modern balance ${data.balance.status}`}>
                     <div className="stat-header">
-                        <span className="stat-label">💵 Lợi Nhuận Ròng</span>
+                        <span className="stat-label">Lợi Nhuận Ròng</span>
                         <span className={`balance-badge ${data.balance.status}`}>
-                            {data.balance.status === 'positive' ? '✨ Sinh lời' : '📈 Đang đầu tư'}
+                            {data.balance.status === 'positive' ? 'Sinh lời' : 'Đang đầu tư'}
                         </span>
                     </div>
                     <div className="stat-value">{data.balance.amount}</div>
@@ -188,7 +188,7 @@ const UserDashboard = () => {
                 {/* Activity Summary */}
                 <div className="stat-card modern activity">
                     <div className="stat-header">
-                        <span className="stat-label">⚡ Tổng Giao Dịch</span>
+                        <span className="stat-label">Tổng Giao Dịch</span>
                     </div>
                     <div className="stat-value">{data.purchases.count + data.sales.count}</div>
                     <div className="stat-footer">

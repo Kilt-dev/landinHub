@@ -197,12 +197,12 @@ const SupportChatbox = () => {
 
     const lastMessageIdRef = useRef(null);
     const lastRoomStatusRef = useRef(null);
-    const reinitializeAttemptsRef = useRef(0); // Track reinitialize attempts
-    const MAX_REINITIALIZE_ATTEMPTS = 3;
+    const isReinitializingRef = useRef(false); // Flag to prevent polling during reinit
 
     // 🔄 Polling: Poll messages khi chat box đang mở
     const pollMessages = async () => {
-        if (!room || !isOpen) return;
+        // Don't poll if reinitializing or no room
+        if (!room || !isOpen || isReinitializingRef.current) return;
 
         try {
             const params = lastMessageIdRef.current
@@ -282,15 +282,17 @@ const SupportChatbox = () => {
             console.error('Polling error:', error);
 
             // If room not found (404), the room was deleted or doesn't exist
-            // Clear everything and create a fresh room
+            // Stop polling and create a fresh room
             if (error.response?.status === 404) {
-                console.warn('❌ Chat room not found (404). Creating new room...');
+                console.warn('❌ Chat room not found (404). Stopping polling and creating new room...');
+
+                // Set flag to stop all polling immediately
+                isReinitializingRef.current = true;
 
                 // Clear room state completely
                 setRoom(null);
                 setMessages([]);
                 lastMessageIdRef.current = null;
-                reinitializeAttemptsRef.current = 0; // Reset counter
 
                 // Create a new room if chat is still open
                 if (isOpen) {
@@ -366,8 +368,8 @@ const SupportChatbox = () => {
             setMessages(messagesResponse.data.messages);
             setUnreadCount(0);
 
-            // Reset reinitialize counter on success
-            reinitializeAttemptsRef.current = 0;
+            // Reset reinitialize flag on success - allow polling to resume
+            isReinitializingRef.current = false;
 
             scrollToBottom(true); // Force scroll on room init
         } catch (error) {
