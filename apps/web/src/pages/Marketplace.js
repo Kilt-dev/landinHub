@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import { UserContext } from '../context/UserContext';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import MarketplacePreviewModal from '../components/MarketplacePreviewModal';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -11,8 +10,7 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import '../styles/Marketplace.css';
 import DogLoader from '../components/Loader';
-import { Search, Eye, Heart, Star, ShoppingCart, Monitor } from 'lucide-react';
-import PreviewModal from '../components/PreviewModal';
+import { Search, Eye, Heart, Star, ShoppingCart } from 'lucide-react';
 
 const Marketplace = () => {
     const { user } = useContext(UserContext);
@@ -33,13 +31,6 @@ const Marketplace = () => {
     const [purchasedPageIds, setPurchasedPageIds] = useState([]);
     const [myPageIds, setMyPageIds] = useState([]);
     const [purchasedDates, setPurchasedDates] = useState({});
-    const [selectedPageForPreview, setSelectedPageForPreview] = useState(null);
-
-    // Preview Modal State
-    const [showPreviewModal, setShowPreviewModal] = useState(false);
-    const [previewHtml, setPreviewHtml] = useState('');
-    const [previewPageData, setPreviewPageData] = useState(null);
-    const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
     const navigate = useNavigate();
     const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -252,38 +243,6 @@ const Marketplace = () => {
         navigate(`/marketplace/${pageId}`);
     };
 
-    // Handle Preview
-    const handlePreview = async (marketplacePage) => {
-        setIsLoadingPreview(true);
-        try {
-            const token = localStorage.getItem('token');
-
-            // Use page_id from marketplace page (reference to original page)
-            const pageId = marketplacePage.page_id || marketplacePage.pageId || marketplacePage._id;
-            console.log('Preview for page:', pageId, marketplacePage);
-
-            // Fetch HTML from backend
-            const response = await axios.get(`${API_BASE_URL}/api/pages/${pageId}/preview-html`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (response.data.success) {
-                setPreviewHtml(response.data.html);
-                setPreviewPageData(response.data.pageData || null);
-                setShowPreviewModal(true);
-            } else {
-                alert('Không thể tải preview. Vui lòng thử lại.');
-            }
-        } catch (error) {
-            console.error('Error loading preview:', error);
-            alert('Lỗi khi tải preview: ' + (error.response?.data?.message || error.message));
-        } finally {
-            setIsLoadingPreview(false);
-        }
-    };
-
-
-
     const formatPrice = (price) => {
         if (price === 0) return 'Miễn phí';
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
@@ -447,17 +406,6 @@ const Marketplace = () => {
                                                 </div>
                                             )}
 
-                                            <button
-                                                className="preview-quick-btn"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedPageForPreview(page);
-                                                    setShowPreviewModal(true);
-                                                }}
-                                                title="Xem preview nhanh"
-                                            >
-                                                <Eye size={16} /> Preview
-                                            </button>
                                             <button className="view-detail-btn">Xem chi tiết</button>
                                         </div>
 
@@ -500,16 +448,6 @@ const Marketplace = () => {
                     </div>
                 </div>
             </div>
-
-            {showPreviewModal && selectedPageForPreview && (
-                <MarketplacePreviewModal
-                    page={selectedPageForPreview}
-                    onClose={() => {
-                        setShowPreviewModal(false);
-                        setSelectedPageForPreview(null);
-                    }}
-                />
-            )}
         </div>
     );
 };

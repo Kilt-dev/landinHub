@@ -197,6 +197,8 @@ const SupportChatbox = () => {
 
     const lastMessageIdRef = useRef(null);
     const lastRoomStatusRef = useRef(null);
+    const reinitializeAttemptsRef = useRef(0); // Track reinitialize attempts
+    const MAX_REINITIALIZE_ATTEMPTS = 3;
 
     // 🔄 Polling: Poll messages khi chat box đang mở
     const pollMessages = async () => {
@@ -279,18 +281,22 @@ const SupportChatbox = () => {
         } catch (error) {
             console.error('Polling error:', error);
 
-            // If room not found (404), reset room and reinitialize
+            // If room not found (404), the room was deleted or doesn't exist
+            // Clear everything and create a fresh room
             if (error.response?.status === 404) {
-                console.log('Chat room not found, reinitializing...');
+                console.warn('❌ Chat room not found (404). Creating new room...');
+
+                // Clear room state completely
                 setRoom(null);
                 setMessages([]);
                 lastMessageIdRef.current = null;
+                reinitializeAttemptsRef.current = 0; // Reset counter
 
-                // Reinitialize if chat is still open
+                // Create a new room if chat is still open
                 if (isOpen) {
                     setTimeout(() => {
                         initializeChatRoom();
-                    }, 1000);
+                    }, 500);
                 }
             }
         }
@@ -359,9 +365,14 @@ const SupportChatbox = () => {
 
             setMessages(messagesResponse.data.messages);
             setUnreadCount(0);
+
+            // Reset reinitialize counter on success
+            reinitializeAttemptsRef.current = 0;
+
             scrollToBottom(true); // Force scroll on room init
         } catch (error) {
             console.error('Failed to initialize chat:', error);
+            showToast('Không thể khởi tạo chat. Vui lòng thử lại.', 'error');
         } finally {
             setIsLoading(false);
         }
