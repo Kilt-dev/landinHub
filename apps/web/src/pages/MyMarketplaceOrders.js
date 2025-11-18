@@ -95,12 +95,7 @@ const MyMarketplaceOrders = () => {
             const endpoint = activeTab === 'bought' ? '/api/orders/my' : '/api/orders/seller';
             console.log('🔍 Loading orders from:', endpoint);
 
-            const response = await api.get(`${endpoint}?${params}`, {
-                headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
-                }
-            });
+            const response = await api.get(`${endpoint}?${params}`);
 
             console.log('📦 Orders API Response:', response.data);
             console.log('📊 Orders data array:', response.data.data);

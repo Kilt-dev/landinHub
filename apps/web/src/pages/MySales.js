@@ -64,9 +64,7 @@ const MySales = () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/api/marketplace/my/pages`, {
                 headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`,
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
                 },
                 params: { status: selectedStatus !== 'all' ? selectedStatus : undefined }
             });
