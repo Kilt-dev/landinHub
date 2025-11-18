@@ -20,6 +20,7 @@ import SellPage from './pages/SellPage';
 import MySales from './pages/MySales';
 import MyOrders from './pages/MyOrders';
 import MySellerOrders from './pages/MySellerOrders';
+import MyMarketplaceOrders from './pages/MyMarketplaceOrders';
 import PaymentSandbox from './pages/PaymentSandbox';
 import PaymentResult from './pages/PaymentResult';
 import FormData from './pages/FormData';
@@ -75,8 +76,10 @@ function App() {
                             <Route path="/purchased-pages" element={<PurchasedPages />} />
                             <Route path="/sell-page" element={<SellPage />} />
                             <Route path="/my-sales" element={<MySales />} />
+                            <Route path="/my-marketplace-listings" element={<MySales />} />
                             <Route path="/my-orders" element={<MyOrders />} />
                             <Route path="/seller-orders" element={<MySellerOrders />} />
+                            <Route path="/my-marketplace-orders" element={<MyMarketplaceOrders />} />
                             <Route path="/setting-form" element={<FormData />} />
                             <Route path="/payments" element={<UnifiedPayments />} />
                             <Route path="/my-payouts" element={<MyPayouts />} />

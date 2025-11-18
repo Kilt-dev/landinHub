@@ -20,12 +20,18 @@ export const initSocket = () => {
 
     const token = localStorage.getItem('token');
     if (!token) {
-        console.warn('No token found for WebSocket connection');
+        console.warn('⚠️ No token found for WebSocket connection');
         return null;
     }
 
     // Get WebSocket URL from environment
-    const wsUrl = process.env.REACT_APP_WEBSOCKET_URL || 'ws://localhost:3001';
+    const wsUrl = process.env.REACT_APP_WEBSOCKET_URL;
+
+    // If WebSocket URL is not configured, skip WebSocket connection
+    if (!wsUrl) {
+        console.log('ℹ️ WebSocket URL not configured. Using REST API polling instead.');
+        return null;
+    }
 
     try {
         // Connect with token in query parameter
@@ -54,7 +60,7 @@ export const initSocket = () => {
         };
 
         ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
+            console.error('⚠️ WebSocket error:', error);
             emitEvent('connect_error', error);
         };
 
@@ -74,7 +80,7 @@ export const initSocket = () => {
 
         return ws;
     } catch (error) {
-        console.error('Error creating WebSocket:', error);
+        console.error('❌ Error creating WebSocket:', error);
         return null;
     }
 };

@@ -161,8 +161,8 @@
     border-color: #f59e0b;
 }
 
-.stat-card.sales {
-    border-color: #8b5cf6;
+.stat-card.marketplace-revenue {
+    border-color: #B8860B;
 }
 
 .stat-card.balance.positive {
@@ -175,6 +175,23 @@
 
 .stat-card.activity {
     border-color: #6366f1;
+}
+
+/* Highlighted marketplace revenue card */
+.stat-card.highlighted {
+    background: linear-gradient(135deg, #FFF9E6 0%, #FFFBF0 100%);
+    border-top-width: 5px;
+    box-shadow: 0 4px 12px rgba(184, 134, 11, 0.15);
+}
+
+.stat-card.highlighted:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(184, 134, 11, 0.25);
+}
+
+.stat-card.highlighted .stat-value {
+    color: #B8860B;
+    font-size: 36px;
 }
 
 /* Card Content */
