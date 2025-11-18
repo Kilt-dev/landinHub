@@ -233,16 +233,21 @@ const SupportChatbox = () => {
                 const newMessages = response.data.messages;
 
                 setMessages(prev => {
-                    // Remove optimistic messages that got confirmed
-                    const filtered = prev.filter(msg => !msg.__optimistic);
+                    // Create a Set of ALL existing message IDs (including optimistic ones)
+                    const existingIds = new Set(prev.map(msg => msg._id || msg.tempId));
 
-                    // Create a Set of existing message IDs for fast lookup
-                    const existingIds = new Set(filtered.map(msg => msg._id));
-
-                    // Only add truly new messages (not already in the list)
+                    // Only add messages that don't already exist
                     const uniqueNewMessages = newMessages.filter(msg => !existingIds.has(msg._id));
 
-                    // Merge and return
+                    // Remove optimistic messages that got confirmed (match by message content and timestamp)
+                    const confirmed = new Set(newMessages.map(m => `${m.message}-${m.sender_type}`));
+                    const filtered = prev.filter(msg => {
+                        if (!msg.__optimistic) return true;
+                        const key = `${msg.message}-${msg.sender_type}`;
+                        return !confirmed.has(key);
+                    });
+
+                    // Merge and return - ensuring no duplicates
                     return [...filtered, ...uniqueNewMessages];
                 });
 
@@ -773,8 +778,11 @@ const SupportChatbox = () => {
                                         </Box>
                                     )}
 
-                                    {messages.map((msg, index) => (
-                                        <Box key={msg._id || `msg-${index}-${msg.createdAt}`}>
+                                    {messages.map((msg, index) => {
+                                        // Ensure unique key for each message (including optimistic ones)
+                                        const messageKey = msg._id || msg.tempId || `msg-${index}-${msg.createdAt || Date.now()}`;
+                                        return (
+                                        <Box key={messageKey}>
                                             {msg.message_type === 'system' ? (
                                                 <Box textAlign="center" my={1}>
                                                     <Chip label={msg.message} size="small" />
@@ -851,7 +859,8 @@ const SupportChatbox = () => {
                                                 </Box>
                                             )}
                                         </Box>
-                                    ))}
+                                        );
+                                    })}
 
                                     {isTyping && (
                                         <TypingIndicator>
