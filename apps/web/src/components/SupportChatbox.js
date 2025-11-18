@@ -283,8 +283,8 @@ const SupportChatbox = () => {
 
             // If room not found (404), the room was deleted or doesn't exist
             // Stop polling and create a fresh room
-            if (error.response?.status === 404) {
-                console.warn('❌ Chat room not found (404). Stopping polling and creating new room...');
+            if (error.response?.status === 404 && !isReinitializingRef.current) {
+                console.warn('❌ Chat room not found (404). Clearing cache and creating new room...');
 
                 // Set flag to stop all polling immediately
                 isReinitializingRef.current = true;
@@ -294,7 +294,15 @@ const SupportChatbox = () => {
                 setMessages([]);
                 lastMessageIdRef.current = null;
 
-                // Create a new room if chat is still open
+                // Clear any cached room data from localStorage
+                try {
+                    localStorage.removeItem('chatRoomId');
+                    localStorage.removeItem('lastChatRoomId');
+                } catch (e) {
+                    console.error('Failed to clear localStorage:', e);
+                }
+
+                // Create a new room if chat is still open (one-time only)
                 if (isOpen) {
                     setTimeout(() => {
                         initializeChatRoom();
