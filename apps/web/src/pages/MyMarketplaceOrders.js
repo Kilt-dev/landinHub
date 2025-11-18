@@ -93,10 +93,22 @@ const MyMarketplaceOrders = () => {
 
             // Different endpoints for bought vs sold orders
             const endpoint = activeTab === 'bought' ? '/api/orders/my' : '/api/orders/seller';
-            const response = await api.get(`${endpoint}?${params}`);
+            console.log('🔍 Loading orders from:', endpoint);
+
+            const response = await api.get(`${endpoint}?${params}`, {
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                }
+            });
+
+            console.log('📦 Orders API Response:', response.data);
+            console.log('📊 Orders data array:', response.data.data);
+            console.log('📏 Orders count:', response.data.data?.length);
 
             if (response.data.success) {
                 const orderData = response.data.data || [];
+                console.log('✅ Setting orders state with', orderData.length, 'items');
                 setOrders(orderData);
                 setFilteredOrders(orderData);
                 setTotalPages(response.data.pagination?.totalPages || 1);

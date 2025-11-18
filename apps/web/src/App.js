@@ -106,8 +106,9 @@ function App() {
                         {/* ✅ Chat LD hiển thị toàn hệ thống */}
                         <CozeChat enabled={false} />
 
-                        {/* ✅ Support Chatbox - Modern AI-powered support */}
-                        <SupportChatbox />
+                        {/* ⏸️ Support Chatbox - TEMPORARILY DISABLED due to 404 loop issue */}
+                        {/* TODO: Fix room persistence and polling logic */}
+                        {/* <SupportChatbox /> */}
                     </UserProvider>
                 </Router>
             </ErrorBoundary>
