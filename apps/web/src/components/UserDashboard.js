@@ -137,25 +137,25 @@ const UserDashboard = () => {
                     </div>
                 </div>
 
-                {/* Marketplace Views */}
+                {/* Landing Pages Views */}
                 <div className="stat-card modern views">
                     <div className="stat-header">
-                        <span className="stat-label">Lượt Xem Marketplace</span>
+                        <span className="stat-label">Lượt Xem Landing Pages</span>
                     </div>
                     <div className="stat-value">{data.pages.totalViews}</div>
                     <div className="stat-footer">
-                        <span className="stat-meta">{data.sales.count} sản phẩm trên marketplace</span>
+                        <span className="stat-meta">{data.pages.total} landing pages</span>
                     </div>
                 </div>
 
                 {/* Total Leads */}
                 <div className="stat-card modern leads">
                     <div className="stat-header">
-                        <span className="stat-label">Tổng Số Leads</span>
+                        <span className="stat-label">Tổng Giao Dịch</span>
                     </div>
-                    <div className="stat-value">{data.pages.totalRevenue}</div>
+                    <div className="stat-value">{data.purchases.count + data.sales.count}</div>
                     <div className="stat-footer">
-                        <span className="stat-meta">Leads thu thập được</span>
+                        <span className="stat-meta">Mua & Bán marketplace</span>
                     </div>
                 </div>
 
@@ -185,14 +185,14 @@ const UserDashboard = () => {
                     </div>
                 </div>
 
-                {/* Activity Summary */}
+                {/* Total Pages */}
                 <div className="stat-card modern activity">
                     <div className="stat-header">
-                        <span className="stat-label">Tổng Giao Dịch</span>
+                        <span className="stat-label">Tổng Landing Pages</span>
                     </div>
-                    <div className="stat-value">{data.purchases.count + data.sales.count}</div>
+                    <div className="stat-value">{data.pages.total}</div>
                     <div className="stat-footer">
-                        <span className="stat-meta">Hoạt động marketplace</span>
+                        <span className="stat-meta">{data.pages.live} đang hoạt động, {data.pages.draft} nháp</span>
                     </div>
                 </div>
             </div>
