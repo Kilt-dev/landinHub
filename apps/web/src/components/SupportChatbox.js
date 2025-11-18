@@ -198,11 +198,22 @@ const SupportChatbox = () => {
     const lastMessageIdRef = useRef(null);
     const lastRoomStatusRef = useRef(null);
     const isReinitializingRef = useRef(false); // Flag to prevent polling during reinit
+    const currentRoomIdRef = useRef(null); // Track current room ID to prevent stale requests
 
     // 🔄 Polling: Poll messages khi chat box đang mở
     const pollMessages = async () => {
-        // Don't poll if reinitializing or no room
-        if (!room || !isOpen || isReinitializingRef.current) return;
+        // Don't poll if reinitializing, no room, or creating room
+        if (!room || !isOpen || isReinitializingRef.current) {
+            console.log('⏸️ Polling paused:', { hasRoom: !!room, isOpen, isReinitializing: isReinitializingRef.current });
+            return;
+        }
+
+        // Double check room ID matches to prevent stale requests
+        if (currentRoomIdRef.current && room._id !== currentRoomIdRef.current) {
+            console.warn('⚠️ Room ID mismatch, skipping poll:', { current: currentRoomIdRef.current, new: room._id });
+            currentRoomIdRef.current = room._id;
+            return;
+        }
 
         try {
             const params = lastMessageIdRef.current
@@ -282,31 +293,44 @@ const SupportChatbox = () => {
             console.error('Polling error:', error);
 
             // If room not found (404), the room was deleted or doesn't exist
-            // Stop polling and create a fresh room
-            if (error.response?.status === 404 && !isReinitializingRef.current) {
-                console.warn('❌ Chat room not found (404). Clearing cache and creating new room...');
+            // Stop polling and create a fresh room (ONE TIME ONLY)
+            if (error.response?.status === 404) {
+                console.warn('❌ Chat room not found (404):', room?._id);
 
-                // Set flag to stop all polling immediately
-                isReinitializingRef.current = true;
+                // Only handle if not already reinitializing
+                if (!isReinitializingRef.current) {
+                    console.log('🔄 Starting room reinitialization...');
 
-                // Clear room state completely
-                setRoom(null);
-                setMessages([]);
-                lastMessageIdRef.current = null;
+                    // Set flag to stop all polling immediately and prevent multiple reinitializations
+                    isReinitializingRef.current = true;
 
-                // Clear any cached room data from localStorage
-                try {
-                    localStorage.removeItem('chatRoomId');
-                    localStorage.removeItem('lastChatRoomId');
-                } catch (e) {
-                    console.error('Failed to clear localStorage:', e);
-                }
+                    // Clear room state completely
+                    const oldRoomId = room?._id;
+                    setRoom(null);
+                    currentRoomIdRef.current = null;
+                    setMessages([]);
+                    lastMessageIdRef.current = null;
 
-                // Create a new room if chat is still open (one-time only)
-                if (isOpen) {
-                    setTimeout(() => {
-                        initializeChatRoom();
-                    }, 500);
+                    // Clear any cached room data from localStorage
+                    try {
+                        localStorage.removeItem('chatRoomId');
+                        localStorage.removeItem('lastChatRoomId');
+                    } catch (e) {
+                        console.error('Failed to clear localStorage:', e);
+                    }
+
+                    // Create a new room if chat is still open (one-time only)
+                    if (isOpen) {
+                        console.log('✅ Creating new room to replace:', oldRoomId);
+                        setTimeout(() => {
+                            initializeChatRoom();
+                        }, 500);
+                    } else {
+                        // If chat closed, just reset the flag
+                        isReinitializingRef.current = false;
+                    }
+                } else {
+                    console.log('⏭️ Already reinitializing, skipping duplicate 404 handler');
                 }
             }
         }
@@ -345,6 +369,7 @@ const SupportChatbox = () => {
     // Get or create chat room when opening
     const initializeChatRoom = async () => {
         try {
+            console.log('🚀 Initializing chat room...');
             setIsLoading(true);
 
             // Get current page context
@@ -364,7 +389,11 @@ const SupportChatbox = () => {
             );
 
             const roomData = response.data.room;
+            console.log('✅ Room created/retrieved:', roomData._id);
+
+            // Set room and track its ID
             setRoom(roomData);
+            currentRoomIdRef.current = roomData._id;
 
             // Load messages
             const messagesResponse = await axios.get(`${API_URL}/api/chat/rooms/${roomData._id}/messages`, {
@@ -375,14 +404,18 @@ const SupportChatbox = () => {
 
             setMessages(messagesResponse.data.messages);
             setUnreadCount(0);
+            lastMessageIdRef.current = null; // Reset to load all new messages
 
             // Reset reinitialize flag on success - allow polling to resume
+            console.log('✅ Room initialization complete, resuming polling');
             isReinitializingRef.current = false;
 
             scrollToBottom(true); // Force scroll on room init
         } catch (error) {
-            console.error('Failed to initialize chat:', error);
+            console.error('❌ Failed to initialize chat:', error);
             showToast('Không thể khởi tạo chat. Vui lòng thử lại.', 'error');
+            // Reset flag even on error to allow retry
+            isReinitializingRef.current = false;
         } finally {
             setIsLoading(false);
         }
