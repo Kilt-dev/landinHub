@@ -12,8 +12,16 @@ let pingInterval = null;
 
 /**
  * Initialize WebSocket connection
+ * CURRENTLY DISABLED - Using REST API polling for real-time updates
  */
 export const initSocket = () => {
+    // 🚫 WebSocket temporarily disabled until AWS API Gateway is properly deployed
+    // Using REST API polling instead (see SupportChatbox and AdminSupport components)
+    console.log('ℹ️ WebSocket disabled. Using REST API polling for real-time updates.');
+    return null;
+
+    // Uncomment below when AWS API Gateway WebSocket is ready
+    /*
     if (ws && ws.readyState === WebSocket.OPEN) {
         return ws;
     }
@@ -32,6 +40,7 @@ export const initSocket = () => {
         console.log('ℹ️ WebSocket URL not configured. Using REST API polling instead.');
         return null;
     }
+    */
 
     try {
         // Connect with token in query parameter
