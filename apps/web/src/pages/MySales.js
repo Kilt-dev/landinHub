@@ -55,22 +55,35 @@ const MySales = () => {
     };
 
     const fetchMyPages = useCallback(async () => {
-        if (!userId) return;
+        if (!userId) {
+            console.log('⚠️ fetchMyPages: No userId yet, skipping...');
+            return;
+        }
+        console.log('🔍 Fetching marketplace pages for userId:', userId);
         setLoading(true);
         try {
             const response = await axios.get(`${API_BASE_URL}/api/marketplace/my/pages`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
                 params: { status: selectedStatus !== 'all' ? selectedStatus : undefined }
             });
+            console.log('📦 MySales API Response:', response.data);
+            console.log('📊 Pages data array:', response.data.data);
+            console.log('📏 Pages count:', response.data.data?.length);
+
             if (Array.isArray(response.data.data)) {
+                console.log('✅ Setting pages state with', response.data.data.length, 'items');
                 setPages(response.data.data);
             } else {
-                console.error('Response data is not an array:', response.data);
+                console.error('❌ Response data is not an array:', response.data);
                 setPages([]);
                 toast.error('Dữ liệu landing page không hợp lệ');
             }
         } catch (err) {
-            console.error('Fetch pages error:', err);
+            console.error('❌ Fetch pages error:', err);
             setPages([]);
             toast.error(err.response?.data?.message || 'Không thể tải danh sách landing page đã đăng bán');
         } finally {
