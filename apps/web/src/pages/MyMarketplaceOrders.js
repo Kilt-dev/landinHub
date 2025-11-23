@@ -330,35 +330,35 @@ const MyMarketplaceOrders = () => {
                                     <div className="order-body">
                                         <div className="order-image">
                                             <img
-                                                src={order.page?.main_screenshot || order.marketplace_page?.main_screenshot || '/placeholder.png'}
-                                                alt={order.page?.title || order.marketplace_page?.title || 'Landing Page'}
+                                                src={order.marketplacePageId?.main_screenshot || '/placeholder.png'}
+                                                alt={order.marketplacePageId?.title || 'Landing Page'}
                                             />
                                         </div>
                                         <div className="order-details">
-                                            <h3>{order.page?.title || order.marketplace_page?.title || 'Landing Page'}</h3>
+                                            <h3>{order.marketplacePageId?.title || 'Landing Page'}</h3>
                                             <p className="order-date">
                                                 <Calendar size={14} />
-                                                {formatDate(order.created_at || order.createdAt)}
+                                                {formatDate(order.createdAt)}
                                             </p>
                                             {activeTab === 'bought' ? (
                                                 <p className="order-seller">
-                                                    Người bán: {order.seller?.name || order.seller?.username || 'N/A'}
+                                                    Người bán: {order.sellerId?.name || order.sellerId?.email || 'N/A'}
                                                 </p>
                                             ) : (
                                                 <p className="order-buyer">
-                                                    Người mua: {order.buyer?.name || order.buyer?.username || 'N/A'}
+                                                    Người mua: {order.buyerId?.name || order.buyerId?.email || 'N/A'}
                                                 </p>
                                             )}
                                         </div>
                                         <div className="order-actions">
                                             <div className="order-price">
                                                 <span className="price-label">Giá:</span>
-                                                <span className="price-value">{formatPrice(order.amount)}</span>
+                                                <span className="price-value">{formatPrice(order.transactionId?.amount || order.marketplacePageId?.price || 0)}</span>
                                             </div>
-                                            {activeTab === 'sold' && order.seller_revenue && (
+                                            {activeTab === 'sold' && order.transactionId?.seller_amount && (
                                                 <div className="seller-revenue">
                                                     <span className="revenue-label">Bạn nhận:</span>
-                                                    <span className="revenue-value">{formatPrice(order.seller_revenue)}</span>
+                                                    <span className="revenue-value">{formatPrice(order.transactionId.seller_amount)}</span>
                                                 </div>
                                             )}
                                             {order.status === 'delivered' && activeTab === 'bought' && (
@@ -372,7 +372,7 @@ const MyMarketplaceOrders = () => {
                                             )}
                                             <button
                                                 className="btn-view-detail"
-                                                onClick={() => navigate(`/marketplace/${order.marketplace_page?._id || order.page?._id}`)}
+                                                onClick={() => navigate(`/marketplace/${order.marketplacePageId?._id}`)}
                                             >
                                                 Xem chi tiết
                                             </button>
