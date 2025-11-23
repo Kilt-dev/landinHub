@@ -385,11 +385,15 @@ exports.getAllRooms = async (req, res) => {
     const { status, assigned } = req.query;
 
     const filter = {};
-    if (status) {
+
+    // ✅ FIX: Support 'all' status to fetch all chats
+    if (status && status !== 'all') {
       filter.status = status;
-    } else {
-      filter.status = { $in: ['open', 'assigned'] }; // Default: active rooms
+    } else if (!status) {
+      // Default: only active rooms (open or assigned)
+      filter.status = { $in: ['open', 'assigned'] };
     }
+    // If status === 'all', don't filter by status
 
     if (assigned === 'true') {
       filter.admin_id = { $ne: null };
@@ -402,12 +406,15 @@ exports.getAllRooms = async (req, res) => {
       .populate('user_id', 'name email')
       .populate('admin_id', 'name email');
 
+    console.log(`✅ Fetched ${rooms.length} chat rooms with filter:`, filter);
+
     res.json({
       success: true,
-      rooms
+      rooms,
+      count: rooms.length
     });
   } catch (error) {
-    console.error('Get all rooms error:', error);
+    console.error('❌ Get all rooms error:', error);
     res.status(500).json({
       success: false,
       message: 'Không thể lấy danh sách phòng chat',
