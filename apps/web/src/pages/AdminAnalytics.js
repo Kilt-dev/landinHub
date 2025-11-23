@@ -9,7 +9,8 @@ import {
 } from '@mui/material';
 import {
     TrendingUp, ChatBubble, Message, Group, ShoppingCart, AttachMoney,
-    Assessment, Payment, AccountBalance, Description
+    Assessment, Payment, AccountBalance, Description, Psychology,
+    Lightbulb, Analytics, Inventory, Category, Star, LocalAtm, CreditCard
 } from '@mui/icons-material';
 import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -28,6 +29,43 @@ const AdminAnalytics = () => {
     const [summary, setSummary] = useState(null);
     const [aiInsights, setAiInsights] = useState(null);
     const [systemReport, setSystemReport] = useState(null);
+
+    // Helper function to clean and parse AI text (remove emoji)
+    const cleanAIText = (text) => {
+        if (!text) return [];
+        // Remove emoji and split into lines
+        const cleanedText = text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+        // Split by newlines and filter empty lines
+        const lines = cleanedText.split('\n').filter(line => line.trim());
+        return lines;
+    };
+
+    // Parse recommendations into structured format
+    const parseRecommendations = (text) => {
+        if (!text) return [];
+        const lines = cleanAIText(text);
+        const recommendations = [];
+        let currentRec = null;
+
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            // Check if it's a numbered item (e.g., "1. Title" or "1) Title")
+            const match = trimmed.match(/^(\d+)[.):]\s*(.+)/);
+            if (match) {
+                if (currentRec) recommendations.push(currentRec);
+                currentRec = { title: match[2], details: [] };
+            } else if (currentRec && trimmed.startsWith('-')) {
+                currentRec.details.push(trimmed.substring(1).trim());
+            } else if (currentRec && trimmed) {
+                currentRec.details.push(trimmed);
+            } else if (trimmed && !currentRec) {
+                // Standalone text
+                recommendations.push({ title: trimmed, details: [] });
+            }
+        });
+        if (currentRec) recommendations.push(currentRec);
+        return recommendations;
+    };
 
     useEffect(() => {
         fetchAnalytics();
@@ -145,9 +183,12 @@ const AdminAnalytics = () => {
                     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
                         {/* Header */}
                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-                            <Typography variant="h4" fontWeight="bold">
-                                📊 Admin Analytics Dashboard
-                            </Typography>
+                            <Box display="flex" alignItems="center" gap={1}>
+                                <Analytics sx={{ fontSize: 40, color: '#667eea' }} />
+                                <Typography variant="h4" fontWeight="bold">
+                                    Admin Analytics Dashboard
+                                </Typography>
+                            </Box>
                             <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
                                 <InputLabel>Time Range</InputLabel>
                                 <Select
@@ -250,39 +291,85 @@ const AdminAnalytics = () => {
 
                         <Divider sx={{ my: 4 }} />
 
-                        {/* 🤖 AI Recommendations */}
+                        {/* AI Recommendations */}
                         {summary?.aiRecommendations && (
-                            <Paper sx={{ p: 3, mb: 4, background: 'linear-gradient(135deg, #667eea20 0%, #764ba220 100%)' }}>
-                                <Typography variant="h6" fontWeight="bold" mb={2}>
-                                    🤖 AI Smart Recommendations
-                                </Typography>
-                                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                    {summary.aiRecommendations}
-                                </Typography>
+                            <Paper sx={{ p: 3, mb: 4, background: 'linear-gradient(135deg, #667eea20 0%, #764ba220 100%)', border: '1px solid #667eea40' }}>
+                                <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                    <Psychology sx={{ color: '#667eea', fontSize: 28 }} />
+                                    <Typography variant="h6" fontWeight="bold">
+                                        AI Smart Recommendations
+                                    </Typography>
+                                </Box>
+                                <Box>
+                                    {parseRecommendations(summary.aiRecommendations).map((rec, index) => (
+                                        <Box key={index} mb={2}>
+                                            <Box display="flex" alignItems="flex-start" gap={1}>
+                                                <Lightbulb sx={{ color: '#f59e0b', fontSize: 20, mt: 0.3 }} />
+                                                <Box>
+                                                    <Typography variant="body1" fontWeight="600" gutterBottom>
+                                                        {rec.title}
+                                                    </Typography>
+                                                    {rec.details.length > 0 && (
+                                                        <Box ml={2}>
+                                                            {rec.details.map((detail, idx) => (
+                                                                <Typography key={idx} variant="body2" color="text.secondary" paragraph>
+                                                                    {detail}
+                                                                </Typography>
+                                                            ))}
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                            </Box>
+                                            {index < parseRecommendations(summary.aiRecommendations).length - 1 && (
+                                                <Divider sx={{ my: 2 }} />
+                                            )}
+                                        </Box>
+                                    ))}
+                                </Box>
                             </Paper>
                         )}
 
-                        {/* 🧠 AI Insights */}
+                        {/* AI Insights */}
                         {aiInsights && (
                             <Grid container spacing={3} mb={4}>
                                 <Grid item xs={12} md={6}>
-                                    <Paper sx={{ p: 3, height: '100%' }}>
-                                        <Typography variant="h6" fontWeight="bold" mb={2}>
-                                            💬 Chat Trends Analysis
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                                            {aiInsights.chatInsights}
-                                        </Typography>
+                                    <Paper sx={{ p: 3, height: '100%', border: '1px solid #f093fb40' }}>
+                                        <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                            <ChatBubble sx={{ color: '#f093fb', fontSize: 28 }} />
+                                            <Typography variant="h6" fontWeight="bold">
+                                                Chat Trends Analysis
+                                            </Typography>
+                                        </Box>
+                                        <Box>
+                                            {cleanAIText(aiInsights.chatInsights).map((line, index) => (
+                                                <Typography key={index} variant="body2" paragraph color="text.secondary">
+                                                    {line}
+                                                </Typography>
+                                            ))}
+                                        </Box>
                                     </Paper>
                                 </Grid>
                                 <Grid item xs={12} md={6}>
-                                    <Paper sx={{ p: 3, height: '100%' }}>
-                                        <Typography variant="h6" fontWeight="bold" mb={2}>
-                                            🛒 Marketplace Insights
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
-                                            {aiInsights.marketplaceInsights}
-                                        </Typography>
+                                    <Paper sx={{ p: 3, height: '100%', border: '1px solid #43e97b40' }}>
+                                        <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                            <ShoppingCart sx={{ color: '#43e97b', fontSize: 28 }} />
+                                            <Typography variant="h6" fontWeight="bold">
+                                                Marketplace Insights
+                                            </Typography>
+                                        </Box>
+                                        <Box>
+                                            {aiInsights.marketplaceInsights ? (
+                                                cleanAIText(aiInsights.marketplaceInsights).map((line, index) => (
+                                                    <Typography key={index} variant="body2" paragraph color="text.secondary">
+                                                        {line}
+                                                    </Typography>
+                                                ))
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary">
+                                                    No AI insights available for marketplace data.
+                                                </Typography>
+                                            )}
+                                        </Box>
                                     </Paper>
                                 </Grid>
                             </Grid>
@@ -291,9 +378,12 @@ const AdminAnalytics = () => {
                         {/* Revenue Trends Chart */}
                         {systemReport?.dailyRevenue && systemReport.dailyRevenue.length > 0 && (
                             <Paper sx={{ p: 3, mb: 4 }}>
-                                <Typography variant="h6" fontWeight="bold" mb={3}>
-                                    💰 Revenue Trends (Last 30 Days)
-                                </Typography>
+                                <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                    <LocalAtm sx={{ color: '#10b981', fontSize: 28 }} />
+                                    <Typography variant="h6" fontWeight="bold">
+                                        Revenue Trends (Last 30 Days)
+                                    </Typography>
+                                </Box>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <AreaChart data={systemReport.dailyRevenue}>
                                         <defs>
@@ -322,9 +412,12 @@ const AdminAnalytics = () => {
                         <Grid container spacing={3} mb={4}>
                             <Grid item xs={12} md={6}>
                                 <Paper sx={{ p: 3 }}>
-                                    <Typography variant="h6" fontWeight="bold" mb={3}>
-                                        📦 Transaction Status Breakdown
-                                    </Typography>
+                                    <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                        <Inventory sx={{ color: '#667eea', fontSize: 28 }} />
+                                        <Typography variant="h6" fontWeight="bold">
+                                            Transaction Status Breakdown
+                                        </Typography>
+                                    </Box>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <PieChart>
                                             <Pie
@@ -348,9 +441,12 @@ const AdminAnalytics = () => {
                             </Grid>
                             <Grid item xs={12} md={6}>
                                 <Paper sx={{ p: 3 }}>
-                                    <Typography variant="h6" fontWeight="bold" mb={3}>
-                                        💳 Payment Methods Distribution
-                                    </Typography>
+                                    <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                        <CreditCard sx={{ color: '#4facfe', fontSize: 28 }} />
+                                        <Typography variant="h6" fontWeight="bold">
+                                            Payment Methods Distribution
+                                        </Typography>
+                                    </Box>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={paymentMethodData}>
                                             <CartesianGrid strokeDasharray="3 3" />
@@ -370,9 +466,12 @@ const AdminAnalytics = () => {
                             {/* Category Performance */}
                             <Grid item xs={12} md={6}>
                                 <Paper sx={{ p: 3 }}>
-                                    <Typography variant="h6" fontWeight="bold" mb={3}>
-                                        🏆 Top Categories by Sales
-                                    </Typography>
+                                    <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                        <Star sx={{ color: '#f59e0b', fontSize: 28 }} />
+                                        <Typography variant="h6" fontWeight="bold">
+                                            Top Categories by Sales
+                                        </Typography>
+                                    </Box>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={marketplaceTrends?.categoryStats || []}>
                                             <CartesianGrid strokeDasharray="3 3" />
@@ -390,9 +489,12 @@ const AdminAnalytics = () => {
                             {/* Category Distribution Pie */}
                             <Grid item xs={12} md={6}>
                                 <Paper sx={{ p: 3 }}>
-                                    <Typography variant="h6" fontWeight="bold" mb={3}>
-                                        📈 Category Distribution
-                                    </Typography>
+                                    <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                        <Category sx={{ color: '#8b5cf6', fontSize: 28 }} />
+                                        <Typography variant="h6" fontWeight="bold">
+                                            Category Distribution
+                                        </Typography>
+                                    </Box>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <PieChart>
                                             <Pie
@@ -418,9 +520,12 @@ const AdminAnalytics = () => {
                             {/* Top Templates */}
                             <Grid item xs={12}>
                                 <Paper sx={{ p: 3 }}>
-                                    <Typography variant="h6" fontWeight="bold" mb={3}>
-                                        ⭐ Top Performing Templates
-                                    </Typography>
+                                    <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                        <TrendingUp sx={{ color: '#10b981', fontSize: 28 }} />
+                                        <Typography variant="h6" fontWeight="bold">
+                                            Top Performing Templates
+                                        </Typography>
+                                    </Box>
                                     <Box sx={{ overflowX: 'auto' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                             <thead>
@@ -444,7 +549,7 @@ const AdminAnalytics = () => {
                                                     <td style={{ padding: '12px', textAlign: 'right' }}>{template.sold_count}</td>
                                                     <td style={{ padding: '12px', textAlign: 'right' }}>{template.views}</td>
                                                     <td style={{ padding: '12px', textAlign: 'right' }}>
-                                                        ⭐ {template.rating?.toFixed(1) || 'N/A'}
+                                                        {template.rating?.toFixed(1) || 'N/A'}
                                                     </td>
                                                 </tr>
                                             ))}
