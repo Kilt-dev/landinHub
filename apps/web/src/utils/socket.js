@@ -240,6 +240,78 @@ export const onEvent = (event, callback) => {
     return () => off(event, callback);
 };
 
+/**
+ * Join a chat room
+ * @param {string} roomId - The chat room ID to join
+ */
+export const joinRoom = (roomId) => {
+    if (!roomId) {
+        console.warn('⚠️ Cannot join room: roomId is required');
+        return;
+    }
+
+    const success = sendMessage('chat:join', { roomId });
+    if (success) {
+        console.log('📡 Joining room:', roomId);
+    }
+};
+
+/**
+ * Leave a chat room
+ * @param {string} roomId - The chat room ID to leave
+ */
+export const leaveRoom = (roomId) => {
+    if (!roomId) {
+        console.warn('⚠️ Cannot leave room: roomId is required');
+        return;
+    }
+
+    const success = sendMessage('chat:leave', { roomId });
+    if (success) {
+        console.log('📡 Leaving room:', roomId);
+    }
+};
+
+/**
+ * Send a chat message
+ * @param {string} roomId - The chat room ID
+ * @param {string} message - The message content
+ * @param {string} senderType - 'user' or 'admin'
+ */
+export const sendChatMessage = (roomId, message, senderType = 'user') => {
+    if (!roomId || !message) {
+        console.warn('⚠️ Cannot send message: roomId and message are required');
+        return false;
+    }
+
+    return sendMessage('chat:message', {
+        roomId,
+        message,
+        sender_type: senderType,
+        timestamp: new Date().toISOString()
+    });
+};
+
+/**
+ * Listen for new chat messages
+ * @param {Function} callback - Callback function to handle new messages
+ * @returns {Function} - Cleanup function
+ */
+export const onChatMessage = (callback) => {
+    on('chat:message', callback);
+    return () => off('chat:message', callback);
+};
+
+/**
+ * Listen for room updates
+ * @param {Function} callback - Callback function to handle room updates
+ * @returns {Function} - Cleanup function
+ */
+export const onRoomUpdate = (callback) => {
+    on('chat:room_update', callback);
+    return () => off('chat:room_update', callback);
+};
+
 export default {
     initSocket,
     getSocket,
@@ -247,5 +319,10 @@ export default {
     joinDashboard,
     leaveDashboard,
     onDashboardUpdate,
-    onEvent
+    onEvent,
+    joinRoom,
+    leaveRoom,
+    sendChatMessage,
+    onChatMessage,
+    onRoomUpdate
 };

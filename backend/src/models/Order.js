@@ -60,6 +60,10 @@ const orderSchema = new mongoose.Schema({
     updatedAt: {
         type: Date,
         default: Date.now
+    },
+    is_deleted: {
+        type: Boolean,
+        default: false
     }
 }, {
     collection: 'orders',
