@@ -292,7 +292,7 @@ const AdminAnalytics = () => {
                         <Divider sx={{ my: 4 }} />
 
                         {/* AI Recommendations */}
-                        {summary?.aiRecommendations && (
+                        {summary?.aiRecommendations && parseRecommendations(summary.aiRecommendations).length > 0 && (
                             <Paper sx={{ p: 3, mb: 4, background: 'linear-gradient(135deg, #667eea20 0%, #764ba220 100%)', border: '1px solid #667eea40' }}>
                                 <Box display="flex" alignItems="center" gap={1} mb={3}>
                                     <Psychology sx={{ color: '#667eea', fontSize: 28 }} />
@@ -341,11 +341,17 @@ const AdminAnalytics = () => {
                                             </Typography>
                                         </Box>
                                         <Box>
-                                            {cleanAIText(aiInsights.chatInsights).map((line, index) => (
-                                                <Typography key={index} variant="body2" paragraph color="text.secondary">
-                                                    {line}
+                                            {aiInsights.chatInsights && cleanAIText(aiInsights.chatInsights).length > 0 ? (
+                                                cleanAIText(aiInsights.chatInsights).map((line, index) => (
+                                                    <Typography key={index} variant="body2" paragraph color="text.secondary">
+                                                        {line}
+                                                    </Typography>
+                                                ))
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                                    Chưa có đủ dữ liệu cuộc hội thoại để phân tích. Khi có người dùng bắt đầu chat, AI sẽ tự động phân tích xu hướng và đưa ra insights.
                                                 </Typography>
-                                            ))}
+                                            )}
                                         </Box>
                                     </Paper>
                                 </Grid>
@@ -358,15 +364,15 @@ const AdminAnalytics = () => {
                                             </Typography>
                                         </Box>
                                         <Box>
-                                            {aiInsights.marketplaceInsights ? (
+                                            {aiInsights.marketplaceInsights && cleanAIText(aiInsights.marketplaceInsights).length > 0 ? (
                                                 cleanAIText(aiInsights.marketplaceInsights).map((line, index) => (
                                                     <Typography key={index} variant="body2" paragraph color="text.secondary">
                                                         {line}
                                                     </Typography>
                                                 ))
                                             ) : (
-                                                <Typography variant="body2" color="text.secondary">
-                                                    No AI insights available for marketplace data.
+                                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                                    Chưa có đủ dữ liệu marketplace để phân tích. Khi có template được đăng bán và có người mua, AI sẽ phân tích hiệu suất và đưa ra insights.
                                                 </Typography>
                                             )}
                                         </Box>
