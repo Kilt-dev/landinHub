@@ -318,7 +318,7 @@ router.post('/conversation-analysis', async (req, res) => {
 
         const [room, messages] = await Promise.all([
             ChatRoom.findById(roomId),
-            ChatMessage.find({ room_id: roomId }).sort({ created_at: 1 }).limit(20)
+            ChatMessage.find({ room_id: roomId }).sort({ createdAt: 1 }).limit(20)
         ]);
 
         if (!room) {
