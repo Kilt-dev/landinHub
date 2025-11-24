@@ -52,7 +52,7 @@ const chatRoomSchema = new mongoose.Schema({
     // Tags for categorization
     tags: [{
         type: String,
-        enum: ['general', 'builder', 'marketplace', 'payment', 'deployment', 'account', 'technical', 'other', 'user_requested_admin']
+        enum: ['general', 'builder', 'marketplace', 'payment', 'deployment', 'account', 'technical', 'other', 'user_requested_admin', 'buyer-seller']
     }],
     // User satisfaction rating after resolution
     rating: {

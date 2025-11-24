@@ -88,15 +88,97 @@ exports.createOrGetRoom = async (req, res) => {
   }
 };
 
+// Create marketplace chat room (buyer-seller communication)
+exports.createMarketplaceRoom = async (req, res) => {
+  try {
+    const buyerId = req.user.id;
+    const { marketplacePageId, sellerId, pageTitle } = req.body;
+
+    if (!marketplacePageId || !sellerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'marketplacePageId và sellerId là bắt buộc'
+      });
+    }
+
+    // Không cho phép liên hệ chính mình
+    if (buyerId === sellerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Không thể liên hệ với chính mình'
+      });
+    }
+
+    // Check if room already exists between buyer and seller for this page
+    let room = await ChatRoom.findOne({
+      user_id: buyerId,
+      'context.marketplace_page_id': marketplacePageId,
+      'context.seller_id': sellerId,
+      'context.type': 'marketplace',
+      status: { $in: ['open', 'assigned'] }
+    }).populate('admin_id', 'name email');
+
+    if (!room) {
+      // Create new marketplace chat room
+      room = new ChatRoom({
+        user_id: buyerId,
+        context: {
+          type: 'marketplace',
+          marketplace_page_id: marketplacePageId,
+          seller_id: sellerId,
+          page_title: pageTitle || 'Marketplace Page'
+        },
+        subject: `Liên hệ về: ${pageTitle || 'Marketplace Page'}`,
+        tags: ['marketplace', 'buyer-seller']
+      });
+      await room.save();
+      await room.populate('admin_id', 'name email');
+
+      console.log(`✅ Created marketplace chat room ${room._id} between buyer ${buyerId} and seller ${sellerId}`);
+    } else {
+      console.log(`📦 Found existing marketplace room ${room._id}`);
+    }
+
+    res.json({
+      success: true,
+      room
+    });
+  } catch (error) {
+    console.error('[ChatController] Create marketplace room error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tạo phòng chat',
+      error: error.message
+    });
+  }
+};
+
 // Get user's chat rooms
 exports.getUserRooms = async (req, res) => {
   try {
     const userId = req.user.id;
-    const rooms = await ChatRoom.findUserRooms(userId);
+
+    // Get rooms where user is the creator (buyer in marketplace context)
+    const userRooms = await ChatRoom.findUserRooms(userId);
+
+    // Also get marketplace rooms where user is the seller
+    const sellerRooms = await ChatRoom.find({
+      'context.type': 'marketplace',
+      'context.seller_id': userId,
+      status: { $in: ['open', 'assigned', 'resolved'] }
+    })
+      .sort({ last_message_at: -1 })
+      .populate('user_id', 'name email'); // user_id is the buyer
+
+    // Combine and deduplicate
+    const allRooms = [...userRooms, ...sellerRooms];
+    const uniqueRooms = allRooms.filter((room, index, self) =>
+      index === self.findIndex(r => r._id.toString() === room._id.toString())
+    );
 
     res.json({
       success: true,
-      rooms
+      rooms: uniqueRooms
     });
   } catch (error) {
     console.error('Get user rooms error:', error);
@@ -130,8 +212,12 @@ exports.getRoomMessages = async (req, res) => {
     const isAdmin = room.admin_id && room.admin_id.toString() === userId;
     const isSystemAdmin = req.user.role === 'admin';
 
+    // Check if this is a marketplace room
+    const isMarketplaceRoom = room.context?.type === 'marketplace';
+    const isSeller = isMarketplaceRoom && room.context?.seller_id === userId;
+
     // Check access if middleware not used
-    if (!req.chatAccess && !isOwner && !isAdmin && !isSystemAdmin) {
+    if (!req.chatAccess && !isOwner && !isAdmin && !isSystemAdmin && !isSeller) {
       return res.status(403).json({
         success: false,
         message: 'Không có quyền truy cập'
@@ -205,9 +291,27 @@ exports.sendMessage = async (req, res) => {
       });
     }
 
-    // Determine sender type
+    // Check if this is a marketplace room and determine sender type
+    const isMarketplaceRoom = room.context?.type === 'marketplace';
+    const isBuyer = room.user_id.toString() === userId;
+    const isSeller = isMarketplaceRoom && room.context?.seller_id === userId;
     const isAdmin = req.user.role === 'admin';
-    const senderType = isAdmin ? 'admin' : 'user';
+
+    // Validate access for marketplace rooms
+    if (isMarketplaceRoom && !isBuyer && !isSeller && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Không có quyền gửi tin nhắn trong phòng này'
+      });
+    }
+
+    // Determine sender type
+    let senderType;
+    if (isMarketplaceRoom) {
+      senderType = isSeller ? 'seller' : 'user';
+    } else {
+      senderType = isAdmin ? 'admin' : 'user';
+    }
 
     // Create message
     const chatMessage = new ChatMessage({
@@ -254,10 +358,20 @@ exports.sendMessage = async (req, res) => {
     // Update room unread count (non-blocking)
     setImmediate(async () => {
       try {
-        if (senderType === 'user') {
-          await room.incrementUnreadAdmin();
+        if (isMarketplaceRoom) {
+          // For marketplace rooms: user=buyer, admin=seller
+          if (isSeller) {
+            await room.incrementUnreadUser(); // Seller sends, increment buyer's unread
+          } else if (isBuyer) {
+            await room.incrementUnreadAdmin(); // Buyer sends, increment seller's unread
+          }
         } else {
-          await room.incrementUnreadUser();
+          // For support rooms: regular user-admin logic
+          if (senderType === 'user') {
+            await room.incrementUnreadAdmin();
+          } else {
+            await room.incrementUnreadUser();
+          }
         }
       } catch (err) {
         console.error('[ChatController] Failed to update unread count:', {

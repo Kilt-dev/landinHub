@@ -521,7 +521,7 @@ TransactionSchema.methods.autoRefund = async function(reason = 'User request') {
     const canAuto = daysSincePaid < 7 && this.payout_status !== 'COMPLETED';
 
     if (canAuto) {
-        // hoàn ngay
+        // Auto refund - hoàn tiền tự động
         this.status = 'REFUNDED';
         this.refund = {
             reason,
@@ -531,19 +531,35 @@ TransactionSchema.methods.autoRefund = async function(reason = 'User request') {
         };
         await this.save();
 
-        // trừ doanh thu marketplacePage
+        // Trừ doanh thu marketplacePage
+        const MarketplacePage = require('./MarketplacePage');
         await MarketplacePage.findByIdAndUpdate(this.marketplace_page_id, {
             $inc: { sold_count: -1 }
+        }).catch(err => {
+            console.error('Failed to decrement sold_count:', err.message);
         });
 
-        // hoàn tiền ví (giả lửa ví điện tử)
-        await paymentService.refundToBuyer(this.payment_gateway_transaction_id, this.amount);
+        // Gửi email thông báo hoàn tiền thành công
+        try {
+            const { sendRefundCompleted } = require('../services/email');
+            const Order = require('./Order');
+            const order = await Order.findOne({ transactionId: this._id });
+            if (order) {
+                order.status = 'refunded';
+                await order.save();
+                await sendRefundCompleted(order);
+            }
+        } catch (emailError) {
+            console.error('Failed to send refund completion email:', emailError.message);
+        }
 
-        return { success: true, auto: true };
+        console.log(`✅ Auto refund completed for transaction ${this._id}`);
+        return { success: true, auto: true, message: 'Hoàn tiền tự động thành công' };
     } else {
-        // chuyển admin duyệt
+        // Chuyển admin duyệt
+        console.log(`⏳ Manual refund required for transaction ${this._id} (${daysSincePaid.toFixed(1)} days old)`);
         await this.requestRefund(reason);
-        return { success: true, auto: false };
+        return { success: true, auto: false, message: 'Yêu cầu hoàn tiền đã được gửi đến admin để xử lý' };
     }
 };
 

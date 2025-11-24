@@ -14,7 +14,7 @@ const chatMessageSchema = new mongoose.Schema({
   },
   sender_type: {
     type: String,
-    enum: ['user', 'admin', 'bot'],
+    enum: ['user', 'admin', 'bot', 'seller'],
     required: true
   },
   message: {
