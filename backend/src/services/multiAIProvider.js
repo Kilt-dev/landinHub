@@ -18,7 +18,7 @@ const providers = {
   },
   gemini: {
     name: 'Google Gemini 2.0',
-    enabled: !!process.env.GEMINI_API_KEY,
+    enabled: !!(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY),
     model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
     maxTokens: 8192, // Gemini 2.0 Flash supports up to 8192 output tokens
     contextWindow: 1048576, // 1M token context window
@@ -40,7 +40,7 @@ function getActiveProvider() {
     return 'gemini';
   }
 
-  throw new Error('No AI provider configured! Please set up GROQ_API_KEY or GEMINI_API_KEY');
+  throw new Error('No AI provider configured! Please set up GROQ_API_KEY or GOOGLE_API_KEY');
 }
 
 // Groq provider (OpenAI-compatible API)
@@ -83,7 +83,7 @@ async function callGemini(messages, options = {}) {
     }).join('\n\n');
 
     const response = await axios.post(
-      `${providers.gemini.url}/${providers.gemini.model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `${providers.gemini.url}/${providers.gemini.model}:generateContent?key=${process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY}`,
       {
         contents: [{
           parts: [{
@@ -158,7 +158,7 @@ async function chatCompletion(messages, options = {}) {
     };
   }
 
-  throw new Error('No AI provider configured! Please set up GROQ_API_KEY or GEMINI_API_KEY');
+  throw new Error('No AI provider configured! Please set up GROQ_API_KEY or GOOGLE_API_KEY');
 }
 
 // Get provider status
