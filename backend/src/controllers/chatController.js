@@ -3,10 +3,44 @@ const ChatMessage = require('../models/ChatMessage');
 const User = require('../models/User');
 const { detectIntentAndRespond } = require('../services/aiResponseService');
 const WebSocketService = require('../services/websocket/websocketService');
+const notificationService = require('../services/notificationService');
 
-// Initialize WebSocket service
-const wsService = new WebSocketService();
-wsService.initializeClient();
+// Initialize WebSocket service with error handling
+let wsService;
+try {
+  wsService = new WebSocketService();
+  wsService.initializeClient().catch(err => {
+    console.error('[ChatController] WebSocket initialization failed:', err.message);
+  });
+} catch (error) {
+  console.error('[ChatController] WebSocket service creation failed:', error.message);
+  wsService = null; // Graceful degradation
+}
+
+/**
+ * Safely broadcast to WebSocket room
+ * @param {string} room - Room identifier
+ * @param {string} event - Event name
+ * @param {Object} data - Data to send
+ */
+async function safeBroadcastToRoom(room, event, data) {
+  if (!wsService) {
+    console.warn('[ChatController] WebSocket service not available, skipping broadcast');
+    return false;
+  }
+
+  try {
+    await wsService.sendToRoom(room, event, data);
+    return true;
+  } catch (error) {
+    console.error('[ChatController] WebSocket broadcast failed:', {
+      error: error.message,
+      room,
+      event
+    });
+    return false;
+  }
+}
 
 // Note: detectIntentAndRespond is now imported from aiResponseService
 // which uses real data from chatContextService
@@ -75,14 +109,15 @@ exports.getUserRooms = async (req, res) => {
 };
 
 // Get messages for a room
+// Note: Should use chatAccessMiddleware.verifyChatRoomAccess in routes
 exports.getRoomMessages = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const { limit = 50, skip = 0 } = req.query;
-    const userId = req.user.id;
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200); // Cap at 200
+    const skip = parseInt(req.query.skip) || 0;
 
-    // Verify user has access to this room
-    const room = await ChatRoom.findById(roomId);
+    // If middleware is used, room will be in req.chatRoom
+    const room = req.chatRoom || await ChatRoom.findById(roomId);
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -90,52 +125,79 @@ exports.getRoomMessages = async (req, res) => {
       });
     }
 
-    // Check access (user must be owner or admin)
+    const userId = req.user.id;
     const isOwner = room.user_id.toString() === userId;
     const isAdmin = room.admin_id && room.admin_id.toString() === userId;
     const isSystemAdmin = req.user.role === 'admin';
 
-    if (!isOwner && !isAdmin && !isSystemAdmin) {
+    // Check access if middleware not used
+    if (!req.chatAccess && !isOwner && !isAdmin && !isSystemAdmin) {
       return res.status(403).json({
         success: false,
         message: 'Không có quyền truy cập'
       });
     }
 
-    const messages = await ChatMessage.findRoomMessages(roomId, parseInt(limit), parseInt(skip));
+    // Fetch messages
+    const messages = await ChatMessage.findRoomMessages(roomId, limit, skip);
 
-    // Mark messages as read
-    if (isOwner) {
-      await ChatMessage.markRoomMessagesAsRead(roomId, 'user');
-      await room.resetUnreadUser();
-    } else if (isAdmin || isSystemAdmin) {
-      await ChatMessage.markRoomMessagesAsRead(roomId, 'admin');
-      await room.resetUnreadAdmin();
-    }
+    // Mark messages as read in background (don't wait)
+    setImmediate(async () => {
+      try {
+        if (isOwner) {
+          await Promise.all([
+            ChatMessage.markRoomMessagesAsRead(roomId, 'user'),
+            room.resetUnreadUser()
+          ]);
+        } else if (isAdmin || isSystemAdmin) {
+          await Promise.all([
+            ChatMessage.markRoomMessagesAsRead(roomId, 'admin'),
+            room.resetUnreadAdmin()
+          ]);
+        }
+      } catch (err) {
+        console.error('[ChatController] Failed to mark messages as read:', {
+          error: err.message,
+          roomId,
+          userId
+        });
+      }
+    });
 
     res.json({
       success: true,
       messages: messages.reverse(), // Oldest first
-      room
+      room,
+      pagination: {
+        limit,
+        skip,
+        hasMore: messages.length === limit
+      }
     });
   } catch (error) {
-    console.error('Get messages error:', error);
+    console.error('[ChatController] Get messages error:', {
+      error: error.message,
+      stack: error.stack,
+      roomId: req.params.roomId,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể lấy tin nhắn',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
 // Send message (REST API - fallback for Socket.IO)
+// Note: Should use chatValidationMiddleware.validateSendMessage in routes
 exports.sendMessage = async (req, res) => {
   try {
     const { roomId } = req.params;
     const { message, message_type = 'text', attachments = [] } = req.body;
     const userId = req.user.id;
 
-    const room = await ChatRoom.findById(roomId);
+    const room = req.chatRoom || await ChatRoom.findById(roomId);
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -144,7 +206,6 @@ exports.sendMessage = async (req, res) => {
     }
 
     // Determine sender type
-    const isOwner = room.user_id.toString() === userId;
     const isAdmin = req.user.role === 'admin';
     const senderType = isAdmin ? 'admin' : 'user';
 
@@ -153,7 +214,7 @@ exports.sendMessage = async (req, res) => {
       room_id: roomId,
       sender_id: userId,
       sender_type: senderType,
-      message,
+      message: message.trim(),
       message_type,
       attachments
     });
@@ -162,55 +223,66 @@ exports.sendMessage = async (req, res) => {
     await chatMessage.populate('sender_id', 'name role');
 
     // Broadcast message via WebSocket to all room participants
-    await wsService.sendToRoom(`chat_room_${roomId}`, 'chat:new_message', {
+    await safeBroadcastToRoom(`chat_room_${roomId}`, 'chat:new_message', {
       message: chatMessage
     });
 
-    // 💬 Send Gmail notification when admin replies
+    // Handle admin reply notifications (async, non-blocking)
     if (isAdmin) {
-      try {
-        const { sendAdminReplyNotification } = require('../services/email');
-        await sendAdminReplyNotification(room, chatMessage);
-      } catch (emailError) {
-        console.error('Failed to send admin reply email:', emailError.message);
-        // Don't block the message if email fails
-      }
+      setImmediate(async () => {
+        // Send email notification
+        try {
+          const { sendAdminReplyNotification } = require('../services/email');
+          await sendAdminReplyNotification(room, chatMessage);
+        } catch (emailError) {
+          console.error('[ChatController] Failed to send admin reply email:', {
+            error: emailError.message,
+            roomId,
+            userId
+          });
+        }
 
-      // 🔔 Create in-app notification for user
+        // Create in-app notification
+        await notificationService.createAdminReplyNotification(
+          room,
+          chatMessage,
+          req.user.name
+        );
+      });
+    }
+
+    // Update room unread count (non-blocking)
+    setImmediate(async () => {
       try {
-        const Notification = require('../models/Notification');
-        await Notification.create({
-          recipientId: room.user_id,
-          type: 'admin_replied',
-          title: 'Admin đã trả lời',
-          message: `Admin đã trả lời yêu cầu hỗ trợ: "${room.subject}"`,
-          metadata: {
-            roomId: room._id,
-            messagePreview: chatMessage.message.substring(0, 100)
-          }
+        if (senderType === 'user') {
+          await room.incrementUnreadAdmin();
+        } else {
+          await room.incrementUnreadUser();
+        }
+      } catch (err) {
+        console.error('[ChatController] Failed to update unread count:', {
+          error: err.message,
+          roomId,
+          senderType
         });
-      } catch (notifError) {
-        console.error('Failed to create admin reply notification:', notifError.message);
       }
-    }
-
-    // Update room
-    if (senderType === 'user') {
-      await room.incrementUnreadAdmin();
-    } else {
-      await room.incrementUnreadUser();
-    }
+    });
 
     res.json({
       success: true,
       message: chatMessage
     });
   } catch (error) {
-    console.error('Send message error:', error);
+    console.error('[ChatController] Send message error:', {
+      error: error.message,
+      stack: error.stack,
+      roomId: req.params.roomId,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể gửi tin nhắn',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -222,7 +294,7 @@ exports.sendMessageWithAI = async (req, res) => {
     const { message, enableAI = true } = req.body;
     const userId = req.user.id;
 
-    const room = await ChatRoom.findById(roomId);
+    const room = req.chatRoom || await ChatRoom.findById(roomId);
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -235,53 +307,74 @@ exports.sendMessageWithAI = async (req, res) => {
       room_id: roomId,
       sender_id: userId,
       sender_type: 'user',
-      message,
+      message: message.trim(),
       message_type: 'text'
     });
 
     await userMessage.save();
     await userMessage.populate('sender_id', 'name role');
-    await room.incrementUnreadAdmin();
 
     // Broadcast user message via WebSocket
-    await wsService.sendToRoom(`chat_room_${roomId}`, 'chat:new_message', {
+    await safeBroadcastToRoom(`chat_room_${roomId}`, 'chat:new_message', {
       message: userMessage
     });
+
+    // Update unread count (non-blocking)
+    setImmediate(() => room.incrementUnreadAdmin().catch(err =>
+      console.error('[ChatController] Failed to increment unread:', err.message)
+    ));
 
     let aiResponse = null;
 
     // Generate AI response if no admin is assigned and AI is enabled
     if (enableAI && !room.admin_id) {
-      const aiResult = await detectIntentAndRespond(message, room.context || {}, userId);
+      try {
+        const aiResult = await detectIntentAndRespond(
+          message,
+          room.context || {},
+          userId
+        );
 
-      // Create AI bot message
-      const botMessage = new ChatMessage({
-        room_id: roomId,
-        sender_id: userId, // Use system user or create a bot user
-        sender_type: 'bot',
-        message: aiResult.response,
-        message_type: 'text',
-        ai_metadata: {
-          is_ai_generated: true,
-          confidence: aiResult.confidence,
-          intent: aiResult.intent
+        // Create AI bot message
+        const botMessage = new ChatMessage({
+          room_id: roomId,
+          sender_id: userId,
+          sender_type: 'bot',
+          message: aiResult.response,
+          message_type: 'text',
+          ai_metadata: {
+            is_ai_generated: true,
+            confidence: aiResult.confidence,
+            intent: aiResult.intent
+          }
+        });
+
+        await botMessage.save();
+        await botMessage.populate('sender_id', 'name role');
+
+        aiResponse = botMessage;
+
+        // Broadcast AI response via WebSocket
+        await safeBroadcastToRoom(`chat_room_${roomId}`, 'chat:new_message', {
+          message: aiResponse
+        });
+
+        // Update room tags based on detected intent (non-blocking)
+        if (aiResult.intent && !room.tags.includes(aiResult.intent)) {
+          setImmediate(() => {
+            room.tags.push(aiResult.intent);
+            room.save().catch(err =>
+              console.error('[ChatController] Failed to update tags:', err.message)
+            );
+          });
         }
-      });
-
-      await botMessage.save();
-      await botMessage.populate('sender_id', 'name role');
-
-      aiResponse = botMessage;
-
-      // Broadcast AI response via WebSocket
-      await wsService.sendToRoom(`chat_room_${roomId}`, 'chat:new_message', {
-        message: aiResponse
-      });
-
-      // Update room tags based on detected intent
-      if (aiResult.intent && !room.tags.includes(aiResult.intent)) {
-        room.tags.push(aiResult.intent);
-        await room.save();
+      } catch (aiError) {
+        console.error('[ChatController] AI response generation failed:', {
+          error: aiError.message,
+          roomId,
+          userId
+        });
+        // Continue without AI response if it fails
       }
     }
 
@@ -291,11 +384,16 @@ exports.sendMessageWithAI = async (req, res) => {
       aiResponse
     });
   } catch (error) {
-    console.error('Send message with AI error:', error);
+    console.error('[ChatController] Send message with AI error:', {
+      error: error.message,
+      stack: error.stack,
+      roomId: req.params.roomId,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể gửi tin nhắn',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -306,7 +404,7 @@ exports.closeRoom = async (req, res) => {
     const { roomId } = req.params;
     const userId = req.user.id;
 
-    const room = await ChatRoom.findById(roomId);
+    const room = req.chatRoom || await ChatRoom.findById(roomId);
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -314,7 +412,7 @@ exports.closeRoom = async (req, res) => {
       });
     }
 
-    // Only owner or admin can close
+    // Check permissions
     const isOwner = room.user_id.toString() === userId;
     const isAdmin = req.user.role === 'admin';
 
@@ -325,6 +423,7 @@ exports.closeRoom = async (req, res) => {
       });
     }
 
+    // Update room status
     room.status = 'resolved';
     await room.save();
 
@@ -332,34 +431,53 @@ exports.closeRoom = async (req, res) => {
     const systemMessage = new ChatMessage({
       room_id: roomId,
       sender_id: userId,
-      sender_type: 'admin',
-      message: 'Cuộc hội thoại đã được đóng.',
+      sender_type: isAdmin ? 'admin' : 'user',
+      message: `Cuộc hội thoại đã được đóng bởi ${req.user.name || 'người dùng'}.`,
       message_type: 'system'
     });
     await systemMessage.save();
+
+    // Broadcast room closed event
+    await safeBroadcastToRoom(`chat_room_${roomId}`, 'chat:room_closed', {
+      room,
+      closedBy: req.user.name
+    });
+
+    // Send notification (non-blocking)
+    if (isAdmin && room.user_id.toString() !== userId) {
+      setImmediate(() =>
+        notificationService.createRoomClosedNotification(room)
+      );
+    }
 
     res.json({
       success: true,
       room
     });
   } catch (error) {
-    console.error('Close room error:', error);
+    console.error('[ChatController] Close room error:', {
+      error: error.message,
+      stack: error.stack,
+      roomId: req.params.roomId,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể đóng phòng chat',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
 // Rate chat experience
+// Note: Should use chatValidationMiddleware.validateRating in routes
 exports.rateRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
     const { score, feedback } = req.body;
     const userId = req.user.id;
 
-    const room = await ChatRoom.findById(roomId);
+    const room = req.chatRoom || await ChatRoom.findById(roomId);
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -368,16 +486,24 @@ exports.rateRoom = async (req, res) => {
     }
 
     // Only owner can rate
-    if (room.user_id.toString() !== userId) {
+    if (room.user_id.toString() !== userId && req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
-        message: 'Không có quyền đánh giá'
+        message: 'Chỉ chủ phòng mới có quyền đánh giá'
+      });
+    }
+
+    // Check if already rated
+    if (room.rating && room.rating.score) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phòng chat này đã được đánh giá'
       });
     }
 
     room.rating = {
-      score: Math.max(1, Math.min(5, score)), // Ensure 1-5 range
-      feedback,
+      score: Math.max(1, Math.min(5, Math.round(score))), // Ensure 1-5 range
+      feedback: feedback ? feedback.trim() : undefined,
       rated_at: new Date()
     };
 
@@ -385,14 +511,20 @@ exports.rateRoom = async (req, res) => {
 
     res.json({
       success: true,
-      room
+      room,
+      message: 'Cảm ơn bạn đã đánh giá!'
     });
   } catch (error) {
-    console.error('Rate room error:', error);
+    console.error('[ChatController] Rate room error:', {
+      error: error.message,
+      stack: error.stack,
+      roomId: req.params.roomId,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể đánh giá',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -457,6 +589,15 @@ exports.assignRoom = async (req, res) => {
       });
     }
 
+    // Check if already assigned
+    if (room.admin_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phòng chat đã được assign cho admin khác'
+      });
+    }
+
+    // Assign admin
     await room.assignAdmin(adminId);
     await room.populate('user_id', 'name email');
     await room.populate('admin_id', 'name email');
@@ -471,27 +612,44 @@ exports.assignRoom = async (req, res) => {
     });
     await systemMessage.save();
 
+    // Broadcast room assignment
+    await safeBroadcastToRoom(`chat_room_${roomId}`, 'chat:room_assigned', {
+      room,
+      admin: req.user
+    });
+
+    // Send notification (non-blocking)
+    setImmediate(() =>
+      notificationService.createRoomAssignmentNotification(room, req.user.name)
+    );
+
     res.json({
       success: true,
       room
     });
   } catch (error) {
-    console.error('Assign room error:', error);
+    console.error('[ChatController] Assign room error:', {
+      error: error.message,
+      stack: error.stack,
+      roomId: req.params.roomId,
+      adminId: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể assign phòng chat',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
 
 // Update room status/priority
+// Note: Should use chatValidationMiddleware.validateStatusUpdate in routes
 exports.updateRoomStatus = async (req, res) => {
   try {
     const { roomId } = req.params;
     const { status, priority, tags } = req.body;
 
-    const room = await ChatRoom.findById(roomId);
+    const room = req.chatRoom || await ChatRoom.findById(roomId);
     if (!room) {
       return res.status(404).json({
         success: false,
@@ -499,22 +657,53 @@ exports.updateRoomStatus = async (req, res) => {
       });
     }
 
-    if (status) room.status = status;
-    if (priority) room.priority = priority;
-    if (tags) room.tags = tags;
+    const updates = {};
+    if (status && status !== room.status) {
+      updates.status = status;
+      room.status = status;
+    }
+    if (priority && priority !== room.priority) {
+      updates.priority = priority;
+      room.priority = priority;
+    }
+    if (tags && JSON.stringify(tags) !== JSON.stringify(room.tags)) {
+      updates.tags = tags;
+      room.tags = tags;
+    }
+
+    // Only save if there are actual changes
+    if (Object.keys(updates).length === 0) {
+      return res.json({
+        success: true,
+        room,
+        message: 'Không có thay đổi nào'
+      });
+    }
 
     await room.save();
 
+    // Broadcast status update
+    await safeBroadcastToRoom(`chat_room_${roomId}`, 'chat:room_updated', {
+      room,
+      updates
+    });
+
     res.json({
       success: true,
-      room
+      room,
+      updates
     });
   } catch (error) {
-    console.error('Update room status error:', error);
+    console.error('[ChatController] Update room status error:', {
+      error: error.message,
+      stack: error.stack,
+      roomId: req.params.roomId,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể cập nhật trạng thái',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -522,21 +711,45 @@ exports.updateRoomStatus = async (req, res) => {
 // Get chat statistics (admin)
 exports.getChatStats = async (req, res) => {
   try {
-    const [totalRooms, openRooms, assignedRooms, resolvedToday] = await Promise.all([
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Optimize queries with Promise.all for parallel execution
+    const [
+      totalRooms,
+      openRooms,
+      assignedRooms,
+      resolvedToday,
+      ratingStats
+    ] = await Promise.all([
       ChatRoom.countDocuments({}),
       ChatRoom.countDocuments({ status: 'open' }),
       ChatRoom.countDocuments({ status: 'assigned' }),
       ChatRoom.countDocuments({
         status: 'resolved',
-        updatedAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
-      })
+        updatedAt: { $gte: today }
+      }),
+      // Use aggregation for better performance on rating calculation
+      ChatRoom.aggregate([
+        { $match: { 'rating.score': { $exists: true, $ne: null } } },
+        {
+          $group: {
+            _id: null,
+            avgRating: { $avg: '$rating.score' },
+            totalRated: { $sum: 1 },
+            maxRating: { $max: '$rating.score' },
+            minRating: { $min: '$rating.score' }
+          }
+        }
+      ])
     ]);
 
-    // Average rating
-    const ratedRooms = await ChatRoom.find({ 'rating.score': { $exists: true } });
-    const avgRating = ratedRooms.length > 0
-      ? ratedRooms.reduce((sum, room) => sum + room.rating.score, 0) / ratedRooms.length
-      : 0;
+    const ratingData = ratingStats[0] || {
+      avgRating: 0,
+      totalRated: 0,
+      maxRating: 0,
+      minRating: 0
+    };
 
     res.json({
       success: true,
@@ -545,16 +758,22 @@ exports.getChatStats = async (req, res) => {
         openRooms,
         assignedRooms,
         resolvedToday,
-        avgRating: avgRating.toFixed(2),
-        totalRated: ratedRooms.length
+        avgRating: ratingData.avgRating ? ratingData.avgRating.toFixed(2) : '0.00',
+        totalRated: ratingData.totalRated,
+        maxRating: ratingData.maxRating,
+        minRating: ratingData.minRating
       }
     });
   } catch (error) {
-    console.error('Get chat stats error:', error);
+    console.error('[ChatController] Get chat stats error:', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id
+    });
     res.status(500).json({
       success: false,
       message: 'Không thể lấy thống kê',
-      error: error.message
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
