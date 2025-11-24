@@ -2,6 +2,11 @@ const ChatRoom = require('../models/ChatRoom');
 const ChatMessage = require('../models/ChatMessage');
 const User = require('../models/User');
 const { detectIntentAndRespond } = require('../services/aiResponseService');
+const WebSocketService = require('../services/websocket/websocketService');
+
+// Initialize WebSocket service
+const wsService = new WebSocketService();
+wsService.initializeClient();
 
 // Note: detectIntentAndRespond is now imported from aiResponseService
 // which uses real data from chatContextService
@@ -156,6 +161,11 @@ exports.sendMessage = async (req, res) => {
     await chatMessage.save();
     await chatMessage.populate('sender_id', 'name role');
 
+    // Broadcast message via WebSocket to all room participants
+    await wsService.sendToRoom(`chat_room_${roomId}`, 'chat:new_message', {
+      message: chatMessage
+    });
+
     // 💬 Send Gmail notification when admin replies
     if (isAdmin) {
       try {
@@ -233,6 +243,11 @@ exports.sendMessageWithAI = async (req, res) => {
     await userMessage.populate('sender_id', 'name role');
     await room.incrementUnreadAdmin();
 
+    // Broadcast user message via WebSocket
+    await wsService.sendToRoom(`chat_room_${roomId}`, 'chat:new_message', {
+      message: userMessage
+    });
+
     let aiResponse = null;
 
     // Generate AI response if no admin is assigned and AI is enabled
@@ -257,6 +272,11 @@ exports.sendMessageWithAI = async (req, res) => {
       await botMessage.populate('sender_id', 'name role');
 
       aiResponse = botMessage;
+
+      // Broadcast AI response via WebSocket
+      await wsService.sendToRoom(`chat_room_${roomId}`, 'chat:new_message', {
+        message: aiResponse
+      });
 
       // Update room tags based on detected intent
       if (aiResult.intent && !room.tags.includes(aiResult.intent)) {
