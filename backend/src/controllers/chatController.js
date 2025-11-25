@@ -2,20 +2,8 @@ const ChatRoom = require('../models/ChatRoom');
 const ChatMessage = require('../models/ChatMessage');
 const User = require('../models/User');
 const { detectIntentAndRespond } = require('../services/aiResponseService');
-const WebSocketService = require('../services/websocket/websocketService');
+const wsService = require('../services/websocket/websocketService');
 const notificationService = require('../services/notificationService');
-
-// Initialize WebSocket service with error handling
-let wsService;
-try {
-  wsService = new WebSocketService();
-  wsService.initializeClient().catch(err => {
-    console.error('[ChatController] WebSocket initialization failed:', err.message);
-  });
-} catch (error) {
-  console.error('[ChatController] WebSocket service creation failed:', error.message);
-  wsService = null; // Graceful degradation
-}
 
 /**
  * Safely broadcast to WebSocket room
@@ -24,11 +12,6 @@ try {
  * @param {Object} data - Data to send
  */
 async function safeBroadcastToRoom(room, event, data) {
-  if (!wsService) {
-    console.warn('[ChatController] WebSocket service not available, skipping broadcast');
-    return false;
-  }
-
   try {
     await wsService.sendToRoom(room, event, data);
     return true;
