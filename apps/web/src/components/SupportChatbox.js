@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import axios from 'axios';
 import { initSocket, getSocket, emit, on } from '../utils/socket';
 import './SupportChatbox.css';
@@ -21,6 +21,7 @@ const SupportChatbox = () => {
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const cleanupFunctionsRef = useRef([]);
+    const lastScrollRef = useRef(0);
 
     // Auto-dismiss error after 5 seconds
     useEffect(() => {
@@ -30,14 +31,19 @@ const SupportChatbox = () => {
         }
     }, [errorMessage]);
 
-    // Auto-scroll to bottom
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
+    // Auto-scroll to bottom - debounced to prevent flickering
+    const scrollToBottom = useCallback(() => {
+        const now = Date.now();
+        // Only scroll if 100ms has passed since last scroll
+        if (now - lastScrollRef.current > 100) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            lastScrollRef.current = now;
+        }
+    }, []);
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages, streamingMessage]);
+    }, [messages.length, streamingMessage, scrollToBottom]); // Only scroll on message count change
 
     // Initialize chat room
     useEffect(() => {
@@ -193,10 +199,12 @@ const SupportChatbox = () => {
             );
 
             if (response.data.success) {
-                setMessages(response.data.messages);
+                console.log('📜 Loaded messages:', response.data.messages.length);
+                setMessages(response.data.messages || []);
             }
         } catch (error) {
             console.error('Error loading messages:', error);
+            // Don't show error to user for message loading
         }
     };
 
