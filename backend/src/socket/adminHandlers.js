@@ -112,7 +112,17 @@ function initAdminHandlers(io, socket) {
             // Notify user via Socket.IO
             io.to(`user_${room.user_id._id}`).emit('admin_joined', {
                 room_id: roomId,
-                admin_name: 'Admin' // You can populate actual admin name
+                admin_id: userId,
+                admin_name: 'Admin',
+                status: 'assigned'
+            });
+
+            // Also notify the chat room
+            io.to(`chat_${roomId}`).emit('admin_joined', {
+                room_id: roomId,
+                admin_id: userId,
+                admin_name: 'Admin',
+                status: 'assigned'
             });
 
             // Broadcast system message
