@@ -23,7 +23,7 @@ function initAdminHandlers(io, socket) {
     socket.on('get_pending_rooms', async () => {
         try {
             const rooms = await ChatRoom.find({
-                status: 'pending'
+                status: 'open'
             })
                 .populate('user_id', 'name email')
                 .sort({ priority: -1, last_message_at: -1 })
@@ -48,7 +48,7 @@ function initAdminHandlers(io, socket) {
         try {
             const rooms = await ChatRoom.find({
                 admin_id: userId,
-                status: { $in: ['active', 'pending'] }
+                status: { $in: ['assigned', 'open'] }
             })
                 .populate('user_id', 'name email')
                 .sort({ last_message_at: -1 })
@@ -76,7 +76,7 @@ function initAdminHandlers(io, socket) {
                 roomId,
                 {
                     admin_id: userId,
-                    status: 'active',
+                    status: 'assigned',
                     ai_enabled: false // Disable AI when admin takes over
                 },
                 { new: true }
@@ -279,7 +279,7 @@ function initAdminHandlers(io, socket) {
 
             const myActiveRooms = await ChatRoom.countDocuments({
                 admin_id: userId,
-                status: 'active'
+                status: 'assigned'
             });
 
             const avgResponseTime = await ChatMessage.aggregate([

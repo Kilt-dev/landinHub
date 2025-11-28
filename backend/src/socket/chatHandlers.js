@@ -100,8 +100,8 @@ function initChatHandlers(io, socket) {
 
             // Update room
             room.last_message_at = new Date();
-            if (room.status === 'pending' && !isUser) {
-                room.status = 'active';
+            if (room.status === 'open' && !isUser) {
+                room.status = 'assigned';
             }
             await room.save();
 
@@ -185,7 +185,7 @@ function initChatHandlers(io, socket) {
             // Check if needs admin
             const needsAdmin = detectAdminNeed(message);
             if (needsAdmin && !room.admin_id) {
-                room.status = 'pending';
+                room.status = 'open';
                 room.priority = 'high';
                 await room.save();
 
