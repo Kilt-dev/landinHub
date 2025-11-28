@@ -260,6 +260,20 @@ const SupportChatbox = () => {
         }
     };
 
+    const handleRequestAdmin = () => {
+        if (!roomId || !isConnected) return;
+
+        // Send a special message that will trigger admin escalation
+        const adminRequest = "Tôi cần được hỗ trợ bởi admin. Vui lòng kết nối tôi với admin.";
+
+        emit('send_message_with_ai', {
+            roomId,
+            message: adminRequest
+        });
+
+        console.log('📢 Requested admin support');
+    };
+
     return (
         <>
             {/* Chat Button */}
@@ -277,55 +291,109 @@ const SupportChatbox = () => {
                 <div className="chat-window">
                     {/* Header */}
                     <div className="chat-header">
-                        <div>
-                            <h3>Hỗ trợ LandingHub</h3>
+                        <div style={{ flex: 1 }}>
+                            <h3>💬 Hỗ trợ LandingHub</h3>
                             <span className="chat-status">
                 {isConnected ? (
                     <>
                         <span className="status-dot online"></span>
-                        {roomInfo?.admin_id ? ' Admin đang hỗ trợ' : ' AI đang hỗ trợ'}
+                        {roomInfo?.admin_id ? (
+                            <span style={{ color: '#10b981', fontWeight: '600' }}>👨‍💼 Admin đang hỗ trợ</span>
+                        ) : (
+                            <span style={{ color: '#3b82f6', fontWeight: '600' }}>🤖 AI đang hỗ trợ</span>
+                        )}
                     </>
                 ) : (
                     <>
-                        <span className="status-dot offline"></span> Không kết nối
+                        <span className="status-dot offline"></span>
+                        <span style={{ color: '#ef4444' }}>Đang kết nối...</span>
                     </>
                 )}
               </span>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            {roomInfo?.admin_id && (
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            {!roomInfo?.admin_id && isConnected ? (
                                 <button
-                                    className="deescalate-btn"
+                                    onClick={handleRequestAdmin}
+                                    title="Kết nối với admin để được hỗ trợ trực tiếp"
+                                    style={{
+                                        background: '#10b981',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '6px 12px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: '600',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                    }}
+                                >
+                                    👨‍💼 Admin
+                                </button>
+                            ) : roomInfo?.admin_id ? (
+                                <button
                                     onClick={handleDeEscalate}
                                     title="Quay lại chat với AI"
                                     style={{
-                                        background: '#f59e0b',
+                                        background: '#3b82f6',
                                         color: 'white',
                                         border: 'none',
-                                        borderRadius: '4px',
-                                        padding: '4px 12px',
+                                        borderRadius: '6px',
+                                        padding: '6px 12px',
                                         cursor: 'pointer',
                                         fontSize: '12px',
-                                        fontWeight: '500'
+                                        fontWeight: '600',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                     }}
                                 >
-                                    🤖 Chat với AI
+                                    🤖 AI
                                 </button>
-                            )}
+                            ) : null}
                             <button className="close-btn" onClick={toggleChat}>✕</button>
                         </div>
                     </div>
 
                     {/* Messages */}
                     <div className="chat-messages">
+                        {messages.length === 0 && !aiStreaming && (
+                            <div style={{
+                                textAlign: 'center',
+                                padding: '40px 20px',
+                                color: '#9ca3af'
+                            }}>
+                                <div style={{ fontSize: '48px', marginBottom: '16px' }}>💬</div>
+                                <p style={{ margin: 0, fontSize: '14px' }}>
+                                    Bắt đầu cuộc trò chuyện bằng cách gửi tin nhắn
+                                </p>
+                                <p style={{ margin: '8px 0 0 0', fontSize: '12px' }}>
+                                    AI sẽ trả lời ngay lập tức
+                                </p>
+                            </div>
+                        )}
                         {messages.map((msg, index) => (
                             <div
                                 key={msg.id ?? `msg-${msg.sender_type}-${index}-${msg.created_at || Date.now()}`}
                                 className={`message ${msg.sender_type === 'user' ? 'user' : 'bot'}`}
                             >
+                                {msg.sender_type !== 'user' && (
+                                    <div style={{
+                                        fontSize: '10px',
+                                        color: '#6b7280',
+                                        marginBottom: '4px',
+                                        fontWeight: '600'
+                                    }}>
+                                        {msg.sender_type === 'bot' ? '🤖 AI Assistant' : '👨‍💼 Admin'}
+                                    </div>
+                                )}
                                 <div className="message-content">
                                     {msg.message_type === 'system' ? (
-                                        <em>{msg.message}</em>
+                                        <em style={{ color: '#6b7280' }}>{msg.message}</em>
                                     ) : (
                                         msg.message
                                     )}
@@ -340,10 +408,18 @@ const SupportChatbox = () => {
                         ))}
 
                         {/* AI Streaming Message */}
-                        {aiStreaming && streamingMessage && (
+                        {aiStreaming && (
                             <div className="message bot">
+                                <div style={{
+                                    fontSize: '10px',
+                                    color: '#6b7280',
+                                    marginBottom: '4px',
+                                    fontWeight: '600'
+                                }}>
+                                    🤖 AI Assistant
+                                </div>
                                 <div className="message-content streaming">
-                                    {streamingMessage}
+                                    {streamingMessage || 'Đang suy nghĩ...'}
                                     <span className="cursor">▊</span>
                                 </div>
                             </div>

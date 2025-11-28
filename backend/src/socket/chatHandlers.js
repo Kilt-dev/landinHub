@@ -182,7 +182,7 @@ function initChatHandlers(io, socket) {
                 });
             }
 
-            console.log(`✅ [send_message_with_ai] Room found: ${roomId}, AI enabled: ${room.ai_enabled}, Admin: ${room.admin_id || 'none'}`);
+            console.log(`✅ [send_message_with_ai] Room found: ${roomId}, AI enabled: ${room.ai_enabled !== false} (value: ${room.ai_enabled}), Admin: ${room.admin_id || 'none'}`);
 
             // Save user message
             const userMessage = new ChatMessage({
@@ -244,7 +244,9 @@ function initChatHandlers(io, socket) {
             }
 
             // Generate AI response if enabled and no admin
-            if (room.ai_enabled && !room.admin_id) {
+            // Default to true if ai_enabled is undefined (for old rooms)
+            const aiEnabled = room.ai_enabled !== false;
+            if (aiEnabled && !room.admin_id) {
                 console.log(`🤖 [send_message_with_ai] Starting AI response for room ${roomId}`);
                 try {
                     // Build context
@@ -361,7 +363,7 @@ function initChatHandlers(io, socket) {
                     });
                 }
             } else {
-                console.log(`ℹ️  [send_message_with_ai] AI not triggered - AI enabled: ${room.ai_enabled}, Admin: ${room.admin_id || 'none'}`);
+                console.log(`ℹ️  [send_message_with_ai] AI not triggered - AI enabled: ${aiEnabled} (value: ${room.ai_enabled}), Admin: ${room.admin_id || 'none'}`);
             }
 
             // Update room timestamp
