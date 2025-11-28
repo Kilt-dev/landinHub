@@ -49,6 +49,11 @@ const chatRoomSchema = new mongoose.Schema({
         enum: ['low', 'normal', 'high', 'urgent'],
         default: 'normal'
     },
+    // AI support enabled
+    ai_enabled: {
+        type: Boolean,
+        default: true
+    },
     // Tags for categorization
     tags: [{
         type: String,
