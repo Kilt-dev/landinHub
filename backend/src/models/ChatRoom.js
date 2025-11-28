@@ -14,7 +14,7 @@ const chatRoomSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['open', 'assigned', 'resolved', 'closed'],
+        enum: ['open', 'assigned', 'resolved', 'closed','pending'],
         default: 'open',
         index: true
     },

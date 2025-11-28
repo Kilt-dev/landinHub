@@ -12,7 +12,6 @@ router.get('/rooms', chatController.getUserRooms);
 router.get('/rooms/:roomId/messages', chatController.getRoomMessages);
 router.post('/rooms/:roomId/messages', chatController.sendMessage);
 router.post('/rooms/:roomId/messages/ai', chatController.sendMessageWithAI);
-router.post('/rooms/:roomId/de-escalate', chatController.deEscalateRoom);
 router.post('/rooms/:roomId/close', chatController.closeRoom);
 
 // Admin chat endpoints

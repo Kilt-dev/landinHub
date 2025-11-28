@@ -45,33 +45,47 @@ async function generateResponse(messages, options = {}) {
   const startTime = Date.now();
 
   // Try Groq first (primary provider)
-  if (groqClient) {
-    try {
-      console.log('🤖 Attempting AI response with Groq...');
-      const completion = await groqClient.chat.completions.create({
-        model: providers.groq.model,
-        messages: messages,
-        temperature: options.temperature || 0.7,
-        max_tokens: options.maxTokens || 1000,
-        top_p: options.topP || 0.9
-      });
+    // Try Groq first (primary provider)
+    if (groqClient) {
+        try {
+            console.log('Gọi Groq...');
 
-      const responseTime = Date.now() - startTime;
-      const text = completion.choices[0]?.message?.content || '';
+            // FIX: Groq không nhận role: system → prepend vào user message đầu tiên
+            const systemPrompt = messages
+                .filter(m => m.role === 'system')
+                .map(m => m.content)
+                .join('\n\n');
 
-      console.log(`✅ Groq response: ${responseTime}ms`);
+            let cleanMessages = messages.filter(m => m.role !== 'system');
 
-      return {
-        text,
-        provider: 'groq',
-        model: providers.groq.model,
-        responseTime
-      };
-    } catch (error) {
-      console.error('❌ Groq failed:', error.message);
-      console.log('🔄 Falling back to Gemini...');
+            if (systemPrompt && cleanMessages.length > 0) {
+                cleanMessages[0].content = systemPrompt + '\n\nHãy trả lời người dùng: ' + cleanMessages[0].content;
+            }
+
+            const completion = await groqClient.chat.completions.create({
+                model: providers.groq.model,
+                messages: cleanMessages,
+                temperature: options.temperature || 0.7,
+                max_tokens: options.maxTokens || 1000,
+                top_p: options.topP || 0.9
+            });
+
+            const responseTime = Date.now() - startTime;
+            const text = completion.choices[0]?.message?.content || '';
+
+            console.log(`Groq response: ${responseTime}ms | Text length: ${text.length}`);
+
+            return {
+                text,
+                provider: 'groq',
+                model: providers.groq.model,
+                responseTime
+            };
+        } catch (error) {
+            console.error('Groq failed:', error.message);
+            console.log('Đang chuyển sang Gemini...');
+        }
     }
-  }
 
   // Fallback to Gemini
   if (geminiClient) {
