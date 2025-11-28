@@ -11,14 +11,36 @@ const initAdminHandlers = require('./socket/adminHandlers');
 const PORT = process.env.PORT || 5000;
 app.set('trust proxy', true);
 
-// Initialize Socket.IO
+// Initialize Socket.IO with better CORS
 const io = new Server(server, {
     cors: {
-        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        origin: function (origin, callback) {
+            // Allow requests with no origin (like mobile apps or curl requests)
+            if (!origin) return callback(null, true);
+
+            const allowedOrigins = [
+                process.env.FRONTEND_URL || 'http://localhost:3000',
+                'http://localhost:3000',
+                'http://localhost:5000',
+                process.env.REACT_APP_API_URL
+            ].filter(Boolean);
+
+            // Allow CloudFront and custom domains
+            if (origin.includes('.cloudfront.net') ||
+                origin.includes('.landinghub.app') ||
+                allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                console.warn('Socket.IO CORS blocked origin:', origin);
+                callback(null, true); // Allow anyway for development
+            }
+        },
         credentials: true,
         methods: ['GET', 'POST']
     },
-    transports: ['websocket', 'polling']
+    transports: ['websocket', 'polling'],
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
 // Make io available globally for controllers

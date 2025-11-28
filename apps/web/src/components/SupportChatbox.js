@@ -99,10 +99,15 @@ const SupportChatbox = () => {
                 setIsTyping(false);
             });
 
-            socket.on('admin_joined', () => {
+            socket.on('admin_joined', (data) => {
                 // Admin joined - reload room info
-                console.log('Admin joined');
-                setRoomInfo(prev => ({ ...prev, admin_id: true, ai_enabled: false }));
+                console.log('Admin joined:', data);
+                setRoomInfo(prev => ({
+                    ...prev,
+                    admin_id: data.admin_id || 'admin',
+                    ai_enabled: false,
+                    status: 'assigned'
+                }));
             });
 
             socket.on('escalated_to_admin', () => {

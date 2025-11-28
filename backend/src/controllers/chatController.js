@@ -44,7 +44,10 @@ exports.createOrGetRoom = async (req, res) => {
                 status: room.status,
                 subject: room.subject,
                 ai_enabled: room.ai_enabled,
-                created_at: room.createdAt
+                admin_id: room.admin_id || null,
+                priority: room.priority || 'normal',
+                created_at: room.createdAt,
+                last_message_at: room.last_message_at
             }
         });
     } catch (error) {
@@ -446,7 +449,17 @@ exports.assignRoomToSelf = async (req, res) => {
         if (global._io) {
             global._io.to(`user_${room.user_id._id}`).emit('admin_joined', {
                 room_id: roomId,
+                admin_id: adminId,
+                admin_name: 'Admin',
+                status: 'assigned',
                 message: systemMsg.message
+            });
+
+            global._io.to(`chat_${roomId}`).emit('admin_joined', {
+                room_id: roomId,
+                admin_id: adminId,
+                admin_name: 'Admin',
+                status: 'assigned'
             });
 
             global._io.to(`chat_${roomId}`).emit('new_message', {
