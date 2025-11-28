@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
 import axios from 'axios';
+import { initSocket, getSocket, emit, on } from '../utils/socket';
 import './SupportChatbox.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -19,6 +19,7 @@ const SupportChatbox = () => {
     const socketRef = useRef(null);
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const cleanupFunctionsRef = useRef([]);
 
     // Auto-scroll to bottom
     const scrollToBottom = () => {
@@ -39,48 +40,61 @@ const SupportChatbox = () => {
     // Initialize Socket.IO
     useEffect(() => {
         if (roomId && !socketRef.current) {
-            const token = localStorage.getItem('token');
-            if (!token) return;
+            // Initialize socket using shared utility
+            const socket = initSocket();
 
-            const socket = io(API_URL, {
-                auth: { token },
-                transports: ['websocket', 'polling']
-            });
+            if (!socket) {
+                console.error('Failed to initialize socket - no token found');
+                return;
+            }
 
-            socket.on('connect', () => {
+            socketRef.current = socket;
+
+            // Setup connection status listeners
+            const handleConnect = () => {
                 console.log('✅ Socket.IO connected');
                 setIsConnected(true);
-                socket.emit('join_room', { roomId });
-            });
+                // Join room once connected
+                emit('join_room', { roomId });
+            };
 
-            socket.on('disconnect', () => {
+            const handleDisconnect = () => {
                 console.log('❌ Socket.IO disconnected');
                 setIsConnected(false);
-            });
+            };
 
-            socket.on('joined_room', (data) => {
-                console.log('Joined room:', data.roomId);
-            });
+            // Register all event listeners and store cleanup functions
+            const cleanups = [];
 
-            socket.on('new_message', (data) => {
+            cleanups.push(on('connect', handleConnect));
+            cleanups.push(on('disconnect', handleDisconnect));
+
+            cleanups.push(on('joined_room', (data) => {
+                console.log('✅ Joined room:', data.roomId);
+            }));
+
+            cleanups.push(on('new_message', (data) => {
+                console.log('📨 New message received:', data);
                 setMessages(prev => [...prev, {
                     id: data.id,
                     sender_type: data.sender_type,
                     message: data.message,
                     created_at: data.created_at
                 }]);
-            });
+            }));
 
-            socket.on('ai_response_start', (data) => {
+            cleanups.push(on('ai_response_start', (data) => {
+                console.log('🤖 AI response starting...');
                 setAiStreaming(true);
                 setStreamingMessage('');
-            });
+            }));
 
-            socket.on('ai_response_chunk', (data) => {
+            cleanups.push(on('ai_response_chunk', (data) => {
                 setStreamingMessage(data.fullText);
-            });
+            }));
 
-            socket.on('ai_response_complete', (data) => {
+            cleanups.push(on('ai_response_complete', (data) => {
+                console.log('✅ AI response complete');
                 setAiStreaming(false);
                 setStreamingMessage('');
                 setMessages(prev => [...prev, {
@@ -89,45 +103,53 @@ const SupportChatbox = () => {
                     message: data.message,
                     created_at: data.created_at
                 }]);
-            });
+            }));
 
-            socket.on('user_typing', () => {
+            cleanups.push(on('user_typing', () => {
                 setIsTyping(true);
-            });
+            }));
 
-            socket.on('user_stop_typing', () => {
+            cleanups.push(on('user_stop_typing', () => {
                 setIsTyping(false);
-            });
+            }));
 
-            socket.on('admin_joined', (data) => {
-                // Admin joined - reload room info
-                console.log('Admin joined:', data);
+            cleanups.push(on('admin_joined', (data) => {
+                console.log('👨‍💼 Admin joined:', data);
                 setRoomInfo(prev => ({
                     ...prev,
                     admin_id: data.admin_id || 'admin',
                     ai_enabled: false,
                     status: 'assigned'
                 }));
-            });
+            }));
 
-            socket.on('escalated_to_admin', () => {
-                console.log('Request escalated to admin');
-            });
+            cleanups.push(on('escalated_to_admin', () => {
+                console.log('📢 Request escalated to admin');
+            }));
 
-            socket.on('room_deescalated', (data) => {
-                console.log('Room de-escalated, back to AI');
+            cleanups.push(on('room_deescalated', (data) => {
+                console.log('🔙 Room de-escalated, back to AI');
                 setRoomInfo(prev => ({ ...prev, admin_id: null, ai_enabled: true }));
-            });
+            }));
 
-            socket.on('error', (data) => {
-                console.error('Socket error:', data.message);
+            cleanups.push(on('error', (data) => {
+                console.error('❌ Socket error:', data.message);
                 alert(data.message);
-            });
+            }));
 
-            socketRef.current = socket;
+            // Store cleanup functions
+            cleanupFunctionsRef.current = cleanups;
+
+            // If already connected, join room immediately
+            if (socket.connected) {
+                setIsConnected(true);
+                emit('join_room', { roomId });
+            }
 
             return () => {
-                socket.disconnect();
+                // Cleanup all event listeners
+                cleanupFunctionsRef.current.forEach(cleanup => cleanup());
+                cleanupFunctionsRef.current = [];
                 socketRef.current = null;
             };
         }
@@ -170,13 +192,18 @@ const SupportChatbox = () => {
     };
 
     const handleSendMessage = () => {
-        if (!inputMessage.trim() || !socketRef.current) return;
+        if (!inputMessage.trim() || !isConnected) {
+            console.warn('Cannot send message - socket not connected or empty message');
+            return;
+        }
 
         const message = inputMessage.trim();
         setInputMessage('');
 
+        console.log('📤 Sending message with AI:', message);
+
         // Send via Socket.IO with AI response
-        socketRef.current.emit('send_message_with_ai', {
+        emit('send_message_with_ai', {
             roomId,
             message
         });
@@ -186,8 +213,8 @@ const SupportChatbox = () => {
         setInputMessage(e.target.value);
 
         // Emit typing indicator
-        if (socketRef.current) {
-            socketRef.current.emit('typing', { roomId });
+        if (isConnected) {
+            emit('typing', { roomId });
 
             // Clear existing timeout
             if (typingTimeoutRef.current) {
@@ -196,7 +223,7 @@ const SupportChatbox = () => {
 
             // Stop typing after 1 second of no input
             typingTimeoutRef.current = setTimeout(() => {
-                socketRef.current.emit('stop_typing', { roomId });
+                emit('stop_typing', { roomId });
             }, 1000);
         }
     };

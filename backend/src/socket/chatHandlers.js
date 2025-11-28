@@ -19,8 +19,17 @@ function initChatHandlers(io, socket) {
      * Join a specific chat room
      */
     socket.on('join_room', async (data) => {
+        console.log(`📥 [join_room] User ${userId} attempting to join room:`, data);
+
         try {
             const { roomId } = data;
+
+            if (!roomId) {
+                console.log(`❌ [join_room] No roomId provided by user ${userId}`);
+                return socket.emit('error', {
+                    message: 'Room ID is required'
+                });
+            }
 
             // Verify user has access to this room
             const room = await ChatRoom.findOne({
@@ -29,6 +38,7 @@ function initChatHandlers(io, socket) {
             });
 
             if (!room) {
+                console.log(`❌ [join_room] Room ${roomId} not found or user ${userId} has no access`);
                 return socket.emit('error', {
                     message: 'Không có quyền truy cập phòng chat này'
                 });
@@ -36,14 +46,14 @@ function initChatHandlers(io, socket) {
 
             // Join the chat room
             socket.join(`chat_${roomId}`);
-            console.log(`User ${userId} joined room ${roomId}`);
+            console.log(`✅ [join_room] User ${userId} successfully joined room ${roomId} (socket: ${socket.id})`);
 
             socket.emit('joined_room', {
                 roomId,
                 status: room.status
             });
         } catch (error) {
-            console.error('Error joining room:', error);
+            console.error(`❌ [join_room] Error for user ${userId}:`, error.message);
             socket.emit('error', {
                 message: 'Không thể tham gia phòng chat'
             });
@@ -143,10 +153,17 @@ function initChatHandlers(io, socket) {
      * Send message with AI response (streaming)
      */
     socket.on('send_message_with_ai', async (data) => {
+        console.log(`📥 [send_message_with_ai] Received from user ${userId}:`, {
+            roomId: data?.roomId,
+            messageLength: data?.message?.length,
+            hasMessage: !!data?.message
+        });
+
         try {
             const { roomId, message } = data;
 
             if (!message || !message.trim()) {
+                console.log(`❌ [send_message_with_ai] Empty message from user ${userId}`);
                 return socket.emit('error', {
                     message: 'Tin nhắn không được để trống'
                 });
@@ -159,10 +176,13 @@ function initChatHandlers(io, socket) {
             });
 
             if (!room) {
+                console.log(`❌ [send_message_with_ai] Room not found: ${roomId} for user ${userId}`);
                 return socket.emit('error', {
                     message: 'Không tìm thấy phòng chat'
                 });
             }
+
+            console.log(`✅ [send_message_with_ai] Room found: ${roomId}, AI enabled: ${room.ai_enabled}, Admin: ${room.admin_id || 'none'}`);
 
             // Save user message
             const userMessage = new ChatMessage({
@@ -225,9 +245,11 @@ function initChatHandlers(io, socket) {
 
             // Generate AI response if enabled and no admin
             if (room.ai_enabled && !room.admin_id) {
+                console.log(`🤖 [send_message_with_ai] Starting AI response for room ${roomId}`);
                 try {
                     // Build context
                     const context = await buildAIContext(userId, message, room.context);
+                    console.log(`🔍 [send_message_with_ai] AI context built for user ${userId}`);
 
                     // Get conversation history
                     const history = await ChatMessage.find({ room_id: roomId })
@@ -262,11 +284,13 @@ function initChatHandlers(io, socket) {
                     // Create temporary message ID for streaming
                     const tempMessageId = `temp_${Date.now()}`;
 
+                    console.log(`📡 [send_message_with_ai] Emitting ai_response_start to socket ${socket.id}`);
                     socket.emit('ai_response_start', {
                         roomId,
                         messageId: tempMessageId
                     });
 
+                    console.log(`🚀 [send_message_with_ai] Starting AI streaming response...`);
                     const aiResult = await generateStreamingResponse(
                         aiMessages,
                         (chunk) => {
@@ -280,8 +304,15 @@ function initChatHandlers(io, socket) {
                                 chunk,
                                 fullText: fullResponse
                             });
+
+                            // Log every 10th chunk
+                            if (chunkCount % 10 === 0) {
+                                console.log(`📝 [send_message_with_ai] Streamed ${chunkCount} chunks, ${fullResponse.length} chars`);
+                            }
                         }
                     );
+
+                    console.log(`✅ [send_message_with_ai] AI streaming complete: ${chunkCount} chunks, provider: ${aiResult.provider}`);
 
                     // Save complete AI message
                     const aiMessage = new ChatMessage({
@@ -298,6 +329,7 @@ function initChatHandlers(io, socket) {
                     await aiMessage.save();
 
                     // Send complete message
+                    console.log(`📡 [send_message_with_ai] Emitting ai_response_complete to room chat_${roomId}`);
                     io.to(`chat_${roomId}`).emit('ai_response_complete', {
                         roomId,
                         messageId: aiMessage._id,
@@ -307,10 +339,11 @@ function initChatHandlers(io, socket) {
                         created_at: aiMessage.createdAt
                     });
 
-                    console.log(`🤖 AI streaming response: ${chunkCount} chunks, ${aiResult.responseTime}ms`);
+                    console.log(`🎉 [send_message_with_ai] AI response complete: ${chunkCount} chunks, ${aiResult.responseTime}ms, ${fullResponse.length} chars`);
 
                 } catch (error) {
-                    console.error('❌ AI response failed:', error);
+                    console.error(`❌ [send_message_with_ai] AI response failed for room ${roomId}:`, error.message);
+                    console.error('Error stack:', error.stack);
 
                     // Send fallback message
                     const fallbackMsg = new ChatMessage({
@@ -327,14 +360,19 @@ function initChatHandlers(io, socket) {
                         created_at: fallbackMsg.createdAt
                     });
                 }
+            } else {
+                console.log(`ℹ️  [send_message_with_ai] AI not triggered - AI enabled: ${room.ai_enabled}, Admin: ${room.admin_id || 'none'}`);
             }
 
             // Update room timestamp
             room.last_message_at = new Date();
             await room.save();
 
+            console.log(`✅ [send_message_with_ai] Handler completed for room ${roomId}`);
+
         } catch (error) {
-            console.error('Error in send_message_with_ai:', error);
+            console.error(`❌ [send_message_with_ai] Unexpected error for room ${data?.roomId}:`, error.message);
+            console.error('Error stack:', error.stack);
             socket.emit('error', {
                 message: 'Không thể gửi tin nhắn'
             });
