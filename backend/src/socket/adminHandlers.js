@@ -1,5 +1,6 @@
 const ChatRoom = require('../models/ChatRoom');
 const ChatMessage = require('../models/ChatMessage');
+const { createNotification } = require('../controllers/notificationController');
 
 /**
  * Initialize admin chat handlers
@@ -99,7 +100,16 @@ function initAdminHandlers(io, socket) {
       });
       await systemMsg.save();
 
-      // Notify user
+      // Send notification to user
+      await createNotification(
+        room.user_id._id,
+        'admin_joined_chat',
+        'Admin đã tham gia chat',
+        'Bạn sẽ được hỗ trợ trực tiếp bởi admin',
+        { roomId, adminId: userId }
+      );
+
+      // Notify user via Socket.IO
       io.to(`user_${room.user_id._id}`).emit('admin_joined', {
         room_id: roomId,
         admin_name: 'Admin' // You can populate actual admin name
