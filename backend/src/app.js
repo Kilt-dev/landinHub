@@ -62,5 +62,6 @@ app.use('/api/payout', require('./routes/payout'));
 app.use('/api/admin/marketplace', require('./routes/adminMarketplace'));
 app.use('/api/forms', require('./routes/formSubmissions'));
 app.use('/api/deployment', require('./routes/deployment'));
+app.use('/api/chat', require('./routes/chat'));
 
 module.exports = app;

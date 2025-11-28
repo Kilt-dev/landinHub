@@ -1,42 +1,35 @@
-# Hệ thống Chat với Gemini AI - Architecture Serverless
+# Hệ thống Chat với Gemini AI + Socket.IO
 
 ## 📋 Tổng quan
 
-Hệ thống chat realtime với kiến trúc **serverless** trên AWS:
-- **Gemini 2.0 Flash** AI assistant (với Groq fallback)
-- **AWS API Gateway WebSocket** cho realtime communication
+Hệ thống chat realtime đơn giản với kiến trúc **Socket.IO**:
+- **Groq AI** (Primary) + **Gemini 2.0 Flash** (Fallback)
+- **Socket.IO** cho realtime communication
 - **REST API** cho chat operations
 - **User-Admin Chat** cho support trực tiếp
 - **MongoDB** cho chat history
+- **NO AWS Lambda** - Chạy trực tiếp trên Express server
 
 ---
 
 ## 🏗️ Kiến trúc
 
-### Backend (Serverless)
+### Backend (Socket.IO + Express)
 
 ```
 ┌─────────────────────────────────────────┐
 │  Express Server (Port 5000)             │
-│  - REST API endpoints                   │
-│  - ChatController                       │
-│  - Models (MongoDB)                     │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│  AWS API Gateway WebSocket              │
-│  - Serverless realtime connections      │
-│  - Lambda handlers (connect/disconnect) │
-│  - DynamoDB connection tracking         │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────┐
-│  WebSocket Service                      │
-│  - Send messages to users               │
-│  - Broadcast to rooms                   │
-│  - Automatic reconnection               │
+│  ├─ REST API (ChatController)           │
+│  ├─ Socket.IO Server                    │
+│  │  ├─ Chat Handlers                    │
+│  │  ├─ Admin Handlers                   │
+│  │  └─ JWT Authentication               │
+│  ├─ AI Services                         │
+│  │  ├─ multiAIProvider (Groq + Gemini)  │
+│  │  └─ chatContextService               │
+│  └─ MongoDB Models                      │
+│     ├─ ChatRoom                         │
+│     └─ ChatMessage                      │
 └─────────────────────────────────────────┘
 ```
 
@@ -45,10 +38,12 @@ Hệ thống chat realtime với kiến trúc **serverless** trên AWS:
 ```
 ┌─────────────────────────────────────────┐
 │  SupportChatbox Component               │
-│  - Material-UI design                   │
-│  - REST API + Polling                   │
-│  - AI auto-response                     │
-│  - Admin escalation                     │
+│  ├─ Socket.IO Client                    │
+│  ├─ Real-time messaging                 │
+│  ├─ AI streaming responses              │
+│  ├─ Typing indicators                   │
+│  ├─ Admin escalation                    │
+│  └─ Mobile responsive                   │
 └─────────────────────────────────────────┘
 ```
 
@@ -67,15 +62,15 @@ GROQ_MODEL=llama-3.3-70b-versatile
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-2.0-flash-exp
 
-# AWS WebSocket (Optional - for realtime features)
-WEBSOCKET_API_ENDPOINT=wss://your-api-gateway-id.execute-api.region.amazonaws.com/production
-AWS_REGION=ap-southeast-1
-
 # MongoDB
-MONGODB_URI=mongodb://localhost:27017/landinghub
+MONGO_URI=mongodb://localhost:27017/landing-hub
 
 # JWT
 JWT_SECRET=your_jwt_secret_here
+
+# Server & Frontend
+PORT=5000
+FRONTEND_URL=http://localhost:3000
 ```
 
 ### 2. Lấy API Keys
@@ -104,8 +99,8 @@ npm run dev
 **Kết quả:**
 ```
 🚀 Server running on port 5000
-📡 WebSocket: Using AWS API Gateway WebSocket (serverless)
-   Endpoint: wss://...
+📡 Socket.IO ready for realtime chat
+🤖 AI Provider: Groq + Gemini
 ```
 
 ### Frontend
@@ -173,32 +168,53 @@ AI: "Dựa trên dữ liệu thực từ marketplace, top 3 templates hot nhất
 
 ---
 
-## 📡 AWS WebSocket Setup (Optional)
+## 📡 Socket.IO Events
 
-Nếu muốn realtime features, cần setup AWS:
+### Client Events (Frontend → Backend)
 
-### 1. Deploy Lambda Functions
+```javascript
+// Join a chat room
+socket.emit('join_room', { roomId })
 
-```bash
-cd backend/src/lambda/websocket
-# Deploy connect.js
-# Deploy disconnect.js
-# Deploy sendMessage.js
+// Send message with AI response
+socket.emit('send_message_with_ai', { roomId, message })
+
+// Send message without AI
+socket.emit('send_message', { roomId, message })
+
+// Typing indicator
+socket.emit('typing', { roomId })
+socket.emit('stop_typing', { roomId })
+
+// Mark messages as read
+socket.emit('mark_as_read', { roomId })
 ```
 
-### 2. Create API Gateway WebSocket
+### Server Events (Backend → Frontend)
 
-1. AWS Console → API Gateway
-2. Create WebSocket API
-3. Add routes: `$connect`, `$disconnect`, `$default`
-4. Deploy to `production` stage
-5. Copy WebSocket URL vào `.env`
+```javascript
+// Joined room confirmation
+socket.on('joined_room', (data) => { /* roomId, status */ })
 
-### 3. DynamoDB Table
+// New message received
+socket.on('new_message', (data) => { /* id, sender_type, message, created_at */ })
 
-Table: `websocket-connections`
-- Partition key: `connectionId`
-- GSI: `userId-index`
+// AI streaming responses
+socket.on('ai_response_start', (data) => { /* roomId, messageId */ })
+socket.on('ai_response_chunk', (data) => { /* chunk, fullText */ })
+socket.on('ai_response_complete', (data) => { /* message, provider */ })
+
+// Typing indicators
+socket.on('user_typing', (data) => { /* userId, roomId */ })
+socket.on('user_stop_typing', (data) => { /* userId, roomId */ })
+
+// Admin events
+socket.on('admin_joined', (data) => { /* room_id, admin_name */ })
+socket.on('escalated_to_admin', (data) => { /* roomId */ })
+
+// Errors
+socket.on('error', (data) => { /* message */ })
+```
 
 ---
 
@@ -288,13 +304,23 @@ npm run dev
 # "🔄 Falling back to Gemini..."
 ```
 
-### Lỗi 3: WebSocket not working
+### Lỗi 3: Socket.IO connection failed
 
-**Giải pháp**: WebSocket là optional! Chat vẫn hoạt động với REST API + polling
+**Nguyên nhân**:
+- JWT token không hợp lệ hoặc hết hạn
+- CORS configuration sai
+- Server chưa chạy
 
-```javascript
-// SupportChatbox dùng polling
-usePolling(loadMessages, 5000); // Poll every 5s
+**Giải pháp**:
+```bash
+# Check server logs
+npm run dev
+
+# Verify FRONTEND_URL in .env matches your frontend
+FRONTEND_URL=http://localhost:3000
+
+# Check browser console for Socket.IO errors
+# Should see: "✅ Socket.IO connected"
 ```
 
 ---
@@ -342,33 +368,55 @@ npm run build
 - Groq: Free, fast, good for most cases
 - Gemini: Paid, more reliable, auto-fallback
 
-### 2. Polling Optimization
+### 2. Socket.IO Optimization
 
 ```javascript
-// Adjust polling interval based on activity
-const POLLING_INTERVAL = isActive ? 3000 : 10000;
+// Use efficient transports
+const socket = io(API_URL, {
+  transports: ['websocket', 'polling']
+});
+
+// Disconnect when not needed
+useEffect(() => {
+  return () => socket.disconnect();
+}, []);
 ```
 
 ### 3. Message Caching
 
-REST API auto-caches recent messages, giảm DB queries
+MongoDB indexes on room_id and createdAt ensure fast queries
 
 ---
 
 ## 📞 Support
 
-**Components:**
-- Backend: `backend/src/controllers/chatController.js`
-- Frontend: `apps/web/src/components/SupportChatbox.js`
-- AI Service: `backend/src/services/multiAIProvider.js`
-- Context: `backend/src/services/chatContextService.js`
+**Backend Files:**
+- Controllers: `backend/src/controllers/chatController.js`
+- Models:
+  - `backend/src/models/ChatRoom.js`
+  - `backend/src/models/ChatMessage.js`
+- AI Services:
+  - `backend/src/services/ai/multiAIProvider.js`
+  - `backend/src/services/ai/chatContextService.js`
+- Socket.IO Handlers:
+  - `backend/src/socket/chatHandlers.js`
+  - `backend/src/socket/adminHandlers.js`
+- Routes: `backend/src/routes/chat.js`
+- Server: `backend/src/server.js`
 
-**Endpoints:**
+**Frontend Files:**
+- Component: `apps/web/src/components/SupportChatbox.js`
+- Styles: `apps/web/src/components/SupportChatbox.css`
+
+**REST API Endpoints:**
 - Create room: `POST /api/chat/rooms`
+- Get rooms: `GET /api/chat/rooms`
 - Get messages: `GET /api/chat/rooms/:roomId/messages`
 - Send message: `POST /api/chat/rooms/:roomId/messages`
 - Send with AI: `POST /api/chat/rooms/:roomId/messages/ai`
-- Admin rooms: `GET /api/chat/admin/rooms`
+- Close room: `POST /api/chat/rooms/:roomId/close`
+- Admin pending: `GET /api/chat/admin/rooms/pending`
+- Admin assign: `POST /api/chat/admin/rooms/:roomId/assign`
 
 ---
 
