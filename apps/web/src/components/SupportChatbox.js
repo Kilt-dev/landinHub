@@ -14,6 +14,7 @@ const SupportChatbox = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [aiStreaming, setAiStreaming] = useState(false);
     const [streamingMessage, setStreamingMessage] = useState('');
+    const [roomInfo, setRoomInfo] = useState(null); // Track room info (hasAdmin, aiEnabled, etc.)
 
     const socketRef = useRef(null);
     const messagesEndRef = useRef(null);
@@ -99,11 +100,18 @@ const SupportChatbox = () => {
             });
 
             socket.on('admin_joined', () => {
-                // Admin joined notification is handled via new_message
+                // Admin joined - reload room info
+                console.log('Admin joined');
+                setRoomInfo(prev => ({ ...prev, admin_id: true, ai_enabled: false }));
             });
 
             socket.on('escalated_to_admin', () => {
                 console.log('Request escalated to admin');
+            });
+
+            socket.on('room_deescalated', (data) => {
+                console.log('Room de-escalated, back to AI');
+                setRoomInfo(prev => ({ ...prev, admin_id: null, ai_enabled: true }));
             });
 
             socket.on('error', (data) => {
@@ -131,6 +139,7 @@ const SupportChatbox = () => {
 
             if (response.data.success) {
                 setRoomId(response.data.room.id);
+                setRoomInfo(response.data.room); // Save room info
                 loadMessages(response.data.room.id);
             }
         } catch (error) {
@@ -198,6 +207,27 @@ const SupportChatbox = () => {
         setIsOpen(!isOpen);
     };
 
+    const handleDeEscalate = async () => {
+        if (!roomId) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.post(
+                `${API_URL}/api/chat/rooms/${roomId}/de-escalate`,
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (response.data.success) {
+                console.log('✅ De-escalated to AI:', response.data);
+                setRoomInfo(response.data.room);
+            }
+        } catch (error) {
+            console.error('Error de-escalating:', error);
+            alert('Không thể chuyển về chat với AI. Vui lòng thử lại.');
+        }
+    };
+
     return (
         <>
             {/* Chat Button */}
@@ -220,7 +250,8 @@ const SupportChatbox = () => {
                             <span className="chat-status">
                 {isConnected ? (
                     <>
-                        <span className="status-dot online"></span> Đang kết nối
+                        <span className="status-dot online"></span>
+                        {roomInfo?.admin_id ? ' Admin đang hỗ trợ' : ' AI đang hỗ trợ'}
                     </>
                 ) : (
                     <>
@@ -229,7 +260,28 @@ const SupportChatbox = () => {
                 )}
               </span>
                         </div>
-                        <button className="close-btn" onClick={toggleChat}>✕</button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            {roomInfo?.admin_id && (
+                                <button
+                                    className="deescalate-btn"
+                                    onClick={handleDeEscalate}
+                                    title="Quay lại chat với AI"
+                                    style={{
+                                        background: '#f59e0b',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '4px 12px',
+                                        cursor: 'pointer',
+                                        fontSize: '12px',
+                                        fontWeight: '500'
+                                    }}
+                                >
+                                    🤖 Chat với AI
+                                </button>
+                            )}
+                            <button className="close-btn" onClick={toggleChat}>✕</button>
+                        </div>
                     </div>
 
                     {/* Messages */}

@@ -650,3 +650,76 @@ exports.getAdminStats = async (req, res) => {
         });
     }
 };
+
+/**
+ * User: De-escalate from admin back to AI
+ */
+exports.deEscalateRoom = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const userId = req.user.id;
+
+        // Verify user owns this room
+        const room = await ChatRoom.findOne({
+            _id: roomId,
+            user_id: userId
+        });
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy phòng chat'
+            });
+        }
+
+        // De-escalate: remove admin, enable AI again
+        room.admin_id = null;
+        room.ai_enabled = true;
+        room.status = 'open'; // Back to open status
+        room.priority = 'normal'; // Reset priority
+        await room.save();
+
+        // Send system message
+        const ChatMessage = require('../models/ChatMessage');
+        const systemMsg = new ChatMessage({
+            room_id: roomId,
+            sender_type: 'bot',
+            message_type: 'system',
+            message: '✅ Bạn đã quay lại chat với AI. Tôi sẵn sàng hỗ trợ bạn!'
+        });
+        await systemMsg.save();
+
+        // Notify via Socket.IO
+        if (global._io) {
+            global._io.to(`chat_${roomId}`).emit('new_message', {
+                id: systemMsg._id,
+                sender_type: 'bot',
+                message_type: 'system',
+                message: systemMsg.message,
+                created_at: systemMsg.createdAt
+            });
+
+            global._io.to(`chat_${roomId}`).emit('room_deescalated', {
+                room_id: roomId,
+                ai_enabled: true
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Đã chuyển về chat với AI',
+            room: {
+                id: room._id,
+                ai_enabled: room.ai_enabled,
+                admin_id: room.admin_id,
+                status: room.status
+            }
+        });
+    } catch (error) {
+        console.error('Error de-escalating room:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Không thể chuyển về chat với AI'
+        });
+    }
+};
