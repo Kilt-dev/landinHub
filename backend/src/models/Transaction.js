@@ -206,99 +206,126 @@ TransactionSchema.virtual('formatted_paid_at').get(function() {
 
 TransactionSchema.methods.markAsPaid = async function(paymentGatewayData = {}) {
     try {
-        console.log('markAsPaid called for transaction:', this._id);
+        console.log('✅ markAsPaid called for transaction:', this._id);
 
+        // ✅ STEP 1: Save transaction first (CRITICAL - must not fail)
         this.status = 'COMPLETED'
         this.paid_at = new Date();
         this.payment_gateway_response = paymentGatewayData;
         await this.save();
-        console.log('Transaction saved as COMPLETED:', this._id);
+        console.log('✅ Transaction saved as COMPLETED:', this._id);
 
         const Order = require('./Order');
         const MarketplacePage = require('./MarketplacePage');
         const { sendOrderConfirmation } = require('../services/email');
 
-        let order = await Order.findOne({ transactionId: this._id });
-        if (!order) {
-            console.log('No existing order found, creating new order...');
-            const marketplacePage = await MarketplacePage.findById(this.marketplace_page_id);
-            if (!marketplacePage) {
-                console.error('MarketplacePage not found for ID:', this.marketplace_page_id);
-                return this;
-            }
-
-            order = new Order({
-                orderId: require('uuid').v4(),
-                transactionId: this._id,
-                buyerId: this.buyer_id,
-                sellerId: this.seller_id,
-                marketplacePageId: this.marketplace_page_id,
-                price: this.amount,
-                status: 'pending'
-            });
-            await order.save();
-            console.log('New order created:', order.orderId);
-        } else {
-            console.log('Found existing order:', order.orderId);
-        }
-
-        if (order.status === 'pending') {
-            await order.deliverPage();
-
-            // Send real-time notifications via WebSocket (serverless)
-            if (global._websocket) {
-                // 1. Notify buyer about order delivered
-                await global._websocket.notifyOrderDelivered(order.buyerId.toString(), {
-                    orderId: order.orderId,
-                    marketplacePageId: order.marketplacePageId,
-                    createdPageId: order.createdPageId
-                });
-
-                // 2. Notify seller about new sale
-                await global._websocket.notifyNewSale(order.sellerId.toString(), {
-                    orderId: order.orderId,
-                    marketplacePageId: order.marketplacePageId,
-                    amount: this.amount
-                });
-
-                // 3. Notify buyer's dashboard
-                await global._websocket.notifyUserDashboard(order.buyerId.toString(), {
-                    type: 'order_delivered',
-                    orderId: order.orderId
-                });
-
-                // 4. Notify seller's dashboard
-                await global._websocket.notifyUserDashboard(order.sellerId.toString(), {
-                    type: 'new_sale',
-                    orderId: order.orderId,
-                    amount: this.amount
-                });
-
-                // 5. Notify admin dashboard
-                await global._websocket.notifyAdminDashboard({
-                    type: 'new_order',
-                    orderId: order.orderId
-                });
-            }
-
-            console.log('Order delivered:', order.orderId);
-        } else {
-            console.log('Order already processed:', order.status);
-        }
-
-        // Gửi email nhưng không để lỗi email làm gián đoạn
+        // ✅ STEP 2: Create or find order (wrap in try-catch to prevent transaction rollback)
+        let order = null;
         try {
-            await sendOrderConfirmation(order);
-        } catch (emailError) {
-            console.error('Failed to send order confirmation, continuing...:', emailError);
+            order = await Order.findOne({ transactionId: this._id });
+
+            if (!order) {
+                console.log('📦 No existing order found, creating new order...');
+                const marketplacePage = await MarketplacePage.findById(this.marketplace_page_id);
+
+                if (!marketplacePage) {
+                    console.error('❌ MarketplacePage not found for ID:', this.marketplace_page_id);
+                    return this; // Return transaction, don't fail
+                }
+
+                order = new Order({
+                    orderId: require('uuid').v4(),
+                    transactionId: this._id,
+                    buyerId: this.buyer_id,
+                    sellerId: this.seller_id,
+                    marketplacePageId: this.marketplace_page_id,
+                    price: this.amount,
+                    payment_method: this.payment_method, // ✅ FIX: Add payment_method
+                    status: 'pending',
+                    is_deleted: false // ✅ ENSURE: Explicitly set is_deleted to false
+                });
+
+                await order.save();
+                console.log('✅ New order created and saved:', order.orderId);
+            } else {
+                console.log('📦 Found existing order:', order.orderId);
+            }
+        } catch (orderError) {
+            console.error('❌ Error creating/finding order (transaction still saved):', orderError);
+            // Transaction is still saved, continue without order
+            return this;
         }
 
-        await MarketplacePage.findByIdAndUpdate(this.marketplace_page_id, { $inc: { sold_count: 1 } });
-        console.log('Incremented sold_count for MarketplacePage:', this.marketplace_page_id);
+        // ✅ STEP 3: Deliver page (wrap in try-catch to prevent transaction rollback)
+        if (order && order.status === 'pending') {
+            try {
+                await order.deliverPage();
+                console.log('✅ Order delivered:', order.orderId);
+
+                // Send real-time notifications via WebSocket (serverless)
+                if (global._websocket) {
+                    try {
+                        await global._websocket.notifyOrderDelivered(order.buyerId.toString(), {
+                            orderId: order.orderId,
+                            marketplacePageId: order.marketplacePageId,
+                            createdPageId: order.createdPageId
+                        });
+
+                        await global._websocket.notifyNewSale(order.sellerId.toString(), {
+                            orderId: order.orderId,
+                            marketplacePageId: order.marketplacePageId,
+                            amount: this.amount
+                        });
+
+                        await global._websocket.notifyUserDashboard(order.buyerId.toString(), {
+                            type: 'order_delivered',
+                            orderId: order.orderId
+                        });
+
+                        await global._websocket.notifyUserDashboard(order.sellerId.toString(), {
+                            type: 'new_sale',
+                            orderId: order.orderId,
+                            amount: this.amount
+                        });
+
+                        await global._websocket.notifyAdminDashboard({
+                            type: 'new_order',
+                            orderId: order.orderId
+                        });
+                        console.log('✅ WebSocket notifications sent');
+                    } catch (wsError) {
+                        console.error('❌ WebSocket notification error (non-critical):', wsError);
+                    }
+                }
+            } catch (deliverError) {
+                console.error('❌ Error delivering page (transaction still saved):', deliverError);
+                // Transaction is still saved, order creation succeeded but delivery failed
+            }
+        } else if (order) {
+            console.log('📦 Order already processed:', order.status);
+        }
+
+        // ✅ STEP 4: Send email (non-critical, wrapped in try-catch)
+        if (order) {
+            try {
+                await sendOrderConfirmation(order);
+                console.log('✅ Order confirmation email sent');
+            } catch (emailError) {
+                console.error('❌ Failed to send order confirmation (non-critical):', emailError);
+            }
+        }
+
+        // ✅ STEP 5: Increment sold count (non-critical, wrapped in try-catch)
+        try {
+            await MarketplacePage.findByIdAndUpdate(this.marketplace_page_id, { $inc: { sold_count: 1 } });
+            console.log('✅ Incremented sold_count for MarketplacePage:', this.marketplace_page_id);
+        } catch (soldCountError) {
+            console.error('❌ Failed to increment sold_count (non-critical):', soldCountError);
+        }
 
         return this;
     } catch (error) {
-        console.error('Error in markAsPaid:', error);
+        console.error('❌ CRITICAL Error in markAsPaid:', error);
         throw error;
     }
 };
@@ -494,7 +521,7 @@ TransactionSchema.methods.autoRefund = async function(reason = 'User request') {
     const canAuto = daysSincePaid < 7 && this.payout_status !== 'COMPLETED';
 
     if (canAuto) {
-        // hoàn ngay
+        // Auto refund - hoàn tiền tự động
         this.status = 'REFUNDED';
         this.refund = {
             reason,
@@ -504,19 +531,35 @@ TransactionSchema.methods.autoRefund = async function(reason = 'User request') {
         };
         await this.save();
 
-        // trừ doanh thu marketplacePage
+        // Trừ doanh thu marketplacePage
+        const MarketplacePage = require('./MarketplacePage');
         await MarketplacePage.findByIdAndUpdate(this.marketplace_page_id, {
             $inc: { sold_count: -1 }
+        }).catch(err => {
+            console.error('Failed to decrement sold_count:', err.message);
         });
 
-        // hoàn tiền ví (giả lửa ví điện tử)
-        await paymentService.refundToBuyer(this.payment_gateway_transaction_id, this.amount);
+        // Gửi email thông báo hoàn tiền thành công
+        try {
+            const { sendRefundCompleted } = require('../services/email');
+            const Order = require('./Order');
+            const order = await Order.findOne({ transactionId: this._id });
+            if (order) {
+                order.status = 'refunded';
+                await order.save();
+                await sendRefundCompleted(order);
+            }
+        } catch (emailError) {
+            console.error('Failed to send refund completion email:', emailError.message);
+        }
 
-        return { success: true, auto: true };
+        console.log(`✅ Auto refund completed for transaction ${this._id}`);
+        return { success: true, auto: true, message: 'Hoàn tiền tự động thành công' };
     } else {
-        // chuyển admin duyệt
+        // Chuyển admin duyệt
+        console.log(`⏳ Manual refund required for transaction ${this._id} (${daysSincePaid.toFixed(1)} days old)`);
         await this.requestRefund(reason);
-        return { success: true, auto: false };
+        return { success: true, auto: false, message: 'Yêu cầu hoàn tiền đã được gửi đến admin để xử lý' };
     }
 };
 

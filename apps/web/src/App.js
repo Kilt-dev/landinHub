@@ -34,8 +34,7 @@ import PageAbout from './components/about_public/Pages ';
 import Blog from './components/about_public/Blog';
 import AdminAddTemplate from './components/AdminAddTemplate'; // Thêm component cho admin
 import AdminMarketplace from './pages/AdminMarketplace';
-import CozeChat from "./components/CozeChat";
-import AdminUser from "./pages/AdminUsers";
+    import AdminUser from "./pages/AdminUsers";
 import UnifiedPayments from './pages/UnifiedPayments';
 import DeploymentSettings from './components/DeploymentSettings';
 import AdminSupport from './pages/AdminSupport';
@@ -103,10 +102,7 @@ function App() {
                         {/* Toast notification */}
                         <ToastContainer position="bottom-right" autoClose={3000} />
 
-                        {/* ✅ Chat LD hiển thị toàn hệ thống */}
-                        <CozeChat enabled={false} />
 
-                        {/* ✅ Support Chatbox - Modern AI-powered support with admin escalation */}
                         <SupportChatbox />
                     </UserProvider>
                 </Router>

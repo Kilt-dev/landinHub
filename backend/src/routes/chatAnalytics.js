@@ -32,13 +32,13 @@ router.get('/trends', async (req, res) => {
         const chatVolume = await ChatRoom.aggregate([
             {
                 $match: {
-                    created_at: { $gte: startDate }
+                    createdAt: { $gte: startDate }
                 }
             },
             {
                 $group: {
                     _id: {
-                        $dateToString: { format: '%Y-%m-%d', date: '$created_at' }
+                        $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
                     },
                     totalChats: { $sum: 1 },
                     openChats: {
@@ -136,12 +136,12 @@ router.get('/summary', async (req, res) => {
             totalMessages,
             aiMessageStats
         ] = await Promise.all([
-            ChatRoom.countDocuments({ created_at: { $gte: today } }),
+            ChatRoom.countDocuments({ createdAt: { $gte: today } }),
             ChatRoom.countDocuments({ status: { $in: ['open', 'assigned'] } }),
-            ChatMessage.countDocuments({ created_at: { $gte: today } }),
+            ChatMessage.countDocuments({ createdAt: { $gte: today } }),
             ChatRoom.distinct('user_id').then(users => users.length),
             ChatRoom.countDocuments(),
-            ChatRoom.countDocuments({ status: 'resolved', updated_at: { $gte: today } }),
+            ChatRoom.countDocuments({ status: 'resolved', updatedAt: { $gte: today } }),
             // 📊 TOTAL MESSAGE COUNT
             ChatMessage.countDocuments(),
             // 🤖 AI MESSAGE STATISTICS
@@ -168,7 +168,7 @@ router.get('/summary', async (req, res) => {
                             {
                                 $match: {
                                     'ai_metadata.is_ai_generated': true,
-                                    created_at: { $gte: today }
+                                    createdAt: { $gte: today }
                                 }
                             },
                             { $count: 'count' }
@@ -241,19 +241,18 @@ router.get('/ai-insights', async (req, res) => {
 
         // Get chat statistics
         const [totalChats, openChats, resolvedChats, dailyTrends] = await Promise.all([
-            ChatRoom.countDocuments({ created_at: { $gte: startDate } }),
-            ChatRoom.countDocuments({ status: 'open', created_at: { $gte: startDate } }),
-            ChatRoom.countDocuments({ status: 'resolved', created_at: { $gte: startDate } }),
+            ChatRoom.countDocuments({ createdAt: { $gte: startDate } }),
+            ChatRoom.countDocuments({ status: 'open', createdAt: { $gte: startDate } }),
+            ChatRoom.countDocuments({ status: 'resolved', createdAt: { $gte: startDate } }),
             ChatRoom.aggregate([
-                { $match: { created_at: { $gte: startDate } } },
+                { $match: { createdAt: { $gte: startDate } } },
                 {
                     $group: {
-                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$created_at' } },
+                        _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
                         count: { $sum: 1 }
                     }
                 },
-                { $sort: { _id: 1 } },
-                { $limit: 7 }
+                { $sort: { _id: 1 } }
             ])
         ]);
 
@@ -319,7 +318,7 @@ router.post('/conversation-analysis', async (req, res) => {
 
         const [room, messages] = await Promise.all([
             ChatRoom.findById(roomId),
-            ChatMessage.find({ room_id: roomId }).sort({ created_at: 1 }).limit(20)
+            ChatMessage.find({ room_id: roomId }).sort({ createdAt: 1 }).limit(20)
         ]);
 
         if (!room) {

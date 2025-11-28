@@ -1,672 +1,228 @@
 import React, { useState, useEffect } from 'react';
+import {
+    Activity, Users, DollarSign, TrendingUp, Award, CreditCard,
+    RefreshCw, Download, Calendar, AlertCircle, ShoppingCart
+} from 'lucide-react';
 import api from '@landinghub/api';
 import '../styles/AdminDashboard.css';
-import { initSocket, joinDashboard, leaveDashboard, onDashboardUpdate } from '../utils/socket';
 
 const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
-    const [data, setData] = useState({
-        overview: {
-            totalRevenue: '0đ',
-            platformFees: '0đ',
-            totalPages: 0,
-            totalUsers: 0,
-            totalTransactions: 0,
-            activePages: 0
-        },
-        transactions: {
-            completed: 0,
-            pending: 0,
-            failed: 0,
-            refunded: 0
-        },
-        payments: {
-            vnpay: 0,
-            momo: 0,
-            sandbox: 0
-        },
-        recent: {
-            transactions: [],
-            users: []
-        },
-        trends: {
-            revenueGrowth: '+0%',
-            userGrowth: '+0%',
-            transactionGrowth: '+0%'
-        }
-    });
+    const [report, setReport] = useState(null);
+    const [error, setError] = useState(null);
 
-    const fetchAdminData = async () => {
+    const fetchDashboardData = async () => {
         try {
             setLoading(true);
+            setError(null);
+            console.log('📡 Fetching admin dashboard data...');
 
-            // Fetch multiple endpoints in parallel
-            const [systemReport, transactions, chatAnalytics, marketplaceStats] = await Promise.all([
-                api.get('/api/reports/admin/system'),
-                api.get('/api/payment/admin/transactions?limit=5'),
-                api.get('/api/chat-analytics/summary'), // 📊 Message count & AI analysis
-                api.get('/api/orders/admin/stats') // 🛒 Marketplace orders & revenue
-            ]);
+            const response = await api.get('api/reports/admin/system');
+            console.log('✅ Admin Dashboard API Response:', response.data);
 
-            if (systemReport.data.success) {
-                const report = systemReport.data.data;
-
-                // Calculate transaction stats by status
-                const txByStatus = report.transactions?.byStatus || [];
-                const txStats = {
-                    completed: txByStatus.find(t => t.status === 'COMPLETED')?.count || 0,
-                    pending: txByStatus.find(t => t.status === 'PENDING')?.count || 0,
-                    failed: txByStatus.find(t => t.status === 'FAILED')?.count || 0,
-                    refunded: txByStatus.find(t => t.status === 'REFUNDED')?.count || 0
-                };
-
-                // Calculate payment method stats
-                const paymentMethods = report.transactions?.byPaymentMethod || [];
-                const paymentStats = {
-                    vnpay: paymentMethods.find(p => p.method === 'VNPAY')?.count || 0,
-                    momo: paymentMethods.find(p => p.method === 'MOMO')?.count || 0,
-                    sandbox: paymentMethods.find(p => p.method === 'SANDBOX')?.count || 0
-                };
-
-                // Extract chat analytics data
-                const chatData = chatAnalytics.data?.data || {};
-                const messageStats = chatData.messageStats || {};
-
-                // Extract marketplace data
-                const marketplaceData = marketplaceStats.data?.data || {};
-
-                setData({
-                    overview: {
-                        totalRevenue: report.overview?.totalRevenue || '0đ',
-                        platformFees: report.overview?.platformFees || '0đ',
-                        totalPages: report.marketplace?.totalPages || 0,
-                        totalUsers: report.overview?.totalUsers || 0,
-                        totalTransactions: report.overview?.totalTransactions || 0,
-                        activePages: report.marketplace?.activePages || 0
-                    },
-                    transactions: txStats,
-                    payments: paymentStats,
-                    recent: {
-                        transactions: transactions.data?.data?.transactions?.slice(0, 5) || [],
-                        users: report.topBuyers?.slice(0, 5) || []
-                    },
-                    trends: {
-                        revenueGrowth: '+12.5%', // Mock - can implement later
-                        userGrowth: '+8.3%',
-                        transactionGrowth: '+15.2%'
-                    },
-                    // 📊 MESSAGE STATS & AI ANALYSIS
-                    messageStats: {
-                        total: messageStats.total || 0,
-                        today: messageStats.today || 0,
-                        aiGenerated: messageStats.aiGenerated || 0,
-                        humanWritten: messageStats.humanWritten || 0,
-                        aiPercentage: messageStats.aiPercentage || 0,
-                        byType: messageStats.byType || {}
-                    },
-                    chatOverview: {
-                        totalChats: chatData.totalChats || 0,
-                        openChats: chatData.openChats || 0,
-                        resolvedToday: chatData.resolvedToday || 0
-                    },
-                    // 🛒 MARKETPLACE STATS
-                    marketplace: {
-                        revenue: marketplaceData.overview?.totalRevenue || '0đ',
-                        revenueRaw: marketplaceData.overview?.totalRevenueRaw || 0,
-                        platformFees: marketplaceData.overview?.platformFees || '0đ',
-                        platformFeesRaw: marketplaceData.overview?.platformFeesRaw || 0,
-                        totalOrders: marketplaceData.overview?.totalOrders || 0,
-                        ordersByStatus: marketplaceData.ordersByStatus || {},
-                        recentOrders: marketplaceData.recentOrders || [],
-                        topPages: marketplaceData.topPages || []
-                    },
-                    // 📊 LEADS STATS
-                    leads: {
-                        total: report.leads?.total || 0,
-                        today: report.leads?.today || 0,
-                        thisWeek: report.leads?.thisWeek || 0,
-                        thisMonth: report.leads?.thisMonth || 0,
-                        topPages: report.leads?.topPages || []
-                    }
-                });
+            if (response.data.success) {
+                setReport(response.data.data);
+            } else {
+                throw new Error('Invalid response structure');
             }
         } catch (error) {
-            console.error('Error fetching admin dashboard:', error);
+            console.error('❌ Error fetching admin dashboard:', error);
+            setError(error.message || 'Không thể tải dashboard');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchAdminData();
-
-        // Initialize socket connection for real-time updates
-        const socket = initSocket();
-        if (socket) {
-            joinDashboard();
-
-            // Listen for dashboard updates
-            const cleanup = onDashboardUpdate((data) => {
-                console.log('📊 Dashboard update received:', data);
-                // Automatically refresh dashboard data when update is received
-                fetchAdminData();
-            });
-
-            // Cleanup on unmount
-            return () => {
-                cleanup();
-                leaveDashboard();
-            };
-        }
+        fetchDashboardData();
     }, []);
 
     if (loading) {
         return (
             <div className="admin-dashboard-loading">
-                <div className="spinner"></div>
+                <RefreshCw className="spin" size={48} />
                 <p>Đang tải dashboard...</p>
             </div>
         );
     }
 
+    if (error) {
+        return (
+            <div className="admin-dashboard-error">
+                <AlertCircle size={48} color="#ef4444" />
+                <h3>Không thể tải dashboard</h3>
+                <p>{error}</p>
+                <button onClick={fetchDashboardData} className="btn-retry">
+                    <RefreshCw size={18} /> Thử lại
+                </button>
+            </div>
+        );
+    }
+
+    if (!report) {
+        return <div className="admin-dashboard-error"><p>Không có dữ liệu</p></div>;
+    }
+
+    const { overview, transactions, marketplace, topSellers, topBuyers, dailyRevenue } = report;
+
     return (
         <div className="admin-dashboard">
             {/* HEADER */}
             <div className="dashboard-header">
-                <div>
-                    <h1 className="dashboard-title">Admin Dashboard</h1>
-                    <p className="dashboard-subtitle">Tổng quan hệ thống và doanh thu</p>
+                <div className="header-content">
+                    <h1>Admin Dashboard</h1>
+                    <p>Tổng quan hệ thống và hiệu suất</p>
                 </div>
-                <button onClick={fetchAdminData} className="btn-refresh">
-                    Làm mới
+                <button onClick={fetchDashboardData} className="btn-refresh">
+                    <RefreshCw size={18} /> Làm mới
                 </button>
             </div>
 
-            {/* KPI CARDS */}
-            <div className="kpi-grid">
-                <div className="kpi-card revenue">
-                    <div className="kpi-header">
-                        <span className="kpi-label">Tổng Doanh Thu</span>
-                        <span className="kpi-trend positive">{data.trends.revenueGrowth}</span>
-                    </div>
-                    <div className="kpi-value">{data.overview.totalRevenue}</div>
-                    <div className="kpi-footer">
-                        <span>Platform Fee</span>
-                        <span className="kpi-secondary">{data.overview.platformFees}</span>
+            {/* OVERVIEW STATS */}
+            <div className="overview-grid">
+                <div className="stat-card revenue">
+                    <div className="card-icon"><DollarSign size={40} /></div>
+                    <div className="card-content">
+                        <h3>Tổng Doanh Thu</h3>
+                        <div className="value">{overview.totalRevenue}</div>
+                        <div className="meta">Tất cả giao dịch</div>
                     </div>
                 </div>
 
-                <div className="kpi-card transactions">
-                    <div className="kpi-header">
-                        <span className="kpi-label">Giao Dịch</span>
-                        <span className="kpi-trend positive">{data.trends.transactionGrowth}</span>
-                    </div>
-                    <div className="kpi-value">{data.overview.totalTransactions}</div>
-                    <div className="kpi-footer">
-                        <span className="kpi-status completed">{data.transactions.completed} Hoàn thành</span>
-                        <span className="kpi-status pending">{data.transactions.pending} Đang xử lý</span>
+                <div className="stat-card fees">
+                    <div className="card-icon"><TrendingUp size={40} /></div>
+                    <div className="card-content">
+                        <h3>Platform Fees</h3>
+                        <div className="value">{overview.platformFees}</div>
+                        <div className="meta">{overview.feePercentage} của doanh thu</div>
                     </div>
                 </div>
 
-                <div className="kpi-card pages">
-                    <div className="kpi-header">
-                        <span className="kpi-label">Landing Pages</span>
-                    </div>
-                    <div className="kpi-value">{data.overview.totalPages}</div>
-                    <div className="kpi-footer">
-                        <span className="kpi-status active">{data.overview.activePages} Active</span>
-                        <span className="kpi-status inactive">{data.overview.totalPages - data.overview.activePages} Inactive</span>
-                    </div>
-                </div>
-
-                <div className="kpi-card users">
-                    <div className="kpi-header">
-                        <span className="kpi-label">Người Dùng</span>
-                        <span className="kpi-trend positive">{data.trends.userGrowth}</span>
-                    </div>
-                    <div className="kpi-value">{data.overview.totalUsers}</div>
-                    <div className="kpi-footer">
-                        <span>Tổng số người dùng đã đăng ký</span>
-                    </div>
-                </div>
-
-                <div className="kpi-card leads">
-                    <div className="kpi-header">
-                        <span className="kpi-label">📊 Leads</span>
-                    </div>
-                    <div className="kpi-value">{data.leads?.total?.toLocaleString() || 0}</div>
-                    <div className="kpi-footer">
-                        <span className="kpi-status active">{data.leads?.today || 0} Hôm nay</span>
-                        <span className="kpi-status pending">{data.leads?.thisWeek || 0} Tuần này</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* MESSAGE STATS & AI ANALYSIS */}
-            <div className="dashboard-grid-2" style={{ marginBottom: '30px' }}>
-                {/* MESSAGE STATISTICS */}
-                <div className="dashboard-card">
-                    <div className="card-header">
-                        <h2>Thống Kê Tin Nhắn</h2>
-                    </div>
-                    <div style={{ padding: '20px 0' }}>
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Tổng số tin nhắn</div>
-                            <div style={{ fontSize: '36px', fontWeight: '700', color: '#667eea' }}>
-                                {data.messageStats?.total?.toLocaleString() || 0}
-                            </div>
-                        </div>
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Tin nhắn hôm nay</div>
-                            <div style={{ fontSize: '28px', fontWeight: '600', color: '#3b82f6' }}>
-                                {data.messageStats?.today?.toLocaleString() || 0}
-                            </div>
-                        </div>
-                        <div className="status-bars" style={{ marginTop: '20px' }}>
-                            <div className="status-bar">
-                                <div className="status-bar-header">
-                                    <span>Tin nhắn từ người dùng</span>
-                                    <span className="status-count">{data.messageStats?.byType?.user || 0}</span>
-                                </div>
-                            </div>
-                            <div className="status-bar">
-                                <div className="status-bar-header">
-                                    <span>Tin nhắn từ admin</span>
-                                    <span className="status-count">{data.messageStats?.byType?.admin || 0}</span>
-                                </div>
-                            </div>
+                <div className="stat-card pages">
+                    <div className="card-icon"><Activity size={40} /></div>
+                    <div className="card-content">
+                        <h3>Marketplace Pages</h3>
+                        <div className="value">{marketplace.totalPages}</div>
+                        <div className="meta">
+                            {marketplace.byStatus.map((s, i) => (
+                                <span key={i}>{s.count} {s._id}{i < marketplace.byStatus.length - 1 ? ' • ' : ''}</span>
+                            ))}
                         </div>
                     </div>
                 </div>
 
-                {/* AI ANALYSIS */}
-                <div className="dashboard-card">
-                    <div className="card-header">
-                        <h2>Phân Tích AI</h2>
-                    </div>
-                    <div style={{ padding: '20px 0' }}>
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Tỷ lệ sử dụng AI</div>
-                            <div style={{ fontSize: '36px', fontWeight: '700', color: '#10b981' }}>
-                                {data.messageStats?.aiPercentage || 0}%
-                            </div>
+                <div className="stat-card transactions">
+                    <div className="card-icon"><ShoppingCart size={40} /></div>
+                    <div className="card-content">
+                        <h3>Giao Dịch</h3>
+                        <div className="value">
+                            {transactions.byStatus.reduce((sum, item) => sum + item.count, 0)}
                         </div>
-
-                        {/* AI vs Human Progress Bar */}
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px', color: '#666' }}>
-                                <span>AI Generated</span>
-                                <span>Human Written</span>
-                            </div>
-                            <div style={{
-                                height: '32px',
-                                background: '#f3f4f6',
-                                borderRadius: '16px',
-                                overflow: 'hidden',
-                                display: 'flex'
-                            }}>
-                                <div
-                                    style={{
-                                        background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
-                                        width: `${data.messageStats?.aiPercentage || 0}%`,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'white',
-                                        fontSize: '12px',
-                                        fontWeight: '600'
-                                    }}
-                                >
-                                    {data.messageStats?.aiGenerated > 0 && `${data.messageStats.aiGenerated}`}
-                                </div>
-                                <div
-                                    style={{
-                                        background: 'linear-gradient(90deg, #6b7280 0%, #4b5563 100%)',
-                                        flex: 1,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'white',
-                                        fontSize: '12px',
-                                        fontWeight: '600'
-                                    }}
-                                >
-                                    {data.messageStats?.humanWritten > 0 && `${data.messageStats.humanWritten}`}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Chat Overview */}
-                        <div className="status-bars">
-                            <div className="status-bar">
-                                <div className="status-bar-header">
-                                    <span>Tổng số chat</span>
-                                    <span className="status-count">{data.chatOverview?.totalChats || 0}</span>
-                                </div>
-                            </div>
-                            <div className="status-bar">
-                                <div className="status-bar-header">
-                                    <span>Chat đang mở</span>
-                                    <span className="status-count">{data.chatOverview?.openChats || 0}</span>
-                                </div>
-                            </div>
-                            <div className="status-bar">
-                                <div className="status-bar-header">
-                                    <span>Đã giải quyết hôm nay</span>
-                                    <span className="status-count">{data.chatOverview?.resolvedToday || 0}</span>
-                                </div>
-                            </div>
+                        <div className="meta">
+                            {transactions.byStatus.find(s => s.status === 'COMPLETED')?.count || 0} thành công
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* MARKETPLACE ORDERS & REVENUE */}
-            <div className="dashboard-grid-2" style={{ marginBottom: '30px' }}>
-                {/* MARKETPLACE REVENUE */}
-                <div className="dashboard-card">
-                    <div className="card-header">
-                        <h2>🛒 Doanh Thu Marketplace</h2>
-                    </div>
-                    <div style={{ padding: '20px 0' }}>
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Tổng doanh thu</div>
-                            <div style={{ fontSize: '36px', fontWeight: '700', color: '#f59e0b' }}>
-                                {data.marketplace?.revenue || '0đ'}
-                            </div>
+            {/* TRANSACTION STATUS */}
+            <div className="section">
+                <h2>📊 Giao Dịch Theo Trạng Thái</h2>
+                <div className="transaction-grid">
+                    {transactions.byStatus.map((item, idx) => (
+                        <div key={idx} className={`transaction-card status-${item.status.toLowerCase()}`}>
+                            <div className="status">{item.status}</div>
+                            <div className="count">{item.count}</div>
+                            <div className="label">giao dịch</div>
+                            <div className="amount">{item.totalAmount}</div>
+                            <div className="fees">Phí: {item.platformFees}</div>
                         </div>
-                        <div style={{ marginBottom: '24px' }}>
-                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Platform Fees</div>
-                            <div style={{ fontSize: '28px', fontWeight: '600', color: '#10b981' }}>
-                                {data.marketplace?.platformFees || '0đ'}
-                            </div>
-                        </div>
-                        <div className="status-bars" style={{ marginTop: '20px' }}>
-                            <div className="status-bar">
-                                <div className="status-bar-header">
-                                    <span>Tổng đơn hàng</span>
-                                    <span className="status-count">{data.marketplace?.totalOrders || 0}</span>
+                    ))}
+                </div>
+            </div>
+
+            <div className="two-column-section">
+                {/* TOP SELLERS */}
+                <div className="section">
+                    <h2>🏆 Top 5 Sellers</h2>
+                    <div className="top-list">
+                        {topSellers.slice(0, 5).map((seller) => (
+                            <div key={seller.sellerId} className="top-item">
+                                <div className="rank">#{seller.rank}</div>
+                                <div className="info">
+                                    <div className="id">{seller.sellerId.substring(0, 12)}...</div>
+                                    <div className="stats">
+                                        {seller.totalSales} sales • {seller.totalRevenue}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
 
-                {/* ORDERS BY STATUS */}
-                <div className="dashboard-card">
-                    <div className="card-header">
-                        <h2>Trạng Thái Đơn Hàng</h2>
-                    </div>
-                    <div className="status-bars">
-                        <div className="status-bar">
-                            <div className="status-bar-header">
-                                <span>Đang xử lý</span>
-                                <span className="status-count">{data.marketplace?.ordersByStatus?.processing || 0}</span>
+                {/* TOP BUYERS */}
+                <div className="section">
+                    <h2>💰 Top 5 Buyers</h2>
+                    <div className="top-list">
+                        {topBuyers.slice(0, 5).map((buyer) => (
+                            <div key={buyer.buyerId} className="top-item">
+                                <div className="rank">#{buyer.rank}</div>
+                                <div className="info">
+                                    <div className="id">{buyer.buyerId.substring(0, 12)}...</div>
+                                    <div className="stats">
+                                        {buyer.totalPurchases} purchases • {buyer.totalSpent}
+                                    </div>
+                                </div>
                             </div>
-                            <div className="status-bar-track">
-                                <div
-                                    className="status-bar-fill pending"
-                                    style={{
-                                        width: `${((data.marketplace?.ordersByStatus?.processing || 0) / (data.marketplace?.totalOrders || 1) * 100)}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-                        <div className="status-bar">
-                            <div className="status-bar-header">
-                                <span>Đã giao</span>
-                                <span className="status-count">{data.marketplace?.ordersByStatus?.delivered || 0}</span>
-                            </div>
-                            <div className="status-bar-track">
-                                <div
-                                    className="status-bar-fill completed"
-                                    style={{
-                                        width: `${((data.marketplace?.ordersByStatus?.delivered || 0) / (data.marketplace?.totalOrders || 1) * 100)}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-                        <div className="status-bar">
-                            <div className="status-bar-header">
-                                <span>Đã hủy</span>
-                                <span className="status-count">{data.marketplace?.ordersByStatus?.cancelled || 0}</span>
-                            </div>
-                            <div className="status-bar-track">
-                                <div
-                                    className="status-bar-fill failed"
-                                    style={{
-                                        width: `${((data.marketplace?.ordersByStatus?.cancelled || 0) / (data.marketplace?.totalOrders || 1) * 100)}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-                        <div className="status-bar">
-                            <div className="status-bar-header">
-                                <span>Hoàn tiền</span>
-                                <span className="status-count">{data.marketplace?.ordersByStatus?.refunded || 0}</span>
-                            </div>
-                            <div className="status-bar-track">
-                                <div
-                                    className="status-bar-fill refunded"
-                                    style={{
-                                        width: `${((data.marketplace?.ordersByStatus?.refunded || 0) / (data.marketplace?.totalOrders || 1) * 100)}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
             </div>
 
-            {/* TOP SELLING PAGES & RECENT ORDERS */}
-            <div className="dashboard-grid-2" style={{ marginBottom: '30px' }}>
-                {/* TOP SELLING PAGES */}
-                <div className="dashboard-card">
-                    <div className="card-header">
-                        <h2>🏆 Top Landing Pages Bán Chạy</h2>
-                    </div>
-                    <div className="status-bars">
-                        {data.marketplace?.topPages && data.marketplace.topPages.length > 0 ? (
-                            data.marketplace.topPages.map((page, idx) => (
-                                <div key={idx} className="status-bar">
-                                    <div className="status-bar-header">
-                                        <span>{page.title}</span>
-                                        <span className="status-count">{page.totalSales} bán</span>
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(page.price)}
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <div className="empty-state">Chưa có page nào được bán</div>
-                        )}
-                    </div>
-                </div>
+            {/* DAILY REVENUE CHART */}
+            <div className="section">
+                <h2>📈 Doanh Thu 30 Ngày Gần Nhất</h2>
+                <div className="daily-chart">
+                    {dailyRevenue.slice(-30).map((day, idx) => {
+                        const maxRevenue = Math.max(...dailyRevenue.map(d => d.revenueRaw));
+                        const height = maxRevenue > 0 ? (day.revenueRaw / maxRevenue) * 100 : 0;
 
-                {/* RECENT MARKETPLACE ORDERS */}
-                <div className="dashboard-card">
-                    <div className="card-header">
-                        <h2>Đơn Hàng Gần Đây</h2>
-                    </div>
-                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                        {data.marketplace?.recentOrders && data.marketplace.recentOrders.length > 0 ? (
-                            data.marketplace.recentOrders.map((order, idx) => (
-                                <div key={idx} style={{
-                                    padding: '12px',
-                                    borderBottom: '1px solid #e5e7eb',
-                                    fontSize: '13px'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                        <span style={{ fontWeight: '600' }}>
-                                            {order.marketplacePageId?.title || 'Unknown Page'}
-                                        </span>
-                                        <span className={`transaction-status ${order.status}`}>
-                                            {order.status}
-                                        </span>
-                                    </div>
-                                    <div style={{ color: '#666', fontSize: '12px' }}>
-                                        Buyer: {order.buyerId?.name || order.buyerId?.email || 'Unknown'}
-                                    </div>
-                                    <div style={{ color: '#666', fontSize: '12px' }}>
-                                        Seller: {order.sellerId?.name || order.sellerId?.email || 'Unknown'}
-                                    </div>
-                                    <div style={{ fontWeight: '600', color: '#10b981', marginTop: '4px' }}>
-                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.transactionId?.amount || 0)}
-                                    </div>
+                        return (
+                            <div key={idx} className="chart-bar-wrapper">
+                                <div className="bar-info">
+                                    <span className="value">{day.revenueRaw > 0 ? day.revenue.replace('₫', '') : '0'}</span>
+                                    <span className="count">{day.count} GD</span>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="empty-state">Chưa có đơn hàng nào</div>
-                        )}
-                    </div>
+                                <div className="chart-bar" style={{ height: `${Math.max(height, 5)}%` }}>
+                                    <div className="bar-fill"></div>
+                                </div>
+                                <div className="bar-label">{day.date.split('/').slice(0, 2).join('/')}</div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* TRANSACTIONS & PAYMENT METHODS */}
-            <div className="dashboard-grid-2">
-                {/* TRANSACTION STATUS */}
-                <div className="dashboard-card">
-                    <div className="card-header">
-                        <h2>Trạng Thái Giao Dịch</h2>
-                    </div>
-                    <div className="status-bars">
-                        <div className="status-bar">
-                            <div className="status-bar-header">
-                                <span>Hoàn thành</span>
-                                <span className="status-count">{data.transactions.completed}</span>
+            {/* PAYMENT METHODS */}
+            {transactions.byPaymentMethod && transactions.byPaymentMethod.length > 0 && (
+                <div className="section">
+                    <h2>💳 Phương Thức Thanh Toán</h2>
+                    <div className="payment-grid">
+                        {transactions.byPaymentMethod.map((item, idx) => (
+                            <div key={idx} className="payment-card">
+                                <CreditCard size={32} />
+                                <div className="method">{item.method || 'N/A'}</div>
+                                <div className="count">{item.count} GD</div>
+                                <div className="amount">{item.totalAmount}</div>
                             </div>
-                            <div className="status-bar-track">
-                                <div
-                                    className="status-bar-fill completed"
-                                    style={{
-                                        width: `${(data.transactions.completed / data.overview.totalTransactions * 100) || 0}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-
-                        <div className="status-bar">
-                            <div className="status-bar-header">
-                                <span>Đang xử lý</span>
-                                <span className="status-count">{data.transactions.pending}</span>
-                            </div>
-                            <div className="status-bar-track">
-                                <div
-                                    className="status-bar-fill pending"
-                                    style={{
-                                        width: `${(data.transactions.pending / data.overview.totalTransactions * 100) || 0}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-
-                        <div className="status-bar">
-                            <div className="status-bar-header">
-                                <span>Thất bại</span>
-                                <span className="status-count">{data.transactions.failed}</span>
-                            </div>
-                            <div className="status-bar-track">
-                                <div
-                                    className="status-bar-fill failed"
-                                    style={{
-                                        width: `${(data.transactions.failed / data.overview.totalTransactions * 100) || 0}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-
-                        <div className="status-bar">
-                            <div className="status-bar-header">
-                                <span>Hoàn tiền</span>
-                                <span className="status-count">{data.transactions.refunded}</span>
-                            </div>
-                            <div className="status-bar-track">
-                                <div
-                                    className="status-bar-fill refunded"
-                                    style={{
-                                        width: `${(data.transactions.refunded / data.overview.totalTransactions * 100) || 0}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
+                        ))}
                     </div>
                 </div>
+            )}
 
-                {/* PAYMENT METHODS */}
-                <div className="dashboard-card">
-                    <div className="card-header">
-                        <h2>Phương Thức Thanh Toán</h2>
-                    </div>
-                    <div className="payment-methods">
-                        <div className="payment-method vnpay">
-                            <div className="payment-method-name">VNPay</div>
-                            <div className="payment-method-count">{data.payments.vnpay}</div>
-                            <div className="payment-method-bar">
-                                <div
-                                    className="payment-method-fill"
-                                    style={{
-                                        width: `${(data.payments.vnpay / (data.payments.vnpay + data.payments.momo + data.payments.sandbox) * 100) || 0}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-
-                        <div className="payment-method momo">
-                            <div className="payment-method-name">Momo</div>
-                            <div className="payment-method-count">{data.payments.momo}</div>
-                            <div className="payment-method-bar">
-                                <div
-                                    className="payment-method-fill"
-                                    style={{
-                                        width: `${(data.payments.momo / (data.payments.vnpay + data.payments.momo + data.payments.sandbox) * 100) || 0}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-
-                        <div className="payment-method sandbox">
-                            <div className="payment-method-name">Sandbox</div>
-                            <div className="payment-method-count">{data.payments.sandbox}</div>
-                            <div className="payment-method-bar">
-                                <div
-                                    className="payment-method-fill"
-                                    style={{
-                                        width: `${(data.payments.sandbox / (data.payments.vnpay + data.payments.momo + data.payments.sandbox) * 100) || 0}%`
-                                    }}
-                                ></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* RECENT TRANSACTIONS */}
-            <div className="dashboard-card">
-                <div className="card-header">
-                    <h2>Giao Dịch Gần Đây</h2>
-                    <a href="/admin/transactions" className="link-view-all">Xem tất cả →</a>
-                </div>
-                <div className="transactions-list">
-                    {data.recent.transactions.length > 0 ? (
-                        data.recent.transactions.map((tx, idx) => (
-                            <div key={idx} className="transaction-item">
-                                <div className="transaction-info">
-                                    <div className="transaction-id">#{tx.transaction_id?.substring(0, 8)}</div>
-                                    <div className="transaction-user">{tx.buyer_name || 'User'}</div>
-                                </div>
-                                <div className="transaction-amount">
-                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(tx.amount)}
-                                </div>
-                                <div className={`transaction-status ${tx.status.toLowerCase()}`}>
-                                    {tx.status}
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="empty-state">Chưa có giao dịch nào</div>
-                    )}
-                </div>
+            {/* FOOTER */}
+            <div className="dashboard-footer">
+                <p>Cập nhật lúc: {new Date(report.generatedAt).toLocaleString('vi-VN')}</p>
             </div>
         </div>
     );

@@ -13,7 +13,14 @@ exports.getMyOrders = async (req, res) => {
         const { status, page = 1, limit = 10 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const query = { buyerId: userId, is_deleted: false }; // Thêm is_deleted
+        // Match orders where is_deleted is false OR doesn't exist (for backward compatibility)
+        const query = {
+            buyerId: userId,
+            $or: [
+                { is_deleted: false },
+                { is_deleted: { $exists: false } }
+            ]
+        };
         if (status) query.status = status;
 
         const total = await Order.countDocuments(query);
@@ -51,7 +58,14 @@ exports.getSellerOrders = async (req, res) => {
         const { status, page = 1, limit = 10 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const query = { sellerId: userId, is_deleted: false }; // Thêm is_deleted
+        // Match orders where is_deleted is false OR doesn't exist (for backward compatibility)
+        const query = {
+            sellerId: userId,
+            $or: [
+                { is_deleted: false },
+                { is_deleted: { $exists: false } }
+            ]
+        };
         if (status) query.status = status;
 
         const total = await Order.countDocuments(query);
@@ -87,7 +101,13 @@ exports.getAllOrders = async (req, res) => {
         const { status, page = 1, limit = 20 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const query = { is_deleted: false };
+        // Match orders where is_deleted is false OR doesn't exist (for backward compatibility)
+        const query = {
+            $or: [
+                { is_deleted: false },
+                { is_deleted: { $exists: false } }
+            ]
+        };
         if (status && status !== 'all') query.status = status;
 
         const total = await Order.countDocuments(query);
@@ -121,14 +141,35 @@ exports.getAllOrdersAdmin = async (req, res) => {
         const { search, status, page = 1, limit = 20 } = req.query;
         const skip = (page - 1) * limit;
 
-        let query = { is_deleted: false }; // Thêm is_deleted
+        // Match orders where is_deleted is false OR doesn't exist (for backward compatibility)
+        let query = {
+            $or: [
+                { is_deleted: false },
+                { is_deleted: { $exists: false } }
+            ]
+        };
         if (status && status !== 'all') query.status = status;
         if (search) {
-            query.$or = [
-                { orderId: { $regex: search, $options: 'i' } },
-                { 'buyerId.name': { $regex: search, $options: 'i' } },
-                { 'sellerId.name': { $regex: search, $options: 'i' } }
-            ];
+            // Need to restructure query to combine $or conditions
+            const deletedCondition = {
+                $or: [
+                    { is_deleted: false },
+                    { is_deleted: { $exists: false } }
+                ]
+            };
+            query = {
+                $and: [
+                    deletedCondition,
+                    {
+                        $or: [
+                            { orderId: { $regex: search, $options: 'i' } },
+                            { 'buyerId.name': { $regex: search, $options: 'i' } },
+                            { 'sellerId.name': { $regex: search, $options: 'i' } }
+                        ]
+                    }
+                ]
+            };
+            if (status && status !== 'all') query.$and.push({ status });
         }
 
         const orders = await Order.find(query)
@@ -352,8 +393,15 @@ exports.getOrderTransactions = async (req, res) => {
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         let query = {
-            $or: [{ buyerId: userId }, { sellerId: userId }],
-            is_deleted: false
+            $and: [
+                { $or: [{ buyerId: userId }, { sellerId: userId }] },
+                {
+                    $or: [
+                        { is_deleted: false },
+                        { is_deleted: { $exists: false } }
+                    ]
+                }
+            ]
         };
         if (status) query.status = status;
 
@@ -361,8 +409,7 @@ exports.getOrderTransactions = async (req, res) => {
         const orders = await Order.find(query)
             .populate({
                 path: 'transactionId',
-                select: 'amount status payment_method platform_fee seller_amount created_at',
-                match: { is_deleted: false }
+                select: 'amount status payment_method platform_fee seller_amount created_at'
             })
             .sort({ createdAt: -1 })
             .skip(skip)
@@ -400,7 +447,14 @@ exports.getOrderStats = async (req, res) => {
     try {
         // 📊 Orders by status
         const ordersByStatus = await Order.aggregate([
-            { $match: { is_deleted: false } },
+            {
+                $match: {
+                    $or: [
+                        { is_deleted: false },
+                        { is_deleted: { $exists: false } }
+                    ]
+                }
+            },
             {
                 $group: {
                     _id: '$status',
@@ -411,7 +465,15 @@ exports.getOrderStats = async (req, res) => {
 
         // 💰 Revenue statistics
         const revenueStats = await Order.aggregate([
-            { $match: { status: 'delivered', is_deleted: false } },
+            {
+                $match: {
+                    status: 'delivered',
+                    $or: [
+                        { is_deleted: false },
+                        { is_deleted: { $exists: false } }
+                    ]
+                }
+            },
             {
                 $lookup: {
                     from: 'transactions',
@@ -432,7 +494,12 @@ exports.getOrderStats = async (req, res) => {
         ]);
 
         // 📦 Recent orders
-        const recentOrders = await Order.find({ is_deleted: false })
+        const recentOrders = await Order.find({
+            $or: [
+                { is_deleted: false },
+                { is_deleted: { $exists: false } }
+            ]
+        })
             .populate('marketplacePageId', 'title price')
             .populate('buyerId', 'name email')
             .populate('sellerId', 'name email')
@@ -443,7 +510,15 @@ exports.getOrderStats = async (req, res) => {
 
         // 🎯 Top selling pages
         const topPages = await Order.aggregate([
-            { $match: { status: 'delivered', is_deleted: false } },
+            {
+                $match: {
+                    status: 'delivered',
+                    $or: [
+                        { is_deleted: false },
+                        { is_deleted: { $exists: false } }
+                    ]
+                }
+            },
             {
                 $group: {
                     _id: '$marketplacePageId',

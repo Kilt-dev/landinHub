@@ -430,7 +430,7 @@ const AdminPayoutManagement = () => {
             {/* Approve Modal */}
             {showApproveModal && selectedPayout && (
                 <div className="modal-overlay" onClick={() => setShowApproveModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content1" onClick={(e) => e.stopPropagation()}>
                         <h2>Duyệt yêu cầu rút tiền</h2>
                         <div className="modal-info">
                             <p><strong>Người bán:</strong> {selectedPayout.seller_id?.name}</p>

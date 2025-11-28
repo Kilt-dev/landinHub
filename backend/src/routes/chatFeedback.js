@@ -8,6 +8,7 @@ const ChatMessage = require('../models/ChatMessage');
 const ChatRoom = require('../models/ChatRoom');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/authMiddleware');
+const wsService = require('../services/websocket/websocketService');
 
 /**
  * POST /api/chat/feedback
@@ -93,39 +94,36 @@ router.post('/request-admin', authMiddleware, async (req, res) => {
 
         await systemMessage.save();
 
-        // Import socket.io instance (will be set by server.js)
-        const io = req.app.get('io');
-        if (io) {
-            // Broadcast to room
-            io.to(`chat_room_${roomId}`).emit('chat:new_message', {
-                message: systemMessage
+        // Broadcast to room via WebSocket API Gateway
+        await wsService.sendToRoom(`chat_room_${roomId}`, 'chat:new_message', {
+            message: systemMessage
+        });
+
+        // Notify all admins
+        const admins = await User.find({ role: 'admin' });
+        const user = await User.findById(userId);
+
+        // Send notifications to each admin
+        for (const admin of admins) {
+            await wsService.sendToUser(admin._id.toString(), 'chat:admin_needed', {
+                room: {
+                    _id: room._id,
+                    user_id: user._id,
+                    subject: room.subject,
+                    priority: room.priority,
+                    tags: room.tags,
+                    last_message_at: room.last_message_at
+                },
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email
+                },
+                reason: 'User requested admin support'
             });
-
-            // Notify all admins
-            const admins = await User.find({ role: 'admin' });
-            const user = await User.findById(userId);
-
-            admins.forEach(admin => {
-                io.to(`user_${admin._id.toString()}`).emit('chat:admin_needed', {
-                    room: {
-                        _id: room._id,
-                        user_id: user._id,
-                        subject: room.subject,
-                        priority: room.priority,
-                        tags: room.tags,
-                        last_message_at: room.last_message_at
-                    },
-                    user: {
-                        _id: user._id,
-                        name: user.name,
-                        email: user.email
-                    },
-                    reason: 'User requested admin support'
-                });
-            });
-
-            console.log(`🔔 User ${user.name} manually requested admin for room ${roomId}`);
         }
+
+        console.log(`🔔 User ${user.name} manually requested admin for room ${roomId}`);
 
         res.json({
             success: true,
