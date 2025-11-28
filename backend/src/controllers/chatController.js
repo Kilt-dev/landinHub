@@ -528,16 +528,29 @@ exports.closeRoom = async (req, res) => {
 };
 
 /**
- * Admin: Get all rooms assigned to admin
+ * Admin: Get all rooms (pending + assigned to admin)
  */
 exports.getAdminRooms = async (req, res) => {
     try {
         const adminId = req.user.id;
         const { status } = req.query; // Optional filter by status
 
-        let query = { admin_id: adminId };
-        if (status) {
-            query.status = status;
+        let query;
+
+        if (status === 'open') {
+            // For 'open' status, show all pending rooms (not assigned to any admin yet)
+            query = { status: 'open', admin_id: null };
+        } else if (status) {
+            // For other statuses (assigned, resolved, closed), show only admin's rooms
+            query = { admin_id: adminId, status };
+        } else {
+            // No filter: show all pending rooms + all admin's assigned/resolved rooms
+            query = {
+                $or: [
+                    { status: 'open', admin_id: null }, // Pending rooms
+                    { admin_id: adminId } // All admin's rooms
+                ]
+            };
         }
 
         const rooms = await ChatRoom.find(query)
