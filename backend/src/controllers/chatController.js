@@ -20,7 +20,7 @@ exports.createOrGetRoom = async (req, res) => {
         if (!room) {
             room = new ChatRoom({
                 user_id: userId,
-                status: 'assigned',
+                status: 'open', // Open status when AI is handling, 'assigned' when admin joins
                 subject: 'General Support',
                 ai_enabled: true
             });
