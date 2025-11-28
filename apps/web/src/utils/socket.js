@@ -16,22 +16,21 @@ let pingInterval = null;
  */
 export const initSocket = () => {
     if (ws && ws.readyState === WebSocket.OPEN) {
-        console.log('⚠️ WebSocket already connected');
         return ws;
     }
 
     const token = localStorage.getItem('token');
     if (!token) {
         console.warn('⚠️ No token found for WebSocket connection');
-        emitEvent('connect_error', { message: 'No authentication token' });
         return null;
     }
 
+    // Get WebSocket URL from environment
     const wsUrl = process.env.REACT_APP_WEBSOCKET_URL;
 
+    // If WebSocket URL is not configured, skip WebSocket connection
     if (!wsUrl) {
         console.log('ℹ️ WebSocket URL not configured. Using REST API polling instead.');
-        emitEvent('not_configured', { message: 'WebSocket URL not configured' });
         return null;
     }
 
@@ -42,46 +41,47 @@ export const initSocket = () => {
         ws.onopen = () => {
             console.log('✅ WebSocket connected');
             reconnectAttempts = 0;
+
+            // Start ping/pong for keepalive
             startPingPong();
-            emitEvent('connected', { status: 'connected' });
+
+            // Emit connected event
+            emitEvent('connect', {});
         };
 
-        ws.onclose = (event) => {
-            console.log('❌ WebSocket disconnected:', event.code, event.reason);
+        ws.onclose = () => {
+            console.log('❌ WebSocket disconnected');
             stopPingPong();
-            emitEvent('disconnected', { code: event.code, reason: event.reason });
 
-            // Don't reconnect if closed intentionally (code 1000)
-            if (event.code !== 1000) {
-                attemptReconnect();
-            }
+            // Emit disconnected event
+            emitEvent('disconnect', {});
+
+            // Attempt to reconnect
+            attemptReconnect();
         };
 
         ws.onerror = (error) => {
             console.error('⚠️ WebSocket error:', error);
-            emitEvent('error', { message: 'WebSocket error', error });
+            emitEvent('connect_error', error);
         };
 
         ws.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
-                console.log('📨 WebSocket message:', message.event || message.action || 'unknown');
+                console.log('📨 WebSocket message:', message);
 
-                // Handle both event formats: {event, data} or {action, ...data}
-                const eventName = message.event || message.action || 'message';
-                const data = message.data || message;
-
-                emitEvent(eventName, data);
+                // Emit the event to registered handlers
+                if (message.event) {
+                    emitEvent(message.event, message.data);
+                }
             } catch (error) {
-                console.error('❌ Error parsing WebSocket message:', error);
-                emitEvent('parse_error', { message: 'Failed to parse message', error });
+                console.error('Error parsing WebSocket message:', error);
             }
         };
 
         return ws;
     } catch (error) {
         console.error('❌ Error creating WebSocket:', error);
-        emitEvent('error', { message: 'Failed to create WebSocket', error });
         return null;
     }
 };
@@ -91,13 +91,12 @@ export const initSocket = () => {
  */
 function attemptReconnect() {
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-        console.error('❌ Max reconnect attempts reached');
-        emitEvent('reconnect_failed', { attempts: reconnectAttempts });
+        console.error('Max reconnect attempts reached');
         return;
     }
 
     reconnectAttempts++;
-    console.log(`🔄 Reconnecting... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+    console.log(`Attempting to reconnect... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
 
     setTimeout(() => {
         initSocket();
@@ -113,7 +112,7 @@ function startPingPong() {
         if (ws && ws.readyState === WebSocket.OPEN) {
             sendMessage('ping', {});
         }
-    }, 30000);
+    }, 30000); // Ping every 30 seconds
 }
 
 /**
@@ -128,24 +127,17 @@ function stopPingPong() {
 
 /**
  * Send message to WebSocket
- * @param {string} action - Action name (e.g., 'join_room', 'chat:message')
- * @param {object} data - Data payload
+ * @param {string} action
+ * @param {object} data
  */
-export function sendMessage(action, data = {}) {
+function sendMessage(action, data = {}) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-        console.warn('⚠️ WebSocket not connected, cannot send message');
-        emitEvent('send_error', { message: 'WebSocket not connected' });
+        console.warn('WebSocket not connected, cannot send message');
         return false;
     }
 
-    try {
-        ws.send(JSON.stringify({ action, ...data }));
-        return true;
-    } catch (error) {
-        console.error('❌ Error sending WebSocket message:', error);
-        emitEvent('send_error', { message: 'Failed to send message', error });
-        return false;
-    }
+    ws.send(JSON.stringify({ action, ...data }));
+    return true;
 }
 
 /**
@@ -159,7 +151,7 @@ function emitEvent(event, data) {
             try {
                 handler(data);
             } catch (error) {
-                console.error(`❌ Error in event handler for ${event}:`, error);
+                console.error(`Error in event handler for ${event}:`, error);
             }
         });
     }
@@ -169,16 +161,12 @@ function emitEvent(event, data) {
  * Register event handler
  * @param {string} event
  * @param {Function} callback
- * @returns {Function} Cleanup function
  */
-export function on(event, callback) {
+function on(event, callback) {
     if (!eventHandlers[event]) {
-        eventHandlers[event] = new Set();
+        eventHandlers[event] = [];
     }
-    eventHandlers[event].add(callback);
-
-    // Return cleanup function
-    return () => off(event, callback);
+    eventHandlers[event].push(callback);
 }
 
 /**
@@ -186,67 +174,45 @@ export function on(event, callback) {
  * @param {string} event
  * @param {Function} callback
  */
-export function off(event, callback) {
+function off(event, callback) {
     if (eventHandlers[event]) {
-        eventHandlers[event].delete(callback);
-        if (eventHandlers[event].size === 0) {
-            delete eventHandlers[event];
-        }
+        eventHandlers[event] = eventHandlers[event].filter(h => h !== callback);
     }
 }
 
 /**
  * Get the current WebSocket instance
  */
-export const getSocket = () => ws;
+export const getSocket = () => {
+    return ws;
+};
 
 /**
  * Disconnect WebSocket
- * @param {boolean} silent - Don't trigger reconnect
  */
-export const disconnectSocket = (silent = false) => {
+export const disconnectSocket = () => {
     stopPingPong();
     if (ws) {
-        if (silent) {
-            // Remove close handler temporarily to prevent reconnect
-            ws.onclose = null;
-        }
-        ws.close(1000, 'User disconnected');
+        ws.close();
         ws = null;
     }
-    reconnectAttempts = 0;
-};
-
-/**
- * Join a specific room
- * @param {string} roomId - Room identifier
- */
-export const joinRoom = (roomId) => {
-    console.log(`📡 Joining room: ${roomId}`);
-    return sendMessage('join_room', { roomId });
-};
-
-/**
- * Leave a specific room
- * @param {string} roomId - Room identifier
- */
-export const leaveRoom = (roomId) => {
-    console.log(`📡 Leaving room: ${roomId}`);
-    return sendMessage('leave_room', { roomId });
+    eventHandlers = {};
 };
 
 /**
  * Join dashboard room
  */
 export const joinDashboard = () => {
-    return sendMessage('dashboard:join');
+    sendMessage('dashboard:join');
+    console.log('📊 Joining dashboard room...');
 };
 
 /**
  * Leave dashboard room
  */
 export const leaveDashboard = () => {
-    return sendMessage('dashboard:leave');
+    sendMessage('dashboard:leave');
+    console.log('📊 Leaving dashboard room');
 };
 
 /**
@@ -255,61 +221,108 @@ export const leaveDashboard = () => {
  * @returns {Function} - Cleanup function to remove listener
  */
 export const onDashboardUpdate = (callback) => {
-    return on('dashboard:update', callback);
+    on('dashboard:update', callback);
+
+    // Return cleanup function
+    return () => {
+        off('dashboard:update', callback);
+    };
 };
 
 /**
- * Listen for chat updates
+ * Listen for any event
+ * @param {string} event
  * @param {Function} callback
  * @returns {Function} - Cleanup function
  */
-export const onChatUpdate = (callback) => {
-    return on('chat:update', callback);
+export const onEvent = (event, callback) => {
+    on(event, callback);
+    return () => off(event, callback);
+};
+
+/**
+ * Join a chat room
+ * @param {string} roomId - The chat room ID to join
+ */
+export const joinRoom = (roomId) => {
+    if (!roomId) {
+        console.warn('⚠️ Cannot join room: roomId is required');
+        return;
+    }
+
+    const success = sendMessage('chat:join', { roomId });
+    if (success) {
+        console.log('📡 Joining room:', roomId);
+    }
+};
+
+/**
+ * Leave a chat room
+ * @param {string} roomId - The chat room ID to leave
+ */
+export const leaveRoom = (roomId) => {
+    if (!roomId) {
+        console.warn('⚠️ Cannot leave room: roomId is required');
+        return;
+    }
+
+    const success = sendMessage('chat:leave', { roomId });
+    if (success) {
+        console.log('📡 Leaving room:', roomId);
+    }
+};
+
+/**
+ * Send a chat message
+ * @param {string} roomId - The chat room ID
+ * @param {string} message - The message content
+ * @param {string} senderType - 'user' or 'admin'
+ */
+export const sendChatMessage = (roomId, message, senderType = 'user') => {
+    if (!roomId || !message) {
+        console.warn('⚠️ Cannot send message: roomId and message are required');
+        return false;
+    }
+
+    return sendMessage('chat:message', {
+        roomId,
+        message,
+        sender_type: senderType,
+        timestamp: new Date().toISOString()
+    });
+};
+
+/**
+ * Listen for new chat messages
+ * @param {Function} callback - Callback function to handle new messages
+ * @returns {Function} - Cleanup function
+ */
+export const onChatMessage = (callback) => {
+    on('chat:message', callback);
+    return () => off('chat:message', callback);
 };
 
 /**
  * Listen for room updates
- * @param {Function} callback
+ * @param {Function} callback - Callback function to handle room updates
  * @returns {Function} - Cleanup function
  */
 export const onRoomUpdate = (callback) => {
-    return on('room:update', callback);
+    on('chat:room_update', callback);
+    return () => off('chat:room_update', callback);
 };
 
-/**
- * Listen for admin status changes
- * @param {Function} callback
- * @returns {Function} - Cleanup function
- */
-export const onAdminStatus = (callback) => {
-    return on('admin:status', callback);
-};
-
-/**
- * Get WebSocket status
- */
-export const getStatus = () => ({
-    isConnected: ws && ws.readyState === WebSocket.OPEN,
-    isConnecting: ws && ws.readyState === WebSocket.CONNECTING,
-    reconnectAttempts,
-    isConfigured: !!process.env.REACT_APP_WEBSOCKET_URL
-});
-
-// Export default object for compatibility
 export default {
     initSocket,
     getSocket,
     disconnectSocket,
-    sendMessage,
-    joinRoom,
-    leaveRoom,
     joinDashboard,
     leaveDashboard,
     onDashboardUpdate,
-    onChatUpdate,
-    onRoomUpdate,
-    onAdminStatus,
-    on,
-    off,
-    getStatus
+    onEvent,
+    joinRoom,
+    leaveRoom,
+    sendChatMessage,
+    onChatMessage,
+    onRoomUpdate
 };

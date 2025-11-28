@@ -620,6 +620,95 @@ const Reports = () => {
                             </>
                         )}
 
+                        {/* Tab Content: AI Insights */}
+                        {tabValue === 1 && (
+                            <>
+                                {/* AI Recommendations */}
+                                {summary?.aiRecommendations && (
+                                    <Paper sx={{ p: 3, mb: 4, background: 'linear-gradient(135deg, #667eea20 0%, #764ba220 100%)', border: '1px solid #667eea40' }}>
+                                        <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                            <Psychology sx={{ color: '#667eea', fontSize: 32 }} />
+                                            <Typography variant="h5" fontWeight="bold">
+                                                AI Smart Recommendations
+                                            </Typography>
+                                        </Box>
+                                        <Box>
+                                            {parseRecommendations(summary.aiRecommendations).map((rec, index) => (
+                                                <Box key={index} mb={2}>
+                                                    <Box display="flex" alignItems="flex-start" gap={1}>
+                                                        <Lightbulb sx={{ color: '#f59e0b', fontSize: 24, mt: 0.3 }} />
+                                                        <Box>
+                                                            <Typography variant="h6" fontWeight="600" gutterBottom>
+                                                                {rec.title}
+                                                            </Typography>
+                                                            {rec.details.length > 0 && (
+                                                                <Box ml={2}>
+                                                                    {rec.details.map((detail, idx) => (
+                                                                        <Typography key={idx} variant="body2" color="text.secondary" paragraph>
+                                                                            {detail}
+                                                                        </Typography>
+                                                                    ))}
+                                                                </Box>
+                                                            )}
+                                                        </Box>
+                                                    </Box>
+                                                    {index < parseRecommendations(summary.aiRecommendations).length - 1 && (
+                                                        <Divider sx={{ my: 2 }} />
+                                                    )}
+                                                </Box>
+                                            ))}
+                                        </Box>
+                                    </Paper>
+                                )}
+
+                                {/* AI Insights */}
+                                {aiInsights && (
+                                    <Grid container spacing={3} mb={4}>
+                                        <Grid item xs={12} md={6}>
+                                            <Paper sx={{ p: 3, height: '100%', border: '1px solid #f093fb40' }}>
+                                                <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                                    <ChatBubble sx={{ color: '#f093fb', fontSize: 28 }} />
+                                                    <Typography variant="h6" fontWeight="bold">
+                                                        Chat Trends Analysis
+                                                    </Typography>
+                                                </Box>
+                                                <Box>
+                                                    {cleanAIText(aiInsights.chatInsights).map((line, index) => (
+                                                        <Typography key={index} variant="body2" paragraph color="text.secondary">
+                                                            {line}
+                                                        </Typography>
+                                                    ))}
+                                                </Box>
+                                            </Paper>
+                                        </Grid>
+                                        <Grid item xs={12} md={6}>
+                                            <Paper sx={{ p: 3, height: '100%', border: '1px solid #43e97b40' }}>
+                                                <Box display="flex" alignItems="center" gap={1} mb={3}>
+                                                    <ShoppingCart sx={{ color: '#43e97b', fontSize: 28 }} />
+                                                    <Typography variant="h6" fontWeight="bold">
+                                                        Marketplace Insights
+                                                    </Typography>
+                                                </Box>
+                                                <Box>
+                                                    {aiInsights.marketplaceInsights ? (
+                                                        cleanAIText(aiInsights.marketplaceInsights).map((line, index) => (
+                                                            <Typography key={index} variant="body2" paragraph color="text.secondary">
+                                                                {line}
+                                                            </Typography>
+                                                        ))
+                                                    ) : (
+                                                        <Typography variant="body2" color="text.secondary">
+                                                            No AI insights available for marketplace data.
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            </Paper>
+                                        </Grid>
+                                    </Grid>
+                                )}
+                            </>
+                        )}
+
                         {/* Tab Content: Revenue */}
                         {tabValue === 2 && (
                             <>
