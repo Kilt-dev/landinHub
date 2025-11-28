@@ -31,19 +31,17 @@ const SupportChatbox = () => {
         }
     }, [errorMessage]);
 
-    // Auto-scroll to bottom - debounced to prevent flickering
+    // Auto-scroll to bottom - optimized to prevent flickering
     const scrollToBottom = useCallback(() => {
-        const now = Date.now();
-        // Only scroll if 100ms has passed since last scroll
-        if (now - lastScrollRef.current > 100) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            lastScrollRef.current = now;
-        }
+        // Use requestAnimationFrame to batch DOM updates and prevent flickering
+        requestAnimationFrame(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
+        });
     }, []);
 
     useEffect(() => {
         scrollToBottom();
-    }, [messages.length, streamingMessage, scrollToBottom]); // Only scroll on message count change
+    }, [messages.length, streamingMessage.length, scrollToBottom]); // Scroll on message count or streaming length change
 
     // Initialize chat room
     useEffect(() => {

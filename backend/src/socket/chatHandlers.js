@@ -185,67 +185,96 @@ function initChatHandlers(io, socket) {
             console.log(`✅ [send_message_with_ai] Room found: ${roomId}, AI enabled: ${room.ai_enabled !== false} (value: ${room.ai_enabled}), Admin: ${room.admin_id || 'none'}`);
 
             // Save user message
-            const userMessage = new ChatMessage({
-                room_id: roomId,
-                sender_id: userId,
-                sender_type: 'user',
-                message: message.trim()
-            });
-            await userMessage.save();
+            let userMessage;
+            try {
+                userMessage = new ChatMessage({
+                    room_id: roomId,
+                    sender_id: userId,
+                    sender_type: 'user',
+                    message: message.trim()
+                });
+                await userMessage.save();
+                console.log(`💾 [send_message_with_ai] User message saved: ${userMessage._id}`);
+            } catch (msgError) {
+                console.error(`❌ [send_message_with_ai] Failed to save user message:`, msgError.message);
+                return socket.emit('error', {
+                    message: 'Không thể lưu tin nhắn'
+                });
+            }
 
             // Broadcast user message
-            io.to(`chat_${roomId}`).emit('new_message', {
-                id: userMessage._id,
-                sender_type: 'user',
-                sender_id: userId,
-                message: userMessage.message,
-                created_at: userMessage.createdAt
-            });
+            try {
+                io.to(`chat_${roomId}`).emit('new_message', {
+                    id: userMessage._id,
+                    sender_type: 'user',
+                    sender_id: userId,
+                    message: userMessage.message,
+                    created_at: userMessage.createdAt
+                });
+                console.log(`📡 [send_message_with_ai] User message broadcasted to room chat_${roomId}`);
+            } catch (broadcastError) {
+                console.error(`⚠️  [send_message_with_ai] Failed to broadcast user message:`, broadcastError.message);
+                // Don't fail the operation, message is saved
+            }
 
             // Check if needs admin
             const needsAdmin = detectAdminNeed(message);
             if (needsAdmin && !room.admin_id) {
-                room.status = 'open';
-                room.priority = 'high';
-                await room.save();
-
-                const escalateMsg = new ChatMessage({
-                    room_id: roomId,
-                    sender_type: 'bot',
-                    message: 'Tôi sẽ kết nối bạn với admin để được hỗ trợ tốt hơn nhé! 👨‍💼 Vui lòng chờ trong giây lát...'
-                });
-                await escalateMsg.save();
-
-                io.to(`chat_${roomId}`).emit('new_message', {
-                    id: escalateMsg._id,
-                    sender_type: 'bot',
-                    message: escalateMsg.message,
-                    created_at: escalateMsg.createdAt
-                });
-
-                // Notify admins
-                io.to('admin_room').emit('new_support_request', {
-                    room_id: roomId,
-                    user_id: userId,
-                    message: message.trim(),
-                    priority: 'high'
-                });
-
-                // Create notification for user that request is escalated (non-blocking)
+                console.log(`🚨 [send_message_with_ai] Admin escalation detected for room ${roomId}`);
                 try {
-                    await createNotification(
-                        userId,
-                        'chat_escalated',
-                        'Yêu cầu hỗ trợ đã được chuyển',
-                        'Chúng tôi sẽ kết nối bạn với admin trong giây lát',
-                        { roomId }
-                    );
-                } catch (notifError) {
-                    console.warn('⚠️  [send_message_with_ai] Failed to create notification:', notifError.message);
-                    // Don't fail the whole operation if notification fails
-                }
+                    room.status = 'open';
+                    room.priority = 'high';
+                    await room.save();
+                    console.log(`✅ [send_message_with_ai] Room status updated to open/high priority`);
 
-                return socket.emit('escalated_to_admin', { roomId });
+                    const escalateMsg = new ChatMessage({
+                        room_id: roomId,
+                        sender_type: 'bot',
+                        message: 'Tôi sẽ kết nối bạn với admin để được hỗ trợ tốt hơn nhé! 👨‍💼 Vui lòng chờ trong giây lát...'
+                    });
+                    await escalateMsg.save();
+                    console.log(`💾 [send_message_with_ai] Escalation message saved: ${escalateMsg._id}`);
+
+                    io.to(`chat_${roomId}`).emit('new_message', {
+                        id: escalateMsg._id,
+                        sender_type: 'bot',
+                        message: escalateMsg.message,
+                        created_at: escalateMsg.createdAt
+                    });
+
+                    // Notify admins
+                    io.to('admin_room').emit('new_support_request', {
+                        room_id: roomId,
+                        user_id: userId,
+                        message: message.trim(),
+                        priority: 'high'
+                    });
+                    console.log(`📢 [send_message_with_ai] Admin notification sent to admin_room`);
+
+                    // Create notification for user that request is escalated (non-blocking)
+                    try {
+                        await createNotification(
+                            userId,
+                            'chat_escalated',
+                            'Yêu cầu hỗ trợ đã được chuyển',
+                            'Chúng tôi sẽ kết nối bạn với admin trong giây lát',
+                            { roomId }
+                        );
+                        console.log(`✅ [send_message_with_ai] Escalation notification created`);
+                    } catch (notifError) {
+                        console.warn('⚠️  [send_message_with_ai] Failed to create notification:', notifError.message);
+                        // Don't fail the whole operation if notification fails
+                    }
+
+                    console.log(`✅ [send_message_with_ai] Escalation complete, emitting escalated_to_admin event`);
+                    return socket.emit('escalated_to_admin', { roomId });
+                } catch (escalateError) {
+                    console.error(`❌ [send_message_with_ai] Escalation failed:`, escalateError.message, escalateError.stack);
+                    socket.emit('error', {
+                        message: 'Không thể chuyển yêu cầu tới admin. Vui lòng thử lại.'
+                    });
+                    // Continue to AI response as fallback
+                }
             }
 
             // Generate AI response if enabled and no admin
@@ -372,16 +401,21 @@ function initChatHandlers(io, socket) {
             }
 
             // Update room timestamp
-            room.last_message_at = new Date();
-            await room.save();
-
-            console.log(`✅ [send_message_with_ai] Handler completed for room ${roomId}`);
+            try {
+                room.last_message_at = new Date();
+                await room.save();
+                console.log(`✅ [send_message_with_ai] Handler completed for room ${roomId}`);
+            } catch (saveError) {
+                console.error(`⚠️  [send_message_with_ai] Failed to update room timestamp:`, saveError.message);
+                // Don't fail the whole operation if room save fails
+            }
 
         } catch (error) {
             console.error(`❌ [send_message_with_ai] Unexpected error for room ${data?.roomId}:`, error.message);
             console.error('Error stack:', error.stack);
             socket.emit('error', {
-                message: 'Không thể gửi tin nhắn'
+                message: 'Không thể gửi tin nhắn',
+                details: error.message
             });
         }
     });
