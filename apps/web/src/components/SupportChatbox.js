@@ -234,9 +234,9 @@ const SupportChatbox = () => {
 
                     {/* Messages */}
                     <div className="chat-messages">
-                        {messages.map((msg) => (
+                        {messages.map((msg, index) => (
                             <div
-                                key={msg.id ?? `${msg.sender_type}-${msg.created_at}`} // fallback nếu id trùng / null
+                                key={msg.id ?? `msg-${msg.sender_type}-${index}-${msg.created_at || Date.now()}`}
                                 className={`message ${msg.sender_type === 'user' ? 'user' : 'bot'}`}
                             >
                                 <div className="message-content">

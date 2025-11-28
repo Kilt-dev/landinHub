@@ -3,6 +3,7 @@ import {
     RefreshCw, AlertCircle
 } from 'lucide-react';
 import api from '@landinghub/api';
+import { initSocket, joinDashboard, leaveDashboard, onDashboardUpdate } from '../utils/socket';
 import '../styles/UserDashboard.css';
 
 const UserDashboard = () => {

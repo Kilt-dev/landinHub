@@ -4,6 +4,17 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import '../styles/Dashboard.css';
 import axios from 'axios';
+import {
+    initSocket,
+    on,
+    joinDashboard,
+    leaveDashboard,
+    onRoomUpdate,
+    onChatUpdate,
+    disconnectSocket,
+    joinRoom,
+    leaveRoom
+} from '../utils/socket';
 
 import {
     Box,
@@ -42,7 +53,6 @@ import {
     Check as CheckIcon,
     Assignment as AssignmentIcon,
     FilterList as FilterIcon,
-    Refresh as RefreshIcon,
     MoreVert as MoreVertIcon,
     PriorityHigh as PriorityIcon,
     Close as CloseIcon,
@@ -521,11 +531,12 @@ const AdminSupport = () => {
                                     <Box p={2} borderBottom="1px solid #e0e0e0">
                                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                                             <Typography variant="h6">Danh sách chat</Typography>
-                                            <Tooltip title="Làm mới">
-                                                <IconButton size="small" onClick={loadRooms}>
-                                                    <RefreshIcon />
-                                                </IconButton>
-                                            </Tooltip>
+                                            <Chip
+                                                icon={socketConnected ? <WifiIcon /> : <WifiOffIcon />}
+                                                label={socketConnected ? 'Tự động cập nhật' : 'Không kết nối'}
+                                                color={socketConnected ? 'success' : 'default'}
+                                                size="small"
+                                            />
                                         </Box>
 
                                         <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} variant="fullWidth">
