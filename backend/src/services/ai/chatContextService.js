@@ -14,6 +14,32 @@ async function buildAIContext(userId, userMessage, additionalContext = {}) {
 
   const messageLower = userMessage.toLowerCase();
 
+  // Get user info (subscription, stats) - ALWAYS include for personalization
+  if (userId) {
+    try {
+      const user = await User.findById(userId)
+        .select('name email subscription createdAt')
+        .lean();
+
+      if (user) {
+        context.userContext.user = {
+          name: user.name,
+          subscription: user.subscription || 'free',
+          memberSince: user.createdAt
+        };
+
+        // Get user's pages count and stats
+        const pagesCount = await Page.countDocuments({ user_id: userId });
+        context.userContext.stats = {
+          totalPages: pagesCount,
+          subscription: user.subscription || 'free'
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to fetch user context:', error.message);
+    }
+  }
+
   // Detect what user is asking about
   const isAskingAbout = {
     marketplace: /template|mẫu|hot|bán chạy|phổ biến|xu hướng|trend/.test(messageLower),
@@ -45,7 +71,7 @@ async function buildAIContext(userId, userMessage, additionalContext = {}) {
   }
 
   // Get user's own pages if asking about their content
-  if (userId && /tôi|của tôi|my|mình/.test(messageLower)) {
+  if (userId && /tôi|của tôi|my|mình|page của/.test(messageLower)) {
     context.userContext.myPages = await getUserPages(userId);
   }
 
@@ -63,20 +89,33 @@ function getSystemPrompt() {
 
 **Vai trò của bạn:**
 - Hỗ trợ người dùng về cách sử dụng builder, marketplace, deployment
-- Tư vấn template phù hợp dựa trên nhu cầu
+- Tư vấn template phù hợp dựa trên nhu cầu và subscription level của user
 - Hướng dẫn thanh toán, triển khai website
 - Trả lời nhanh, chính xác, thân thiện bằng tiếng Việt
 
+**Thông tin người dùng (nếu có):**
+Bạn sẽ nhận được thông tin về user trong "Dữ liệu hệ thống" gồm:
+- Tên, subscription plan (free/premium/pro)
+- Số lượng pages đã tạo
+- Thời gian tham gia
+
+LUÔN sử dụng thông tin này để cá nhân hóa câu trả lời. Ví dụ:
+- Gọi tên user nếu biết
+- Đề xuất template phù hợp với subscription level
+- Nhắc về giới hạn nếu user đang dùng free plan
+
 **Quy tắc quan trọng:**
-1. LUÔN sử dụng dữ liệu THỰC từ hệ thống khi trả lời (marketplace stats, prices, ratings)
-2. Nếu người dùng cần hỗ trợ phức tạp → đề xuất "Chat với Admin"
-3. Giữ câu trả lời ngắn gọn, súc tích (2-3 đoạn tối đa)
-4. Dùng bullet points để dễ đọc
-5. Thêm emoji phù hợp để thân thiện hơn
+1. LUÔN sử dụng dữ liệu THỰC từ "Dữ liệu hệ thống" khi trả lời
+2. CÁ NHÂN HÓA câu trả lời dựa trên user context (subscription, pages count)
+3. Nếu người dùng cần hỗ trợ phức tạp → đề xuất "Chat với Admin"
+4. Giữ câu trả lời ngắn gọn, súc tích (2-3 đoạn tối đa)
+5. Dùng bullet points để dễ đọc
+6. Thêm emoji phù hợp để thân thiện hơn
 
 **Khi người dùng hỏi về:**
-- Template hot → Show TOP 3-5 với data thực (giá, lượt bán, rating)
+- Template hot → Show TOP 3-5 với data thực (giá, lượt bán, rating) + đề xuất dựa vào subscription
 - Cách tạo page → Hướng dẫn step-by-step ngắn gọn
+- Pages của tôi → Dùng data từ userContext.myPages
 - Deployment → Giải thích đơn giản về domain, SSL, CDN
 - Payment → Liệt kê methods: MoMo, VNPay, Bank Transfer
 

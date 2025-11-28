@@ -15,11 +15,20 @@ const SupportChatbox = () => {
     const [aiStreaming, setAiStreaming] = useState(false);
     const [streamingMessage, setStreamingMessage] = useState('');
     const [roomInfo, setRoomInfo] = useState(null); // Track room info (hasAdmin, aiEnabled, etc.)
+    const [errorMessage, setErrorMessage] = useState('');
 
     const socketRef = useRef(null);
     const messagesEndRef = useRef(null);
     const typingTimeoutRef = useRef(null);
     const cleanupFunctionsRef = useRef([]);
+
+    // Auto-dismiss error after 5 seconds
+    useEffect(() => {
+        if (errorMessage) {
+            const timer = setTimeout(() => setErrorMessage(''), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [errorMessage]);
 
     // Auto-scroll to bottom
     const scrollToBottom = () => {
@@ -134,7 +143,7 @@ const SupportChatbox = () => {
 
             cleanups.push(on('error', (data) => {
                 console.error('❌ Socket error:', data.message);
-                alert(data.message);
+                setErrorMessage(data.message || 'Đã xảy ra lỗi');
             }));
 
             // Store cleanup functions
@@ -171,7 +180,7 @@ const SupportChatbox = () => {
             }
         } catch (error) {
             console.error('Error initializing chat room:', error);
-            alert('Không thể khởi tạo chat. Vui lòng đăng nhập lại.');
+            setErrorMessage('Không thể khởi tạo chat. Vui lòng thử lại.');
         }
     };
 
@@ -256,7 +265,7 @@ const SupportChatbox = () => {
             }
         } catch (error) {
             console.error('Error de-escalating:', error);
-            alert('Không thể chuyển về chat với AI. Vui lòng thử lại.');
+            setErrorMessage('Không thể chuyển về chat với AI. Vui lòng thử lại.');
         }
     };
 
@@ -276,6 +285,44 @@ const SupportChatbox = () => {
 
     return (
         <>
+            {/* Error Toast */}
+            {errorMessage && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '100px',
+                    right: '20px',
+                    background: '#ef4444',
+                    color: 'white',
+                    padding: '12px 20px',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    zIndex: 10001,
+                    maxWidth: '300px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    animation: 'slideInUp 0.3s ease'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'start', gap: '8px' }}>
+                        <span>⚠️</span>
+                        <div style={{ flex: 1 }}>{errorMessage}</div>
+                        <button
+                            onClick={() => setErrorMessage('')}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'white',
+                                cursor: 'pointer',
+                                padding: '0',
+                                fontSize: '18px',
+                                lineHeight: '1'
+                            }}
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Chat Button */}
             <div className="chat-button" onClick={toggleChat}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

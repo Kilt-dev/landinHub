@@ -231,14 +231,19 @@ function initChatHandlers(io, socket) {
                     priority: 'high'
                 });
 
-                // Create notification for user that request is escalated
-                await createNotification(
-                    userId,
-                    'chat_escalated',
-                    'Yêu cầu hỗ trợ đã được chuyển',
-                    'Chúng tôi sẽ kết nối bạn với admin trong giây lát',
-                    { roomId }
-                );
+                // Create notification for user that request is escalated (non-blocking)
+                try {
+                    await createNotification(
+                        userId,
+                        'chat_escalated',
+                        'Yêu cầu hỗ trợ đã được chuyển',
+                        'Chúng tôi sẽ kết nối bạn với admin trong giây lát',
+                        { roomId }
+                    );
+                } catch (notifError) {
+                    console.warn('⚠️  [send_message_with_ai] Failed to create notification:', notifError.message);
+                    // Don't fail the whole operation if notification fails
+                }
 
                 return socket.emit('escalated_to_admin', { roomId });
             }
