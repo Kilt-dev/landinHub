@@ -29,8 +29,16 @@ const UserDashboard = () => {
             console.log('📋 Pages List Length:', response.data.data.pagesList?.length);
 
             if (response.data.success && response.data.data) {
-                setData(response.data.data);
-                console.log('✅ State Updated - Total Pages:', response.data.data.pages.total);
+                // Ensure all required fields exist with fallbacks
+                const apiData = response.data.data;
+                setData({
+                    pages: apiData.pages || { total: 0, live: 0, draft: 0, totalViews: '0', totalRevenue: '0đ' },
+                    purchases: apiData.purchases || { count: 0, totalSpent: '0đ', avgPerPurchase: '0đ', totalSpentRaw: 0 },
+                    sales: apiData.sales || { count: 0, totalEarned: '0đ', avgPerSale: '0đ', totalEarnedRaw: 0 },
+                    balance: apiData.balance || { amount: '0đ', amountRaw: 0, status: 'neutral' },
+                    pagesList: apiData.pagesList || []
+                });
+                console.log('✅ State Updated - Total Pages:', apiData.pages?.total || 0);
             } else {
                 throw new Error('Invalid response structure');
             }

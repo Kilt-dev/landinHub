@@ -6,6 +6,7 @@ import '../styles/Dashboard.css';
 import axios from 'axios';
 import {
     initSocket,
+    getSocket,
     on,
     joinDashboard,
     leaveDashboard,
@@ -295,20 +296,29 @@ const AdminSupport = () => {
     };
 
     const handleAssignToSelf = async () => {
-        if (!selectedRoom) return;
+        if (!selectedRoom || !socketConnected) {
+            showToast('Vui lòng đợi kết nối socket', 'error');
+            return;
+        }
 
         try {
-            await axios.post(
-                `${API_URL}/api/chat/admin/assign`,
-                { roomId: selectedRoom._id },
-                { headers: getAuthHeader() }
-            );
+            // Emit socket event to assign room
+            const socket = getSocket();
+            if (socket) {
+                socket.emit('assign_room', { roomId: selectedRoom._id });
+                showToast('Đã nhận hỗ trợ! 👨‍💼', 'success');
 
-            showToast('Đã nhận hỗ trợ! 👨‍💼', 'success');
+                // Update local state
+                setSelectedRoom(prev => ({
+                    ...prev,
+                    admin_id: user.id,
+                    status: 'assigned'
+                }));
 
-            setTimeout(() => {
-                loadRooms();
-            }, 500);
+                setTimeout(() => {
+                    loadRooms();
+                }, 500);
+            }
         } catch (error) {
             console.error('Failed to assign room:', error);
             showToast('Không thể nhận hỗ trợ. Vui lòng thử lại.', 'error');
@@ -316,7 +326,12 @@ const AdminSupport = () => {
     };
 
     const handleSendMessage = async () => {
-        if (!inputMessage.trim() || !selectedRoom) return;
+        if (!inputMessage.trim() || !selectedRoom || !socketConnected) {
+            if (!socketConnected) {
+                showToast('Vui lòng đợi kết nối socket', 'error');
+            }
+            return;
+        }
 
         const messageText = inputMessage.trim();
         setInputMessage('');
@@ -336,15 +351,15 @@ const AdminSupport = () => {
         scrollToBottom(true);
 
         try {
-            await axios.post(
-                `${API_URL}/api/chat/rooms/${selectedRoom._id}/messages`,
-                {
-                    message: messageText,
-                    message_type: 'text',
-                    enableAI: false
-                },
-                { headers: getAuthHeader() }
-            );
+            // Send via socket instead of API
+            const socket = getSocket();
+            if (socket) {
+                socket.emit('send_message', {
+                    roomId: selectedRoom._id,
+                    message: messageText
+                });
+                console.log('📤 Admin sent message via socket');
+            }
 
             // ✅ WebSocket sẽ tự động nhận tin nhắn mới, không cần poll
         } catch (error) {
