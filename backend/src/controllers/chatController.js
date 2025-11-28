@@ -13,14 +13,14 @@ exports.createOrGetRoom = async (req, res) => {
         // Check if user has active room
         let room = await ChatRoom.findOne({
             user_id: userId,
-            status: { $in: ['active', 'pending'] }
+            status: { $in: ['assigned', 'open'] }
         });
 
         // Create new room if none exists
         if (!room) {
             room = new ChatRoom({
                 user_id: userId,
-                status: 'active',
+                status: 'assigned',
                 subject: 'General Support',
                 ai_enabled: true
             });
@@ -180,8 +180,8 @@ exports.sendMessage = async (req, res) => {
 
         // Update room
         room.last_message_at = new Date();
-        if (room.status === 'pending' && !isUser) {
-            room.status = 'active'; // Admin joined
+        if (room.status === 'open' && !isUser) {
+            room.status = 'assigned'; // Admin joined
         }
         await room.save();
 
@@ -250,7 +250,7 @@ exports.sendMessageWithAI = async (req, res) => {
         // Check if needs admin
         const needsAdmin = detectAdminNeed(message);
         if (needsAdmin && !room.admin_id) {
-            room.status = 'pending';
+            room.status = 'open';
             room.priority = 'high';
             await room.save();
 
@@ -389,7 +389,7 @@ exports.sendMessageWithAI = async (req, res) => {
 exports.getAdminPendingRooms = async (req, res) => {
     try {
         const rooms = await ChatRoom.find({
-            status: 'pending'
+            status: 'open'
         })
             .populate('user_id', 'name email')
             .sort({ priority: -1, last_message_at: -1 })
@@ -420,7 +420,7 @@ exports.assignRoomToSelf = async (req, res) => {
             roomId,
             {
                 admin_id: adminId,
-                status: 'active',
+                status: 'assigned',
                 ai_enabled: false // Disable AI when admin joins
             },
             { new: true }
@@ -578,12 +578,12 @@ exports.getAdminStats = async (req, res) => {
         // Get admin's active rooms
         const myActiveRooms = await ChatRoom.countDocuments({
             admin_id: adminId,
-            status: { $in: ['active', 'pending'] }
+            status: { $in: ['assigned', 'open'] }
         });
 
         // Get pending rooms (not assigned to anyone)
         const pendingRooms = await ChatRoom.countDocuments({
-            status: 'pending',
+            status: 'open',
             admin_id: null
         });
 
