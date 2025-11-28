@@ -10,7 +10,7 @@ const chatMessageSchema = new mongoose.Schema({
   sender_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    default: null
   },
   sender_type: {
     type: String,
@@ -19,86 +19,52 @@ const chatMessageSchema = new mongoose.Schema({
   },
   message: {
     type: String,
-    required: true,
-    maxlength: 5000
+    required: true
   },
   message_type: {
     type: String,
     enum: ['text', 'image', 'file', 'system'],
     default: 'text'
   },
-  // For images and files
-  attachments: [{
-    type: {
-      type: String,
-      enum: ['image', 'file']
-    },
-    url: String,
-    filename: String,
-    size: Number,
-    mime_type: String
-  }],
-  is_read: {
-    type: Boolean,
-    default: false,
-    index: true
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   },
-  // For AI-generated messages
   ai_metadata: {
-    is_ai_generated: {
+    provider: {
+      type: String,
+      enum: ['groq', 'gemini', null],
+      default: null
+    },
+    model: {
+      type: String,
+      default: null
+    },
+    context_used: {
       type: Boolean,
       default: false
     },
-    confidence: Number,
-    intent: String, // 'builder_help', 'payment_issue', etc.
-    suggested_actions: [String]
+    response_time: {
+      type: Number,
+      default: null
+    }
   },
-  // Reference to message this is replying to
-  reply_to: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'ChatMessage'
+  read_by_user: {
+    type: Boolean,
+    default: false
+  },
+  read_by_admin: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
 });
 
-// Index for efficient queries
+// Index for fetching messages by room
 chatMessageSchema.index({ room_id: 1, createdAt: -1 });
-chatMessageSchema.index({ room_id: 1, is_read: 1 });
 
-// Methods
-chatMessageSchema.methods.markAsRead = function() {
-  this.is_read = true;
-  return this.save();
-};
-
-// Static methods
-chatMessageSchema.statics.findRoomMessages = function(roomId, limit = 50, skip = 0) {
-  return this.find({ room_id: roomId })
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .skip(skip)
-    .populate('sender_id', 'name role')
-    .populate('reply_to', 'message sender_id');
-};
-
-chatMessageSchema.statics.countUnreadMessages = function(roomId, senderType) {
-  return this.countDocuments({
-    room_id: roomId,
-    is_read: false,
-    sender_type: { $ne: senderType } // Count messages NOT from this sender type
-  });
-};
-
-chatMessageSchema.statics.markRoomMessagesAsRead = function(roomId, excludeSenderType) {
-  return this.updateMany(
-    {
-      room_id: roomId,
-      is_read: false,
-      sender_type: { $ne: excludeSenderType }
-    },
-    { is_read: true }
-  );
-};
+// Index for unread messages
+chatMessageSchema.index({ room_id: 1, read_by_user: 1, read_by_admin: 1 });
 
 module.exports = mongoose.model('ChatMessage', chatMessageSchema);
