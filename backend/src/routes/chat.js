@@ -15,7 +15,9 @@ router.post('/rooms/:roomId/messages/ai', chatController.sendMessageWithAI);
 router.post('/rooms/:roomId/close', chatController.closeRoom);
 
 // Admin chat endpoints
+router.get('/admin/rooms', chatController.getAdminRooms);
 router.get('/admin/rooms/pending', chatController.getAdminPendingRooms);
+router.get('/admin/stats', chatController.getAdminStats);
 router.post('/admin/rooms/:roomId/assign', chatController.assignRoomToSelf);
 
 module.exports = router;
