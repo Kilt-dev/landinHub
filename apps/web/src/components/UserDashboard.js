@@ -4,7 +4,6 @@ import {
 } from 'lucide-react';
 import api from '@landinghub/api';
 import '../styles/UserDashboard.css';
-import { initSocket, joinDashboard, leaveDashboard, onDashboardUpdate } from '../utils/socket';
 
 const UserDashboard = () => {
     const [data, setData] = useState({

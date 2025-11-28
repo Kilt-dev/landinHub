@@ -4,21 +4,6 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import '../styles/Dashboard.css';
 import axios from 'axios';
-// import { usePolling } from '../hooks/usePolling'; // ❌ ĐÃ XÓA
-
-// ✅ WebSocket imports
-import {
-    initSocket,
-    disconnectSocket,
-    on,
-    onRoomUpdate,
-    onChatUpdate,
-    joinRoom,
-    leaveRoom,
-    joinDashboard,
-    leaveDashboard,
-    getStatus
-} from '../utils/socket';
 
 import {
     Box,
