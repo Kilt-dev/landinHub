@@ -526,3 +526,127 @@ exports.closeRoom = async (req, res) => {
     });
   }
 };
+
+/**
+ * Admin: Get all rooms assigned to admin
+ */
+exports.getAdminRooms = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+    const { status } = req.query; // Optional filter by status
+
+    let query = { admin_id: adminId };
+    if (status) {
+      query.status = status;
+    }
+
+    const rooms = await ChatRoom.find(query)
+      .populate('user_id', 'name email')
+      .sort({ last_message_at: -1 })
+      .limit(100);
+
+    res.json({
+      success: true,
+      rooms
+    });
+  } catch (error) {
+    console.error('Error fetching admin rooms:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải danh sách chat'
+    });
+  }
+};
+
+/**
+ * Admin: Get statistics
+ */
+exports.getAdminStats = async (req, res) => {
+  try {
+    const adminId = req.user.id;
+
+    // Get counts by status
+    const statusCounts = await ChatRoom.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Get admin's active rooms
+    const myActiveRooms = await ChatRoom.countDocuments({
+      admin_id: adminId,
+      status: { $in: ['active', 'pending'] }
+    });
+
+    // Get pending rooms (not assigned to anyone)
+    const pendingRooms = await ChatRoom.countDocuments({
+      status: 'pending',
+      admin_id: null
+    });
+
+    // Get today's stats
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayStats = await ChatRoom.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: today }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          newRooms: { $sum: 1 },
+          resolved: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'resolved'] }, 1, 0]
+            }
+          }
+        }
+      }
+    ]);
+
+    // Average rating
+    const ratingStats = await ChatRoom.aggregate([
+      {
+        $match: {
+          rating: { $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          avgRating: { $avg: '$rating' },
+          totalRatings: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Format response
+    const stats = {
+      byStatus: statusCounts.reduce((acc, s) => {
+        acc[s._id] = s.count;
+        return acc;
+      }, {}),
+      myActiveRooms,
+      pendingRooms,
+      today: todayStats[0] || { newRooms: 0, resolved: 0 },
+      rating: ratingStats[0] || { avgRating: 0, totalRatings: 0 }
+    };
+
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Không thể tải thống kê'
+    });
+  }
+};

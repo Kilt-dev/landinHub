@@ -9,8 +9,9 @@ const notificationSchema = new mongoose.Schema({
             'order_cancelled',
             'order_delivered',
             'review_received',
-            'admin_replied',
-            'refund_processed'
+            'chat_message',
+            'admin_joined_chat',
+            'chat_escalated'
         ],
         required: true
     },
@@ -19,10 +20,17 @@ const notificationSchema = new mongoose.Schema({
     metadata: {
         orderId: String,
         buyerId: mongoose.Schema.Types.ObjectId,
-        reason: String
+        reason: String,
+        roomId: mongoose.Schema.Types.ObjectId,
+        messageId: mongoose.Schema.Types.ObjectId,
+        senderId: mongoose.Schema.Types.ObjectId
     },
     isRead: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now }
 });
+
+// Index for efficient queries
+notificationSchema.index({ recipientId: 1, createdAt: -1 });
+notificationSchema.index({ recipientId: 1, isRead: 1 });
 
 module.exports = mongoose.model('Notification', notificationSchema);

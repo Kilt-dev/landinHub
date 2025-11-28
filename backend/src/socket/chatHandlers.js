@@ -2,6 +2,7 @@ const ChatRoom = require('../models/ChatRoom');
 const ChatMessage = require('../models/ChatMessage');
 const { buildAIContext, detectAdminNeed } = require('../services/ai/chatContextService');
 const { generateStreamingResponse } = require('../services/ai/multiAIProvider');
+const { createNotification } = require('../controllers/notificationController');
 
 /**
  * Initialize chat socket handlers
@@ -113,6 +114,22 @@ function initChatHandlers(io, socket) {
         created_at: newMessage.createdAt
       });
 
+      // Send notification to recipient
+      const recipientId = isUser ? room.admin_id : room.user_id;
+      if (recipientId) {
+        await createNotification(
+          recipientId,
+          'chat_message',
+          isUser ? 'Tin nhắn mới từ người dùng' : 'Admin đã trả lời',
+          message.substring(0, 100),
+          {
+            roomId,
+            messageId: newMessage._id,
+            senderId: userId
+          }
+        );
+      }
+
       console.log(`📨 Message sent in room ${roomId} by ${senderType}`);
     } catch (error) {
       console.error('Error sending message:', error);
@@ -193,6 +210,15 @@ function initChatHandlers(io, socket) {
           message: message.trim(),
           priority: 'high'
         });
+
+        // Create notification for user that request is escalated
+        await createNotification(
+          userId,
+          'chat_escalated',
+          'Yêu cầu hỗ trợ đã được chuyển',
+          'Chúng tôi sẽ kết nối bạn với admin trong giây lát',
+          { roomId }
+        );
 
         return socket.emit('escalated_to_admin', { roomId });
       }

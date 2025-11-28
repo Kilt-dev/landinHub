@@ -4,7 +4,9 @@ const authMiddleware = require('../middleware/authMiddleware');
 const notificationController = require('../controllers/notificationController');
 
 /* ====== USER / SELLER / ADMIN ====== */
-router.get('/', authMiddleware, notificationController.getMyNotifications);
-router.patch('/:id/read', authMiddleware, notificationController.markAsRead);
+router.get('/notifications', authMiddleware, notificationController.getMyNotifications);
+router.get('/notifications/unread/count', authMiddleware, notificationController.getUnreadCount);
+router.patch('/notifications/:id/read', authMiddleware, notificationController.markAsRead);
+router.patch('/notifications/read-all', authMiddleware, notificationController.markAllAsRead);
 
 module.exports = router;
