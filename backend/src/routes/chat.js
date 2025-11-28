@@ -82,6 +82,9 @@ try {
 // Create or get existing room
 router.post('/rooms', authMiddleware, chatController.createOrGetRoom);
 
+// Create marketplace chat room (buyer-seller communication)
+router.post('/rooms/marketplace', authMiddleware, chatController.createMarketplaceRoom);
+
 // Get user's chat rooms
 router.get('/rooms', authMiddleware, chatController.getUserRooms);
 

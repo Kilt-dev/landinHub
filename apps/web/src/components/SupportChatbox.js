@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { UserContext } from '../context/UserContext';
 import axios from 'axios';
-import { usePolling } from '../hooks/usePolling';
 import {
     Box,
     IconButton,
@@ -34,9 +33,24 @@ import {
     SmartToy as BotIcon,
     Person as PersonIcon,
     Support as SupportIcon,
-    Star as StarIcon
+    Star as StarIcon,
+    Wifi as WifiIcon,
+    WifiOff as WifiOffIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
+
+// ✅ WebSocket imports
+import {
+    initSocket,
+    disconnectSocket,
+    on,
+    onRoomUpdate,
+    onChatUpdate,
+    joinRoom,
+    leaveRoom,
+    getStatus
+} from '../utils/socket';
 
 // Styled components
 const ChatContainer = styled(Box, {
@@ -168,7 +182,7 @@ const SupportChatbox = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [adminOnline, setAdminOnline] = useState(false);
-    const [feedbackGiven, setFeedbackGiven] = useState({}); // Track feedback per message
+    const [feedbackGiven, setFeedbackGiven] = useState({});
     const [requestingAdmin, setRequestingAdmin] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [isUploading, setIsUploading] = useState(false);
@@ -178,11 +192,15 @@ const SupportChatbox = () => {
     const [ratingDialog, setRatingDialog] = useState(false);
     const [rating, setRating] = useState(0);
     const [ratingFeedback, setRatingFeedback] = useState('');
-    const [userScrolledUp, setUserScrolledUp] = useState(false); // Track if user scrolled up
+    const [userScrolledUp, setUserScrolledUp] = useState(false);
+    const [socketConnected, setSocketConnected] = useState(false);
+
     const messagesEndRef = useRef(null);
-    const messagesContainerRef = useRef(null); // Ref for messages container
+    const messagesContainerRef = useRef(null);
     const fileInputRef = useRef(null);
     const typingTimeoutRef = useRef(null);
+    const socketCleanupRef = useRef({});
+    const currentRoomIdRef = useRef(null);
 
     const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -196,167 +214,91 @@ const SupportChatbox = () => {
     };
 
     const lastMessageIdRef = useRef(null);
-    const lastRoomStatusRef = useRef(null);
-    const isReinitializingRef = useRef(false); // Flag to prevent polling during reinit
-    const currentRoomIdRef = useRef(null); // Track current room ID to prevent stale requests
 
-    // 🔄 Polling: Poll messages khi chat box đang mở
-    const pollMessages = async () => {
-        // Don't poll if reinitializing, no room, or creating room
-        if (!room || !isOpen || isReinitializingRef.current) {
-            console.log('⏸️ Polling paused:', { hasRoom: !!room, isOpen, isReinitializing: isReinitializingRef.current });
-            return;
-        }
+    // 🚀 WEBSOCKET: Initialize connection and listeners
+    useEffect(() => {
+        if (!user) return;
 
-        // Double check room ID matches to prevent stale requests
-        if (currentRoomIdRef.current && room._id !== currentRoomIdRef.current) {
-            console.warn('⚠️ Room ID mismatch, skipping poll:', { current: currentRoomIdRef.current, new: room._id });
-            currentRoomIdRef.current = room._id;
-            return;
-        }
+        const socket = initSocket();
 
-        try {
-            const params = lastMessageIdRef.current
-                ? `?after=${lastMessageIdRef.current}`
-                : '';
+        socketCleanupRef.current.handleConnected = on('connected', () => {
+            setSocketConnected(true);
+            showToast('✅ Kết nối realtime thành công', 'success');
+        });
 
-            const response = await axios.get(
-                `${API_URL}/api/chat/rooms/${room._id}/messages${params}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
-            );
+        socketCleanupRef.current.handleDisconnected = on('disconnected', () => {
+            setSocketConnected(false);
+            showToast('❌ Mất kết nối, dùng refresh thủ công', 'warning');
+        });
 
-            if (response.data.messages && response.data.messages.length > 0) {
-                const newMessages = response.data.messages;
+        socketCleanupRef.current.handleNotConfigured = on('not_configured', () => {
+            setSocketConnected(false);
+            showToast('ℹ️ Chế độ manual refresh', 'info');
+        });
 
+        // Lắng nghe tin nhắn mới
+        socketCleanupRef.current.handleChatUpdate = onChatUpdate((data) => {
+            if (data.roomId === room?._id) {
                 setMessages(prev => {
-                    // Create a Set of ALL existing message IDs (including optimistic ones)
-                    const existingIds = new Set(prev.map(msg => msg._id || msg.tempId));
-
-                    // Only add messages that don't already exist
-                    const uniqueNewMessages = newMessages.filter(msg => !existingIds.has(msg._id));
-
-                    // Remove optimistic messages that got confirmed (match by message content and timestamp)
-                    const confirmed = new Set(newMessages.map(m => `${m.message}-${m.sender_type}`));
-                    const filtered = prev.filter(msg => {
-                        if (!msg.__optimistic) return true;
-                        const key = `${msg.message}-${msg.sender_type}`;
-                        return !confirmed.has(key);
-                    });
-
-                    // Merge and return - ensuring no duplicates
-                    return [...filtered, ...uniqueNewMessages];
+                    const exists = prev.some(msg => msg._id === data.message._id);
+                    if (!exists) {
+                        const filtered = prev.filter(msg => !msg.__optimistic);
+                        return [...filtered, data.message];
+                    }
+                    return prev;
                 });
-
-                // Update last message ID
-                const latestMessage = newMessages[newMessages.length - 1];
-                lastMessageIdRef.current = latestMessage._id;
-
-                // Check if any new message is from admin
-                const hasAdminMessage = newMessages.some(msg => msg.sender_type === 'admin');
-                if (hasAdminMessage && !adminOnline) {
-                    setAdminOnline(true);
-                    showToast('Admin đã vào hỗ trợ! 👨‍💼', 'success');
-                }
-
                 scrollToBottom();
-            }
 
-            // Also poll room status to check if admin assigned or room closed
-            const roomResponse = await axios.get(
-                `${API_URL}/api/chat/rooms/${room._id}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
+                // Phát hiện admin vào hỗ trợ
+                if (data.message.sender_type === 'admin' && !adminOnline) {
+                    setAdminOnline(true);
+                    showToast('Admin đã vào hỗ trợ! 👨‍💼', 'success');
                 }
-            );
+            }
+        });
 
-            if (roomResponse.data.room) {
-                const updatedRoom = roomResponse.data.room;
+        // Lắng nghe cập nhật phòng
+        // Thay thế phần socket listener về admin
+        socketCleanupRef.current.handleRoomUpdate = onRoomUpdate((data) => {
+            if (data.roomId === room?._id) {
+                setRoom(prev => ({ ...prev, ...data.room }));
 
-                // Check if admin was assigned
-                if (!room.admin_id && updatedRoom.admin_id) {
+                // ✅ Phát hiện admin được assign
+                if (data.room.admin_id && (!prev?.admin_id || !prev.admin_id._id)) {
                     setAdminOnline(true);
                     showToast('Admin đã vào hỗ trợ! 👨‍💼', 'success');
                 }
 
-                // Check if room was closed
-                if (room.status !== 'resolved' && updatedRoom.status === 'resolved') {
+                // ✅ Phát hiện phòng đóng
+                if (data.room.status === 'resolved' && room?.status !== 'resolved') {
                     showToast('Cuộc hội thoại đã kết thúc', 'info');
-                    setTimeout(() => {
-                        setRatingDialog(true);
-                    }, 1000);
-                }
-
-                setRoom(updatedRoom);
-            }
-        } catch (error) {
-            console.error('Polling error:', error);
-
-            // If room not found (404), the room was deleted or doesn't exist
-            // Stop polling and create a fresh room (ONE TIME ONLY)
-            if (error.response?.status === 404) {
-                console.warn('❌ Chat room not found (404):', room?._id);
-
-                // Only handle if not already reinitializing
-                if (!isReinitializingRef.current) {
-                    console.log('🔄 Starting room reinitialization...');
-
-                    // Set flag to stop all polling immediately and prevent multiple reinitializations
-                    isReinitializingRef.current = true;
-
-                    // Clear room state completely
-                    const oldRoomId = room?._id;
-                    setRoom(null);
-                    currentRoomIdRef.current = null;
-                    setMessages([]);
-                    lastMessageIdRef.current = null;
-
-                    // Clear any cached room data from localStorage
-                    try {
-                        localStorage.removeItem('chatRoomId');
-                        localStorage.removeItem('lastChatRoomId');
-                    } catch (e) {
-                        console.error('Failed to clear localStorage:', e);
-                    }
-
-                    // Create a new room if chat is still open (one-time only)
-                    if (isOpen) {
-                        console.log('✅ Creating new room to replace:', oldRoomId);
-                        setTimeout(() => {
-                            initializeChatRoom();
-                        }, 500);
-                    } else {
-                        // If chat closed, just reset the flag
-                        isReinitializingRef.current = false;
-                    }
-                } else {
-                    console.log('⏭️ Already reinitializing, skipping duplicate 404 handler');
+                    setTimeout(() => setRatingDialog(true), 1000);
                 }
             }
+        });
+
+        return () => {
+            Object.values(socketCleanupRef.current).forEach(cleanup => {
+                if (typeof cleanup === 'function') cleanup();
+            });
+            disconnectSocket(true);
+            setSocketConnected(false);
+        };
+    }, [user, room]);
+
+    // 🚀 WEBSOCKET: Join/leave room khi phòng thay đổi
+    useEffect(() => {
+        if (room && socketConnected) {
+            joinRoom(room._id);
+            currentRoomIdRef.current = room._id;
+            return () => {
+                leaveRoom(room._id);
+                currentRoomIdRef.current = null;
+            };
         }
-    };
+    }, [room, socketConnected]);
 
-    // Poll messages every 3 seconds when chat is open
-    usePolling(pollMessages, 3000, isOpen && !!room);
-
-    // 🔄 Polling: Check admin online status every 10 seconds
-    // NOTE: Disabled - API endpoint not implemented yet
-    // Admin status is now detected when admin sends a message
-    const pollAdminStatus = async () => {
-        // Disabled to prevent 404 errors
-        // TODO: Implement backend API endpoint /api/chat/admin/online-status
-        return;
-    };
-
-    // Poll admin status every 10 seconds (currently disabled)
-    // usePolling(pollAdminStatus, 10000, isOpen);
-
-    // Helper function to load messages for a room
+    // Load messages for a room
     const loadMessagesForRoom = async (roomId) => {
         try {
             const messagesResponse = await axios.get(`${API_URL}/api/chat/rooms/${roomId}/messages`, {
@@ -365,19 +307,19 @@ const SupportChatbox = () => {
                 }
             });
             setMessages(messagesResponse.data.messages);
-            scrollToBottom(true); // Force scroll on initial load
+            scrollToBottom(true);
         } catch (error) {
             console.error('Failed to load messages:', error);
+            if (error.response?.status === 401) {
+                showToast('Phiên đăng nhập hết hạn', 'error');
+            }
         }
     };
 
-    // Get or create chat room when opening
+    // Get or create chat room
     const initializeChatRoom = async () => {
         try {
-            console.log('🚀 Initializing chat room...');
             setIsLoading(true);
-
-            // Get current page context
             const context = {
                 page: window.location.pathname,
                 action: determineAction(window.location.pathname),
@@ -394,39 +336,22 @@ const SupportChatbox = () => {
             );
 
             const roomData = response.data.room;
-            console.log('✅ Room created/retrieved:', roomData._id);
-
-            // Set room and track its ID
             setRoom(roomData);
             currentRoomIdRef.current = roomData._id;
 
-            // Load messages
-            const messagesResponse = await axios.get(`${API_URL}/api/chat/rooms/${roomData._id}/messages`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-
-            setMessages(messagesResponse.data.messages);
+            await loadMessagesForRoom(roomData._id);
             setUnreadCount(0);
-            lastMessageIdRef.current = null; // Reset to load all new messages
+            lastMessageIdRef.current = null;
 
-            // Reset reinitialize flag on success - allow polling to resume
-            console.log('✅ Room initialization complete, resuming polling');
-            isReinitializingRef.current = false;
-
-            scrollToBottom(true); // Force scroll on room init
+            scrollToBottom(true);
         } catch (error) {
             console.error('❌ Failed to initialize chat:', error);
             showToast('Không thể khởi tạo chat. Vui lòng thử lại.', 'error');
-            // Reset flag even on error to allow retry
-            isReinitializingRef.current = false;
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Determine user action based on current path
     const determineAction = (path) => {
         if (path.includes('/create')) return 'building';
         if (path.includes('/marketplace')) return 'marketplace';
@@ -435,7 +360,6 @@ const SupportChatbox = () => {
         return 'general';
     };
 
-    // Open chat
     const handleOpen = () => {
         setIsOpen(true);
         if (!room) {
@@ -445,20 +369,24 @@ const SupportChatbox = () => {
         }
     };
 
-    // Close chat
     const handleClose = () => {
         setIsOpen(false);
-        // Polling sẽ tự động dừng khi isOpen = false
     };
 
-    // Send message
+    // Manual refresh function
+    const handleManualRefresh = async () => {
+        if (room) {
+            await loadMessagesForRoom(room._id);
+            showToast('Đã làm mới tin nhắn', 'success');
+        }
+    };
+
     const handleSendMessage = async () => {
         if (!inputMessage.trim() || !room) return;
 
         const messageText = inputMessage.trim();
         setInputMessage('');
 
-        // 🚀 OPTIMISTIC UPDATE: Add message to UI immediately
         const optimisticMessage = {
             _id: `temp-${Date.now()}`,
             room_id: room._id,
@@ -471,16 +399,15 @@ const SupportChatbox = () => {
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
-        scrollToBottom(true); // Force scroll when user sends message
+        scrollToBottom(true);
 
-        // Send message via HTTP POST
         try {
             await axios.post(
                 `${API_URL}/api/chat/rooms/${room._id}/messages`,
                 {
                     message: messageText,
                     message_type: 'text',
-                    enableAI: !room.admin_id // Enable AI only if no admin assigned
+                    enableAI: !room.admin_id
                 },
                 {
                     headers: {
@@ -488,34 +415,26 @@ const SupportChatbox = () => {
                     }
                 }
             );
-
-            // Polling sẽ tự động fetch message mới trong 3s
         } catch (error) {
             console.error('Send message error:', error);
             showToast('Không thể gửi tin nhắn. Vui lòng thử lại.', 'error');
-            // Remove optimistic message
             setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
         }
     };
 
-    // Handle typing
     const handleTyping = (e) => {
         setInputMessage(e.target.value);
-        // Typing indicator disabled (không cần thiết với polling)
     };
 
-    // Handle file upload
     const handleFileUpload = async (e) => {
         const file = e.target.files[0];
         if (!file || !room) return;
 
-        // Validate file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
             showToast('File quá lớn! Tối đa 10MB', 'error');
             return;
         }
 
-        // Show image preview for images
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onloadend = () => {
@@ -546,7 +465,6 @@ const SupportChatbox = () => {
                 }
             );
 
-            // Send message with attachment via HTTP POST
             await axios.post(
                 `${API_URL}/api/chat/rooms/${room._id}/messages`,
                 {
@@ -570,32 +488,26 @@ const SupportChatbox = () => {
         } finally {
             setIsUploading(false);
             setUploadProgress(0);
-            // Reset file input
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
         }
     };
 
-    // Quick action buttons
     const handleQuickAction = (question) => {
         setInputMessage(question);
         setTimeout(() => handleSendMessage(), 100);
     };
 
-    // Handle scroll detection
     const handleScroll = () => {
         if (messagesContainerRef.current) {
             const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
             const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-            // User has scrolled up if distance from bottom > 100px
             setUserScrolledUp(distanceFromBottom > 100);
         }
     };
 
-    // Scroll to bottom with optional force parameter
     const scrollToBottom = (force = false) => {
-        // Only auto-scroll if user is at bottom OR force scroll
         if (force || !userScrolledUp) {
             setTimeout(() => {
                 messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -604,11 +516,9 @@ const SupportChatbox = () => {
     };
 
     useEffect(() => {
-        // Only auto-scroll if user hasn't scrolled up
         scrollToBottom();
     }, [messages]);
 
-    // Handle AI feedback
     const handleAIFeedback = async (messageId, isHelpful) => {
         try {
             await axios.post(
@@ -623,7 +533,6 @@ const SupportChatbox = () => {
 
             setFeedbackGiven(prev => ({ ...prev, [messageId]: isHelpful }));
 
-            // If not helpful, suggest admin
             if (!isHelpful) {
                 setTimeout(() => {
                     const shouldConnectAdmin = window.confirm(
@@ -639,9 +548,8 @@ const SupportChatbox = () => {
         }
     };
 
-    // Request admin connection
     const handleRequestAdmin = async () => {
-        if (!room || !socket || requestingAdmin) return;
+        if (!room || requestingAdmin) return;
 
         setRequestingAdmin(true);
 
@@ -656,7 +564,6 @@ const SupportChatbox = () => {
                 }
             );
 
-            // Socket will handle the escalation on backend
             showToast('Đã gửi yêu cầu đến Admin. Admin sẽ hỗ trợ bạn trong giây lát! 👨‍💼', 'success');
         } catch (error) {
             console.error('Request admin error:', error);
@@ -666,7 +573,6 @@ const SupportChatbox = () => {
         }
     };
 
-    // Handle rating submission
     const handleSubmitRating = async () => {
         if (!room || rating === 0) {
             showToast('Vui lòng chọn số sao đánh giá', 'warning');
@@ -694,7 +600,6 @@ const SupportChatbox = () => {
         }
     };
 
-    // Don't show chatbox for admin users - they use admin dashboard instead
     if (!user || user.role === 'admin') return null;
 
     return (
@@ -710,7 +615,6 @@ const SupportChatbox = () => {
                     </Tooltip>
                 ) : (
                     <>
-                        {/* Header */}
                         <ChatHeader>
                             <Box display="flex" alignItems="center" gap={1}>
                                 <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.3)' }}>
@@ -721,20 +625,35 @@ const SupportChatbox = () => {
                                         Hỗ trợ Landing Hub
                                     </Typography>
                                     <Typography variant="caption">
+                                        {/* ✅ Hiển thị trạng thái kết nối */}
                                         {adminOnline ? (
                                             <><span style={{color: '#4ade80'}}>●</span> Admin đang online</>
+                                        ) : socketConnected ? (
+                                            <><span style={{color: '#fbbf24'}}>●</span> AI Bot sẵn sàng</>
                                         ) : (
-                                            <><span style={{color: '#fbbf24'}}>●</span> AI Bot sẵn sàng hỗ trợ</>
+                                            <><span style={{color: '#ef4444'}}>●</span> Đang kết nối...</>
                                         )}
                                     </Typography>
                                 </Box>
                             </Box>
-                            <IconButton onClick={handleClose} sx={{ color: '#fff' }} size="small">
-                                <CloseIcon />
-                            </IconButton>
+                            <Box>
+                                {/* ✅ Nút refresh thủ công khi mất kết nối */}
+                                {!socketConnected && (
+                                    <IconButton
+                                        onClick={handleManualRefresh}
+                                        size="small"
+                                        sx={{ color: '#fff', mr: 1 }}
+                                        title="Làm mới"
+                                    >
+                                        <RefreshIcon fontSize="small" />
+                                    </IconButton>
+                                )}
+                                <IconButton onClick={handleClose} sx={{ color: '#fff' }} size="small">
+                                    <CloseIcon />
+                                </IconButton>
+                            </Box>
                         </ChatHeader>
 
-                        {/* Messages */}
                         <MessagesContainer ref={messagesContainerRef} onScroll={handleScroll}>
                             {isLoading ? (
                                 <Box display="flex" justifyContent="center" alignItems="center" height="100%">
@@ -753,8 +672,6 @@ const SupportChatbox = () => {
                                             <Typography variant="body2" color="textSecondary" mb={2}>
                                                 Bạn cần hỗ trợ gì hôm nay?
                                             </Typography>
-
-                                            {/* Quick action buttons */}
                                             <Box display="flex" flexDirection="column" gap={1} mt={2}>
                                                 <QuickActionButton
                                                     variant="outlined"
@@ -779,86 +696,83 @@ const SupportChatbox = () => {
                                     )}
 
                                     {messages.map((msg, index) => {
-                                        // Ensure unique key for each message (including optimistic ones)
                                         const messageKey = msg._id || msg.tempId || `msg-${index}-${msg.createdAt || Date.now()}`;
                                         return (
-                                        <Box key={messageKey}>
-                                            {msg.message_type === 'system' ? (
-                                                <Box textAlign="center" my={1}>
-                                                    <Chip label={msg.message} size="small" />
-                                                </Box>
-                                            ) : (
-                                                <Box display="flex" flexDirection="column" alignItems={msg.sender_type === 'user' ? 'flex-end' : 'flex-start'}>
-                                                    <Box display="flex" gap={1} alignItems="flex-end">
-                                                        {msg.sender_type !== 'user' && (
-                                                            <Avatar sx={{ width: 24, height: 24, bgcolor: msg.sender_type === 'bot' ? '#1976d2' : '#667eea' }}>
-                                                                {msg.sender_type === 'bot' ? <BotIcon sx={{ fontSize: 14 }} /> : <PersonIcon sx={{ fontSize: 14 }} />}
-                                                            </Avatar>
-                                                        )}
-                                                        <MessageBubble isOwn={msg.sender_type === 'user'} isBot={msg.sender_type === 'bot'}>
-                                                            {msg.message}
-                                                            {msg.attachments && msg.attachments.length > 0 && (
-                                                                <Box mt={1}>
-                                                                    {msg.attachments.map((att, i) => (
-                                                                        att.type === 'image' ? (
-                                                                            <img key={i} src={att.url} alt={att.filename} style={{ maxWidth: '100%', borderRadius: 8 }} />
-                                                                        ) : (
-                                                                            <a key={i} href={att.url} target="_blank" rel="noopener noreferrer">
-                                                                                {att.filename}
-                                                                            </a>
-                                                                        )
-                                                                    ))}
-                                                                </Box>
-                                                            )}
-                                                        </MessageBubble>
+                                            <Box key={messageKey}>
+                                                {msg.message_type === 'system' ? (
+                                                    <Box textAlign="center" my={1}>
+                                                        <Chip label={msg.message} size="small" />
                                                     </Box>
-                                                    <Typography variant="caption" color="textSecondary" sx={{ ml: msg.sender_type !== 'user' ? 5 : 0, mt: 0.5 }}>
-                                                        {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                                                    </Typography>
-
-                                                    {/* AI Feedback Buttons */}
-                                                    {msg.sender_type === 'bot' && (!room.admin_id || !room.admin_id._id) && !feedbackGiven[msg._id] && (
-                                                        <Box display="flex" gap={0.5} ml={msg.sender_type !== 'user' ? 5 : 0} mt={0.5}>
-                                                            <Tooltip title="Câu trả lời hữu ích">
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() => handleAIFeedback(msg._id, true)}
-                                                                    sx={{
-                                                                        fontSize: '0.75rem',
-                                                                        padding: '2px 6px',
-                                                                        bgcolor: '#e8f5e9',
-                                                                        '&:hover': { bgcolor: '#c8e6c9' }
-                                                                    }}
-                                                                >
-                                                                    👍
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            <Tooltip title="Cần hỗ trợ thêm">
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() => handleAIFeedback(msg._id, false)}
-                                                                    sx={{
-                                                                        fontSize: '0.75rem',
-                                                                        padding: '2px 6px',
-                                                                        bgcolor: '#ffebee',
-                                                                        '&:hover': { bgcolor: '#ffcdd2' }
-                                                                    }}
-                                                                >
-                                                                    👎
-                                                                </IconButton>
-                                                            </Tooltip>
+                                                ) : (
+                                                    <Box display="flex" flexDirection="column" alignItems={msg.sender_type === 'user' ? 'flex-end' : 'flex-start'}>
+                                                        <Box display="flex" gap={1} alignItems="flex-end">
+                                                            {msg.sender_type !== 'user' && (
+                                                                <Avatar sx={{ width: 24, height: 24, bgcolor: msg.sender_type === 'bot' ? '#1976d2' : '#667eea' }}>
+                                                                    {msg.sender_type === 'bot' ? <BotIcon sx={{ fontSize: 14 }} /> : <PersonIcon sx={{ fontSize: 14 }} />}
+                                                                </Avatar>
+                                                            )}
+                                                            <MessageBubble isOwn={msg.sender_type === 'user'} isBot={msg.sender_type === 'bot'}>
+                                                                {msg.message}
+                                                                {msg.attachments && msg.attachments.length > 0 && (
+                                                                    <Box mt={1}>
+                                                                        {msg.attachments.map((att, i) => (
+                                                                            att.type === 'image' ? (
+                                                                                <img key={i} src={att.url} alt={att.filename} style={{ maxWidth: '100%', borderRadius: 8 }} />
+                                                                            ) : (
+                                                                                <a key={i} href={att.url} target="_blank" rel="noopener noreferrer">
+                                                                                    {att.filename}
+                                                                                </a>
+                                                                            )
+                                                                        ))}
+                                                                    </Box>
+                                                                )}
+                                                            </MessageBubble>
                                                         </Box>
-                                                    )}
-
-                                                    {/* Feedback given confirmation */}
-                                                    {msg.sender_type === 'bot' && feedbackGiven[msg._id] !== undefined && (
-                                                        <Typography variant="caption" color="textSecondary" sx={{ ml: 5, mt: 0.5, fontStyle: 'italic' }}>
-                                                            {feedbackGiven[msg._id] ? '✓ Cảm ơn phản hồi!' : '✓ Đã ghi nhận'}
+                                                        <Typography variant="caption" color="textSecondary" sx={{ ml: msg.sender_type !== 'user' ? 5 : 0, mt: 0.5 }}>
+                                                            {new Date(msg.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                                                         </Typography>
-                                                    )}
-                                                </Box>
-                                            )}
-                                        </Box>
+
+                                                        {msg.sender_type === 'bot' && (!room.admin_id || !room.admin_id._id) && !feedbackGiven[msg._id] && (
+                                                            <Box display="flex" gap={0.5} ml={msg.sender_type !== 'user' ? 5 : 0} mt={0.5}>
+                                                                <Tooltip title="Câu trả lời hữu ích">
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        onClick={() => handleAIFeedback(msg._id, true)}
+                                                                        sx={{
+                                                                            fontSize: '0.75rem',
+                                                                            padding: '2px 6px',
+                                                                            bgcolor: '#e8f5e9',
+                                                                            '&:hover': { bgcolor: '#c8e6c9' }
+                                                                        }}
+                                                                    >
+                                                                        👍
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                                <Tooltip title="Cần hỗ trợ thêm">
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        onClick={() => handleAIFeedback(msg._id, false)}
+                                                                        sx={{
+                                                                            fontSize: '0.75rem',
+                                                                            padding: '2px 6px',
+                                                                            bgcolor: '#ffebee',
+                                                                            '&:hover': { bgcolor: '#ffcdd2' }
+                                                                        }}
+                                                                    >
+                                                                        👎
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                            </Box>
+                                                        )}
+
+                                                        {msg.sender_type === 'bot' && feedbackGiven[msg._id] !== undefined && (
+                                                            <Typography variant="caption" color="textSecondary" sx={{ ml: 5, mt: 0.5, fontStyle: 'italic' }}>
+                                                                {feedbackGiven[msg._id] ? '✓ Cảm ơn phản hồi!' : '✓ Đã ghi nhận'}
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                )}
+                                            </Box>
                                         );
                                     })}
 
@@ -875,7 +789,6 @@ const SupportChatbox = () => {
                             )}
                         </MessagesContainer>
 
-                        {/* Connect to Admin Button */}
                         {room && room.status !== 'resolved' && (!room.admin_id || !room.admin_id._id) && (
                             <Box px={2} pb={1}>
                                 <Button
@@ -901,7 +814,6 @@ const SupportChatbox = () => {
                             </Box>
                         )}
 
-                        {/* Image Preview & Upload Progress */}
                         {(imagePreview || isUploading) && (
                             <Box px={2} pb={1}>
                                 {imagePreview && (
@@ -953,7 +865,6 @@ const SupportChatbox = () => {
                             </Box>
                         )}
 
-                        {/* Input */}
                         {room && room.status !== 'resolved' && (
                             <InputContainer>
                                 <input
@@ -1023,7 +934,6 @@ const SupportChatbox = () => {
                 )}
             </ChatContainer>
 
-            {/* Toast Notifications */}
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={4000}
@@ -1035,7 +945,6 @@ const SupportChatbox = () => {
                 </Alert>
             </Snackbar>
 
-            {/* Rating Dialog */}
             <Dialog open={ratingDialog} onClose={() => setRatingDialog(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>
                     <Typography variant="h6" fontWeight={600}>

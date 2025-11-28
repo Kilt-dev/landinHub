@@ -21,10 +21,15 @@ const corsOptions = {
             process.env.FRONTEND_URL || 'http://localhost:3000',
             process.env.REACT_APP_API_URL || 'http://localhost:3000',
             'http://localhost:3000',
+            'http://localhost:3001',
             'http://localhost:5000',
             'https://landinghub.shop',
             'https://www.landinghub.shop',
+            'https://landinghub.shop',
             'https://api.landinghub.shop',
+            'https://www.landinghub.shop',
+            '*'
+
         ];
 
         // Allow CloudFront domains (*.cloudfront.net) and landinghub domains

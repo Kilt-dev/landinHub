@@ -753,7 +753,7 @@ const AdminMarketplace = () => {
 
                     {showRejectModal && (
                         <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
-                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="modal-content1" onClick={(e) => e.stopPropagation()}>
                                 <h2>Từ chối landing page</h2>
                                 <p style={{ marginBottom: '15px', color: '#6b7280' }}>Vui lòng nhập lý do từ chối để người bán có thể cải thiện:</p>
                                 <textarea placeholder="Ví dụ: Nội dung không phù hợp, vi phạm bản quyền, chất lượng kém..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={5} style={{ width: '100%', padding: '12px', border: '1px solid #d1d5db', borderRadius: '8px', fontSize: '14px', resize: 'vertical' }} />

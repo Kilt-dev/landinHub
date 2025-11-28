@@ -741,7 +741,7 @@ body {
     z-index: 1000;
 }
 
-.modal-content {
+.modal-content1 {
     background: var(--color-light);
     border-radius: var(--radius);
     padding: var(--space-2xl);
@@ -751,7 +751,7 @@ body {
     animation: slideUp 0.3s ease-out;
 }
 
-.modal-content h2 {
+.modal-content1 h2 {
     font-family: var(--font-serif);
     font-size: 1.5rem;
     font-weight: 700;
@@ -759,13 +759,13 @@ body {
     margin-bottom: var(--space-lg);
 }
 
-.modal-content p {
+.modal-content1 p {
     color: var(--color-gray-500);
     line-height: 1.6;
     margin-bottom: var(--space-lg);
 }
 
-.modal-content textarea {
+.modal-content1 textarea {
     width: 100%;
     padding: var(--space-lg);
     border: 1px solid var(--color-gray-200);
@@ -777,19 +777,19 @@ body {
     transition: var(--transition);
 }
 
-.modal-content textarea:focus {
+.modal-content1 textarea:focus {
     outline: none;
     border-color: var(--color-accent);
     box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
 }
 
-.modal-content img {
+.modal-content1 img {
     width: 100%;
     border-radius: var(--radius);
     margin-bottom: var(--space-lg);
 }
 
-.modal-content button {
+.modal-content1 button {
     padding: var(--space-md) var(--space-lg);
     border: none;
     border-radius: var(--radius);

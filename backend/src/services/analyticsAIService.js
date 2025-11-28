@@ -13,13 +13,28 @@ const MarketplacePage = require('../models/MarketplacePage');
  */
 async function analyzeChatTrends(chatData) {
     try {
+        // Check if we have enough data to analyze
+        if (!chatData.totalChats || chatData.totalChats === 0) {
+            console.log('[Analytics AI] No chat data available for analysis');
+            return null;
+        }
+
+        if (!chatData.dailyTrends || chatData.dailyTrends.length === 0) {
+            console.log('[Analytics AI] No daily trends data available');
+            return null;
+        }
+
+        const resolutionRate = chatData.totalChats > 0
+            ? ((chatData.resolvedChats / chatData.totalChats) * 100).toFixed(1)
+            : '0.0';
+
         const prompt = `Phân tích xu hướng chat và đưa ra nhận xét chuyên sâu:
 
 Dữ liệu ${chatData.days} ngày gần đây:
 - Tổng cuộc hội thoại: ${chatData.totalChats}
 - Cuộc hội thoại mở: ${chatData.openChats}
 - Đã giải quyết: ${chatData.resolvedChats}
-- Tỷ lệ giải quyết: ${((chatData.resolvedChats / chatData.totalChats) * 100).toFixed(1)}%
+- Tỷ lệ giải quyết: ${resolutionRate}%
 
 Xu hướng theo ngày:
 ${JSON.stringify(chatData.dailyTrends, null, 2)}
@@ -32,6 +47,8 @@ Hãy đưa ra:
 
 Trả lời ngắn gọn, súc tích bằng tiếng Việt (tối đa 200 từ).`;
 
+        console.log(`[Analytics AI] Analyzing chat trends for ${chatData.days} days with ${chatData.totalChats} total chats`);
+
         const result = await chatCompletion([
             { role: 'system', content: 'Bạn là chuyên gia phân tích dữ liệu customer support, giỏi đưa ra insights và recommendations.' },
             { role: 'user', content: prompt }
@@ -42,8 +59,8 @@ Trả lời ngắn gọn, súc tích bằng tiếng Việt (tối đa 200 từ).
 
         return result.response;
     } catch (error) {
-        console.error('AI chat analysis error:', error);
-        return 'Không thể phân tích dữ liệu chat.';
+        console.error('[Analytics AI] Chat analysis error:', error);
+        return null;
     }
 }
 
@@ -52,11 +69,22 @@ Trả lời ngắn gọn, súc tích bằng tiếng Việt (tối đa 200 từ).
  */
 async function analyzeMarketplace(marketData) {
     try {
+        // Check if we have enough data to analyze
+        if (!marketData.totalTemplates || marketData.totalTemplates === 0) {
+            console.log('[Analytics AI] No marketplace templates available for analysis');
+            return null;
+        }
+
+        if (!marketData.categories || marketData.categories.length === 0) {
+            console.log('[Analytics AI] No category data available');
+            return null;
+        }
+
         const prompt = `Phân tích hiệu suất marketplace và đưa ra khuyến nghị:
 
 Thống kê tổng quan:
 - Tổng templates: ${marketData.totalTemplates}
-- Tổng doanh số: ${marketData.totalSales} VNĐ
+- Tổng doanh số: ${marketData.totalSales || 0} VNĐ
 - Templates bán chạy nhất: ${marketData.topTemplate?.title || 'N/A'}
 - Category tốt nhất: ${marketData.topCategory || 'N/A'}
 
@@ -64,12 +92,14 @@ Phân tích theo danh mục:
 ${JSON.stringify(marketData.categories, null, 2)}
 
 Hãy đưa ra:
-1.  Những điểm mạnh hiện tại
-2.  Danh mục cần cải thiện và lý do
-3.  3 chiến lược tăng doanh số cụ thể
+1. Những điểm mạnh hiện tại
+2. Danh mục cần cải thiện và lý do
+3. 3 chiến lược tăng doanh số cụ thể
 4. Đề xuất danh mục/template nên phát triển
 
 Trả lời ngắn gọn bằng tiếng Việt (tối đa 200 từ).`;
+
+        console.log(`[Analytics AI] Analyzing marketplace with ${marketData.totalTemplates} templates and ${marketData.categories.length} categories`);
 
         const result = await chatCompletion([
             { role: 'system', content: 'Bạn là chuyên gia marketplace & e-commerce, am hiểu về digital products và landing pages.' },
@@ -81,8 +111,8 @@ Trả lời ngắn gọn bằng tiếng Việt (tối đa 200 từ).`;
 
         return result.response;
     } catch (error) {
-        console.error('AI marketplace analysis error:', error);
-        return 'Không thể phân tích dữ liệu marketplace.';
+        console.error('[Analytics AI] Marketplace analysis error:', error);
+        return null;
     }
 }
 
@@ -91,6 +121,12 @@ Trả lời ngắn gọn bằng tiếng Việt (tối đa 200 từ).`;
  */
 async function getSmartRecommendations(stats) {
     try {
+        // Check if we have minimal data
+        if (!stats || typeof stats.openChats === 'undefined') {
+            console.log('[Analytics AI] Insufficient stats for recommendations');
+            return null;
+        }
+
         const urgentChatsRatio = stats.openChats / (stats.totalChats || 1);
         const resolutionRate = stats.resolvedToday / (stats.todayChats || 1);
 
@@ -110,6 +146,8 @@ Format:
 
 Chỉ liệt kê, không giải thích.`;
 
+        console.log(`[Analytics AI] Generating recommendations: ${stats.openChats} open chats, ${stats.todayMessages} messages today`);
+
         const result = await chatCompletion([
             { role: 'system', content: 'Bạn là AI assistant cho admin, giúp ưu tiên công việc hiệu quả.' },
             { role: 'user', content: prompt }
@@ -120,7 +158,7 @@ Chỉ liệt kê, không giải thích.`;
 
         return result.response;
     } catch (error) {
-        console.error('AI recommendations error:', error);
+        console.error('[Analytics AI] Recommendations error:', error);
         return '1. 📧 Kiểm tra email mới\n2. 💬 Trả lời chat đang chờ\n3. 📊 Xem báo cáo hôm nay';
     }
 }
@@ -130,6 +168,11 @@ Chỉ liệt kê, không giải thích.`;
  */
 async function analyzeChatConversation(messages, roomInfo) {
     try {
+        if (!messages || messages.length === 0) {
+            console.log('[Analytics AI] No messages to analyze');
+            return null;
+        }
+
         const conversation = messages.slice(-10).map(msg =>
             `${msg.sender_type}: ${msg.message}`
         ).join('\n');
@@ -152,6 +195,8 @@ Hãy đưa ra:
 
 Trả lời ngắn gọn.`;
 
+        console.log(`[Analytics AI] Analyzing conversation in room ${roomInfo._id || 'unknown'} with ${messages.length} messages`);
+
         const result = await chatCompletion([
             { role: 'system', content: 'Bạn là AI assistant giúp admin xử lý customer support nhanh chóng.' },
             { role: 'user', content: prompt }
@@ -162,7 +207,7 @@ Trả lời ngắn gọn.`;
 
         return result.response;
     } catch (error) {
-        console.error('AI conversation analysis error:', error);
+        console.error('[Analytics AI] Conversation analysis error:', error);
         return null;
     }
 }
@@ -172,6 +217,11 @@ Trả lời ngắn gọn.`;
  */
 async function generateSuggestedReply(userMessage, context) {
     try {
+        if (!userMessage || userMessage.trim().length === 0) {
+            console.log('[Analytics AI] No message to generate reply for');
+            return null;
+        }
+
         const prompt = `User hỏi: "${userMessage}"
 
 Context: ${context.subject || 'General support'}
@@ -179,6 +229,8 @@ Tags: ${context.tags?.join(', ') || 'N/A'}
 
 Hãy đề xuất 1 câu trả lời ngắn gọn, chuyên nghiệp và hữu ích cho admin.
 Chỉ trả về câu trả lời, không giải thích thêm.`;
+
+        console.log(`[Analytics AI] Generating suggested reply for message: "${userMessage.substring(0, 50)}..."`);
 
         const result = await chatCompletion([
             { role: 'system', content: 'Bạn là customer support expert của Landing Hub, giúp admin trả lời nhanh và chính xác.' },
@@ -190,7 +242,7 @@ Chỉ trả về câu trả lời, không giải thích thêm.`;
 
         return result.response;
     } catch (error) {
-        console.error('AI suggested reply error:', error);
+        console.error('[Analytics AI] Suggested reply error:', error);
         return null;
     }
 }

@@ -4,7 +4,22 @@ import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import '../styles/Dashboard.css';
 import axios from 'axios';
-import { usePolling } from '../hooks/usePolling';
+// import { usePolling } from '../hooks/usePolling'; // ❌ ĐÃ XÓA
+
+// ✅ WebSocket imports
+import {
+    initSocket,
+    disconnectSocket,
+    on,
+    onRoomUpdate,
+    onChatUpdate,
+    joinRoom,
+    leaveRoom,
+    joinDashboard,
+    leaveDashboard,
+    getStatus
+} from '../utils/socket';
+
 import {
     Box,
     Container,
@@ -45,7 +60,9 @@ import {
     Refresh as RefreshIcon,
     MoreVert as MoreVertIcon,
     PriorityHigh as PriorityIcon,
-    Close as CloseIcon
+    Close as CloseIcon,
+    Wifi as WifiIcon,
+    WifiOff as WifiOffIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -58,6 +75,7 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
 const MessagesContainer = styled(Box)(({ theme }) => ({
     flex: 1,
     overflowY: 'auto',
+    overflow: 'hidden',
     padding: theme.spacing(2),
     backgroundColor: '#f5f5f5',
     '&::-webkit-scrollbar': {
@@ -96,19 +114,21 @@ const AdminSupport = () => {
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState('');
     const [loading, setLoading] = useState(true);
-    const [tabValue, setTabValue] = useState(0); // 0: All, 1: Open, 2: Assigned, 3: Resolved
+    const [tabValue, setTabValue] = useState(0);
     const [stats, setStats] = useState(null);
     const [isTyping, setIsTyping] = useState(false);
     const [anchorEl, setAnchorEl] = useState(null);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
+    const [socketConnected, setSocketConnected] = useState(false);
+
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
-    const messagesContainerRef = useRef(null);  // NEW: Ref for scroll container
-    const [userScrolledUp, setUserScrolledUp] = useState(false);  // NEW: Track if user scrolled up
+    const messagesContainerRef = useRef(null);
+    const [userScrolledUp, setUserScrolledUp] = useState(false);
+    const socketCleanupRef = useRef({});
 
     const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-    // Helper function to show toast notifications
     const showToast = (message, severity = 'info') => {
         setSnackbar({ open: true, message, severity });
     };
@@ -119,7 +139,17 @@ const AdminSupport = () => {
 
     const lastMessageIdRef = useRef(null);
 
-    // Load rooms - Defined first to avoid initialization errors
+    // ✅ HELPER: Kiểm tra token trước khi gọi API
+    const getAuthHeader = () => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToast('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại', 'error');
+            throw new Error('No token');
+        }
+        return { Authorization: `Bearer ${token}` };
+    };
+
+    // Load rooms - CHỈ GỌI KHI CẦN THIẾT
     const loadRooms = async () => {
         try {
             setLoading(true);
@@ -128,98 +158,123 @@ const AdminSupport = () => {
 
             const response = await axios.get(`${API_URL}/api/chat/admin/rooms`, {
                 params: status ? { status } : {},
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
+                headers: getAuthHeader() // ✅ Sử dụng helper
             });
 
-            setRooms(response.data.rooms);
+            const uniqueRooms = response.data.rooms.filter((room, index, self) =>
+                index === self.findIndex((r) => r._id === room._id)
+            );
+
+            setRooms(uniqueRooms);
         } catch (error) {
             console.error('Failed to load rooms:', error);
+            if (error.response?.status === 401) {
+                showToast('Lỗi xác thực, vui lòng đăng nhập lại', 'error');
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    // 🔄 Polling: Poll messages for selected room
-    const pollMessages = async () => {
-        if (!selectedRoom) return;
-
-        try {
-            const params = lastMessageIdRef.current
-                ? `?after=${lastMessageIdRef.current}`
-                : '';
-
-            const response = await axios.get(
-                `${API_URL}/api/chat/rooms/${selectedRoom._id}/messages${params}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
-            );
-
-            if (response.data.messages && response.data.messages.length > 0) {
-                const newMessages = response.data.messages;
-
-                setMessages(prev => {
-                    // Remove optimistic messages
-                    const filtered = prev.filter(msg => !msg.__optimistic);
-                    return [...filtered, ...newMessages];
-                });
-
-                // Update last message ID
-                const latestMessage = newMessages[newMessages.length - 1];
-                lastMessageIdRef.current = latestMessage._id;
-
-                // Only scroll if user is at bottom
-                scrollToBottom();
-
-                // ✅ IMPROVED: Only reload room list occasionally, not on every message
-                // This prevents the room list from scrolling constantly
-                // Room list is already being polled every 5 seconds separately
-            }
-        } catch (error) {
-            console.error('Polling error:', error);
-        }
-    };
-
-    // Poll messages every 3 seconds when room is selected
-    usePolling(pollMessages, 3000, !!selectedRoom);
-
-    // 🔄 Polling: Poll room list every 5 seconds
-    usePolling(loadRooms, 5000, true);
-
-    // Helper function to load messages for a room
     const loadMessagesForRoom = async (roomId) => {
         try {
             const response = await axios.get(`${API_URL}/api/chat/rooms/${roomId}/messages`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
+                headers: getAuthHeader()
             });
-            setMessages(response.data.messages);
-            scrollToBottom(true); // Force scroll when loading a room
+
+            const uniqueMessages = response.data.messages.filter((msg, index, self) =>
+                index === self.findIndex((m) => m._id === msg._id)
+            );
+
+            setMessages(uniqueMessages);
+            scrollToBottom(true);
         } catch (error) {
             console.error('Failed to load messages:', error);
+            showToast('Không thể tải tin nhắn', 'error');
         }
     };
 
-    // Load stats
     const loadStats = async () => {
         try {
             const response = await axios.get(`${API_URL}/api/chat/admin/stats`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
+                headers: getAuthHeader()
             });
 
             setStats(response.data.stats);
         } catch (error) {
             console.error('Failed to load stats:', error);
+            if (error.response?.status === 401) {
+                showToast('Lỗi xác thực', 'error');
+            }
         }
     };
 
+    // ✅ WEBSOCKET: Khởi tạo và lắng nghe sự kiện
+    useEffect(() => {
+        if (!user || user.role !== 'admin') return;
+
+        const socket = initSocket();
+
+        // Lắng nghe trạng thái kết nối
+        socketCleanupRef.current.handleConnected = on('connected', () => {
+            setSocketConnected(true);
+            joinDashboard();
+            showToast('✅ WebSocket kết nối thành công', 'success');
+        });
+
+        socketCleanupRef.current.handleDisconnected = on('disconnected', () => {
+            setSocketConnected(false);
+        });
+
+        socketCleanupRef.current.handleNotConfigured = on('not_configured', () => {
+            setSocketConnected(false);
+            showToast('ℹ️ WebSocket chưa cấu hình, dùng refresh thủ công', 'info');
+        });
+
+        // Lắng nghe cập nhật dữ liệu
+        socketCleanupRef.current.handleRoomUpdate = onRoomUpdate(() => {
+            showToast('📋 Danh sách phòng đã cập nhật', 'info');
+            loadRooms();
+        });
+
+        socketCleanupRef.current.handleChatUpdate = onChatUpdate((data) => {
+            if (data.roomId === selectedRoom?._id) {
+                setMessages(prev => {
+                    const exists = prev.some(msg => msg._id === data.message._id);
+                    if (!exists) {
+                        return [...prev.filter(msg => !msg.__optimistic), data.message];
+                    }
+                    return prev;
+                });
+                scrollToBottom();
+            }
+        });
+
+        socketCleanupRef.current.handleReconnectFailed = on('reconnect_failed', () => {
+            showToast('❌ Không thể kết nối WebSocket, dùng refresh thủ công', 'warning');
+        });
+
+        return () => {
+            // Cleanup tất cả listeners
+            Object.values(socketCleanupRef.current).forEach(cleanup => {
+                if (typeof cleanup === 'function') cleanup();
+            });
+            disconnectSocket(true);
+            setSocketConnected(false);
+        };
+    }, [user]);
+
+    // ✅ WEBSOCKET: Join/leave room khi chọn phòng
+    useEffect(() => {
+        if (selectedRoom && socketConnected) {
+            joinRoom(selectedRoom._id);
+            return () => {
+                leaveRoom(selectedRoom._id);
+            };
+        }
+    }, [selectedRoom, socketConnected]);
+
+    // Load initial data
     useEffect(() => {
         if (user && user.role === 'admin') {
             loadRooms();
@@ -227,34 +282,23 @@ const AdminSupport = () => {
         }
     }, [user, tabValue]);
 
-    // Select room
     const handleSelectRoom = async (room) => {
         try {
             setSelectedRoom(room);
-            lastMessageIdRef.current = null; // Reset for new room
+            lastMessageIdRef.current = null;
+            await loadMessagesForRoom(room._id);
 
-            // Load messages
-            const response = await axios.get(`${API_URL}/api/chat/rooms/${room._id}/messages`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem('token')}`
-                }
-            });
-
-            setMessages(response.data.messages);
-
-            // Set last message ID
-            if (response.data.messages.length > 0) {
-                const lastMsg = response.data.messages[response.data.messages.length - 1];
+            if (messages.length > 0) {
+                const lastMsg = messages[messages.length - 1];
                 lastMessageIdRef.current = lastMsg._id;
             }
 
             scrollToBottom();
         } catch (error) {
-            console.error('Failed to load messages:', error);
+            console.error('Failed to select room:', error);
         }
     };
 
-    // Assign room to self
     const handleAssignToSelf = async () => {
         if (!selectedRoom) return;
 
@@ -262,16 +306,11 @@ const AdminSupport = () => {
             await axios.post(
                 `${API_URL}/api/chat/admin/assign`,
                 { roomId: selectedRoom._id },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
+                { headers: getAuthHeader() }
             );
 
             showToast('Đã nhận hỗ trợ! 👨‍💼', 'success');
 
-            // Reload rooms
             setTimeout(() => {
                 loadRooms();
             }, 500);
@@ -281,16 +320,14 @@ const AdminSupport = () => {
         }
     };
 
-    // Send message
     const handleSendMessage = async () => {
         if (!inputMessage.trim() || !selectedRoom) return;
 
         const messageText = inputMessage.trim();
         setInputMessage('');
 
-        // 🚀 OPTIMISTIC UPDATE: Add message to UI immediately
         const optimisticMessage = {
-            _id: `temp-${Date.now()}`,
+            _id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             room_id: selectedRoom._id,
             sender_id: user,
             sender_type: 'admin',
@@ -301,9 +338,8 @@ const AdminSupport = () => {
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
-        scrollToBottom(true); // Force scroll when sending message
+        scrollToBottom(true);
 
-        // Send message via HTTP POST
         try {
             await axios.post(
                 `${API_URL}/api/chat/rooms/${selectedRoom._id}/messages`,
@@ -312,39 +348,31 @@ const AdminSupport = () => {
                     message_type: 'text',
                     enableAI: false
                 },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
+                { headers: getAuthHeader() }
             );
+
+            // ✅ WebSocket sẽ tự động nhận tin nhắn mới, không cần poll
         } catch (error) {
             console.error('Send message error:', error);
             showToast('Không thể gửi tin nhắn. Vui lòng thử lại.', 'error');
-            // Remove optimistic message
             setMessages(prev => prev.filter(msg => msg._id !== optimisticMessage._id));
         }
     };
 
-    // Handle typing
     const handleTyping = (e) => {
         setInputMessage(e.target.value);
-        // Typing indicator disabled (không cần với polling)
     };
 
-    // Close room
+    // Trong AdminSupport.js
     const handleCloseRoom = async () => {
         if (!selectedRoom) return;
 
         try {
-            await axios.post(
-                `${API_URL}/api/chat/admin/close-room`,
-                { roomId: selectedRoom._id },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
+            // Sử dụng endpoint admin để cập nhật status thành 'resolved'
+            await axios.put(
+                `${API_URL}/api/chat/admin/rooms/${selectedRoom._id}/status`,
+                { status: 'resolved' },
+                { headers: getAuthHeader() }
             );
 
             showToast('Đã đóng cuộc hội thoại! ✅', 'success');
@@ -360,7 +388,6 @@ const AdminSupport = () => {
         }
     };
 
-    // Update priority
     const handleUpdatePriority = async (priority) => {
         if (!selectedRoom) return;
 
@@ -368,22 +395,19 @@ const AdminSupport = () => {
             await axios.put(
                 `${API_URL}/api/chat/admin/rooms/${selectedRoom._id}/status`,
                 { priority },
-                {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`
-                    }
-                }
+                { headers: getAuthHeader() }
             );
 
             setSelectedRoom({ ...selectedRoom, priority });
             loadRooms();
             setAnchorEl(null);
+            showToast('Cập nhật mức độ ưu tiên thành công', 'success');
         } catch (error) {
             console.error('Failed to update priority:', error);
+            showToast('Cập nhật thất bại', 'error');
         }
     };
 
-    // ✅ IMPROVED: Only scroll to bottom if user is at bottom
     const scrollToBottom = (force = false) => {
         if (force || !userScrolledUp) {
             setTimeout(() => {
@@ -392,19 +416,15 @@ const AdminSupport = () => {
         }
     };
 
-    // ✅ NEW: Detect if user scrolled up
     const handleScroll = () => {
         if (messagesContainerRef.current) {
             const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
             const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-            // If user is within 100px from bottom, consider them at bottom
             setUserScrolledUp(distanceFromBottom > 100);
         }
     };
 
     useEffect(() => {
-        // Only auto-scroll if user hasn't scrolled up
         scrollToBottom();
     }, [messages]);
 
@@ -452,11 +472,19 @@ const AdminSupport = () => {
                 <Sidebar role={user.role} />
                 <div className="dashboard-content">
                     <Container maxWidth="xl" sx={{ py: 3 }}>
-                        <Typography variant="h4" gutterBottom fontWeight={600}>
-                            🎧 Hỗ trợ khách hàng
-                        </Typography>
+                        {/* ✅ Indicator trạng thái WebSocket */}
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                            <Typography variant="h4" gutterBottom fontWeight={600}>
+                                🎧 Hỗ trợ khách hàng
+                            </Typography>
+                            <Chip
+                                icon={socketConnected ? <WifiIcon /> : <WifiOffIcon />}
+                                label={socketConnected ? 'Realtime' : 'Offline'}
+                                color={socketConnected ? 'success' : 'default'}
+                                size="small"
+                            />
+                        </Box>
 
-                        {/* Stats */}
                         {stats && (
                             <Grid container spacing={2} sx={{ mb: 3 }}>
                                 <Grid item xs={12} sm={6} md={3}>
@@ -503,15 +531,16 @@ const AdminSupport = () => {
                         )}
 
                         <Grid container spacing={2}>
-                            {/* Room List */}
                             <Grid item xs={12} md={4}>
                                 <StyledPaper>
                                     <Box p={2} borderBottom="1px solid #e0e0e0">
                                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                                             <Typography variant="h6">Danh sách chat</Typography>
-                                            <IconButton size="small" onClick={loadRooms}>
-                                                <RefreshIcon />
-                                            </IconButton>
+                                            <Tooltip title="Làm mới">
+                                                <IconButton size="small" onClick={loadRooms}>
+                                                    <RefreshIcon />
+                                                </IconButton>
+                                            </Tooltip>
                                         </Box>
 
                                         <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} variant="fullWidth">
@@ -530,6 +559,11 @@ const AdminSupport = () => {
                                         ) : rooms.length === 0 ? (
                                             <Box p={4} textAlign="center">
                                                 <Typography color="textSecondary">Không có cuộc hội thoại nào</Typography>
+                                                {!socketConnected && (
+                                                    <Typography variant="caption" color="warning">
+                                                        ⚠️ Bật WebSocket để nhận tin nhắn realtime
+                                                    </Typography>
+                                                )}
                                             </Box>
                                         ) : (
                                             rooms.map((room) => (
@@ -570,7 +604,7 @@ const AdminSupport = () => {
                                                                 </Box>
                                                             }
                                                             secondary={
-                                                                <>
+                                                                <Box>
                                                                     <Typography variant="caption" display="block">
                                                                         {room.subject}
                                                                     </Typography>
@@ -584,7 +618,7 @@ const AdminSupport = () => {
                                                                     <Typography variant="caption" color="textSecondary">
                                                                         {new Date(room.last_message_at).toLocaleString('vi-VN')}
                                                                     </Typography>
-                                                                </>
+                                                                </Box>
                                                             }
                                                         />
                                                     </ListItemButton>
@@ -595,12 +629,10 @@ const AdminSupport = () => {
                                 </StyledPaper>
                             </Grid>
 
-                            {/* Chat Window */}
                             <Grid item xs={12} md={8}>
                                 <StyledPaper>
                                     {selectedRoom ? (
                                         <>
-                                            {/* Chat Header */}
                                             <Box p={2} borderBottom="1px solid #e0e0e0">
                                                 <Box display="flex" justifyContent="space-between" alignItems="center">
                                                     <Box display="flex" alignItems="center" gap={2}>
@@ -666,7 +698,6 @@ const AdminSupport = () => {
                                                     </Box>
                                                 </Box>
 
-                                                {/* Context info */}
                                                 {selectedRoom.context && (
                                                     <Box mt={1} p={1} bgcolor="#f5f5f5" borderRadius={1}>
                                                         <Typography variant="caption" color="textSecondary">
@@ -676,10 +707,9 @@ const AdminSupport = () => {
                                                 )}
                                             </Box>
 
-                                            {/* Messages */}
                                             <MessagesContainer ref={messagesContainerRef} onScroll={handleScroll}>
                                                 {messages.map((msg, index) => (
-                                                    <Box key={msg._id || index}>
+                                                    <Box key={msg._id || `msg-${index}`}>
                                                         {msg.message_type === 'system' ? (
                                                             <Box textAlign="center" my={1}>
                                                                 <Chip label={msg.message} size="small" />
@@ -718,7 +748,6 @@ const AdminSupport = () => {
                                                 <div ref={messagesEndRef} />
                                             </MessagesContainer>
 
-                                            {/* Input */}
                                             {selectedRoom.status !== 'resolved' && (
                                                 <Box p={2} borderTop="1px solid #e0e0e0" display="flex" gap={1}>
                                                     <TextField
@@ -758,6 +787,11 @@ const AdminSupport = () => {
                                                 <Typography variant="h6" color="textSecondary">
                                                     Chọn một cuộc hội thoại để bắt đầu
                                                 </Typography>
+                                                {!socketConnected && (
+                                                    <Typography variant="caption" color="warning">
+                                                        ⚠️ WebSocket chưa kết nối, bạn cần refresh thủ công
+                                                    </Typography>
+                                                )}
                                             </Box>
                                         </Box>
                                     )}
@@ -768,7 +802,6 @@ const AdminSupport = () => {
                 </div>
             </div>
 
-            {/* Toast Notifications */}
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={4000}
