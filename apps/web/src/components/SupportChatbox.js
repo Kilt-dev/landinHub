@@ -296,7 +296,20 @@ const SupportChatbox = () => {
             }
         } catch (error) {
             console.error('Error de-escalating:', error);
-            setErrorMessage('Không thể chuyển về chat với AI. Vui lòng thử lại.');
+
+            // User-friendly error messages
+            let errorMsg = 'Không thể chuyển về chat với AI.';
+            if (error.response?.status === 404) {
+                errorMsg = 'Không tìm thấy cuộc hội thoại. Vui lòng làm mới trang.';
+            } else if (error.response?.status === 401) {
+                errorMsg = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+            } else if (error.response?.status === 500) {
+                errorMsg = 'Lỗi hệ thống. Vui lòng thử lại sau.';
+            } else if (!error.response) {
+                errorMsg = 'Không thể kết nối server. Kiểm tra kết nối mạng.';
+            }
+
+            setErrorMessage(errorMsg);
         }
     };
 

@@ -77,7 +77,10 @@ const Header = () => {
                 lastNotifIdRef.current = newNotifs[0]._id;
             }
         } catch (err) {
-            console.error('Lỗi poll thông báo:', err);
+            // Suppress 404 errors - notification system not yet fully implemented
+            if (err.response?.status !== 404) {
+                console.error('Lỗi poll thông báo:', err);
+            }
         }
     };
 

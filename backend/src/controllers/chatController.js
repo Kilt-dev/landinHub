@@ -794,17 +794,21 @@ exports.deEscalateRoom = async (req, res) => {
         if (global._io) {
             global._io.to(`chat_${roomId}`).emit('new_message', {
                 id: systemMsg._id,
+                room_id: roomId, // ✅ Added
                 sender_type: 'bot',
+                sender_name: 'AI Assistant', // ✅ Added
                 message_type: 'system',
                 message: systemMsg.message,
                 created_at: systemMsg.createdAt
             });
 
             global._io.to(`chat_${roomId}`).emit('room_deescalated', {
-                room_id: roomId,
+                roomId: roomId, // Changed from room_id to roomId for consistency
                 ai_enabled: true
             });
         }
+
+        console.log(`✅ Room ${roomId} de-escalated - back to AI support`);
 
         res.json({
             success: true,
