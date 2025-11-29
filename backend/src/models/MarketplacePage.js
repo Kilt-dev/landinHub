@@ -77,6 +77,17 @@ const MarketplacePageSchema = new mongoose.Schema({
         trim: true,
         default: null
     },
+    // Screenshot status for queue tracking
+    screenshot_status: {
+        type: String,
+        enum: ['pending', 'processing', 'completed', 'failed'],
+        default: 'pending'
+    },
+    // Screenshot updated timestamp
+    screenshot_updated_at: {
+        type: Date,
+        default: null
+    },
     // URL demo live
     demo_url: {
         type: String,
