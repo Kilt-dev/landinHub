@@ -105,12 +105,20 @@ const SupportChatbox = () => {
 
             cleanups.push(on('new_message', (data) => {
                 console.log('📨 New message received:', data);
-                setMessages(prev => [...prev, {
-                    id: data.id,
-                    sender_type: data.sender_type,
-                    message: data.message,
-                    created_at: data.created_at
-                }]);
+                setMessages(prev => {
+                    // Check if message already exists (deduplication)
+                    const exists = prev.some(msg => msg.id === data.id);
+                    if (exists) {
+                        console.log('⚠️  Message already exists, skipping:', data.id);
+                        return prev;
+                    }
+                    return [...prev, {
+                        id: data.id,
+                        sender_type: data.sender_type,
+                        message: data.message,
+                        created_at: data.created_at
+                    }];
+                });
             }));
 
             cleanups.push(on('ai_response_start', (data) => {
@@ -127,12 +135,20 @@ const SupportChatbox = () => {
                 console.log('✅ AI response complete');
                 setAiStreaming(false);
                 setStreamingMessage('');
-                setMessages(prev => [...prev, {
-                    id: data.messageId,
-                    sender_type: 'bot',
-                    message: data.message,
-                    created_at: data.created_at
-                }]);
+                setMessages(prev => {
+                    // Check if message already exists (deduplication)
+                    const exists = prev.some(msg => msg.id === data.messageId);
+                    if (exists) {
+                        console.log('⚠️  AI message already exists (from new_message event), skipping');
+                        return prev;
+                    }
+                    return [...prev, {
+                        id: data.messageId,
+                        sender_type: 'bot',
+                        message: data.message,
+                        created_at: data.created_at
+                    }];
+                });
             }));
 
             cleanups.push(on('user_typing', () => {
