@@ -178,10 +178,25 @@ const AdminSupport = () => {
                 headers: getAuthHeader()
             });
 
-            const uniqueMessages = response.data.messages.filter((msg, index, self) =>
+            // Transform messages to ensure consistent format
+            const transformedMessages = response.data.messages.map(msg => ({
+                _id: msg.id || msg._id,
+                room_id: msg.room_id,
+                sender_id: msg.sender_id,
+                sender_type: msg.sender_type,
+                message: msg.message,
+                message_type: msg.message_type || 'text',
+                created_at: msg.created_at || msg.createdAt,
+                createdAt: msg.created_at || msg.createdAt,
+                is_read: msg.is_read,
+                ai_metadata: msg.ai_metadata
+            }));
+
+            const uniqueMessages = transformedMessages.filter((msg, index, self) =>
                 index === self.findIndex((m) => m._id === msg._id)
             );
 
+            console.log(`📜 [AdminSupport] Loaded ${uniqueMessages.length} messages for room ${roomId}`);
             setMessages(uniqueMessages);
             scrollToBottom(true);
         } catch (error) {
@@ -210,44 +225,72 @@ const AdminSupport = () => {
         if (!user || user.role !== 'admin') return;
 
         const socket = initSocket();
+        if (!socket) {
+            console.error('❌ Failed to initialize socket');
+            showToast('Không thể kết nối WebSocket', 'error');
+            return;
+        }
 
         // Lắng nghe trạng thái kết nối
-        socketCleanupRef.current.handleConnected = on('connected', () => {
+        socketCleanupRef.current.handleConnected = on('connect', () => {
+            console.log('✅ Admin socket connected');
             setSocketConnected(true);
-            joinDashboard();
-            showToast('✅ WebSocket kết nối thành công', 'success');
+            socket.emit('join_dashboard'); // Join admin dashboard for notifications
+            showToast('✅ Kết nối thành công', 'success');
         });
 
-        socketCleanupRef.current.handleDisconnected = on('disconnected', () => {
+        socketCleanupRef.current.handleDisconnected = on('disconnect', () => {
+            console.log('❌ Admin socket disconnected');
             setSocketConnected(false);
+            showToast('⚠️ Mất kết nối', 'warning');
         });
 
-        socketCleanupRef.current.handleNotConfigured = on('not_configured', () => {
-            setSocketConnected(false);
-            showToast('ℹ️ WebSocket chưa cấu hình, dùng refresh thủ công', 'info');
-        });
+        // Listen for new messages (backend emits 'new_message')
+        socketCleanupRef.current.handleNewMessage = on('new_message', (data) => {
+            console.log('📨 [AdminSupport] New message received:', data);
 
-        // Lắng nghe cập nhật dữ liệu
-        socketCleanupRef.current.handleRoomUpdate = onRoomUpdate(() => {
-            showToast('📋 Danh sách phòng đã cập nhật', 'info');
-            loadRooms();
-        });
+            // Only update if this message is for the currently selected room
+            if (selectedRoom && data.room_id === selectedRoom._id) {
+                const newMsg = {
+                    _id: data.id,
+                    room_id: data.room_id,
+                    sender_id: data.sender_id,
+                    sender_type: data.sender_type,
+                    message: data.message,
+                    created_at: data.created_at,
+                    createdAt: data.created_at
+                };
 
-        socketCleanupRef.current.handleChatUpdate = onChatUpdate((data) => {
-            if (data.roomId === selectedRoom?._id) {
                 setMessages(prev => {
-                    const exists = prev.some(msg => msg._id === data.message._id);
-                    if (!exists) {
-                        return [...prev.filter(msg => !msg.__optimistic), data.message];
+                    // Check if message already exists (avoid duplicates)
+                    const exists = prev.some(msg => msg._id === newMsg._id);
+                    if (exists) {
+                        return prev;
                     }
-                    return prev;
+                    // Remove optimistic message if exists
+                    const filtered = prev.filter(msg => !msg.__optimistic);
+                    return [...filtered, newMsg];
                 });
-                scrollToBottom();
+
+                if (!userScrolledUp) {
+                    scrollToBottom();
+                }
             }
         });
 
-        socketCleanupRef.current.handleReconnectFailed = on('reconnect_failed', () => {
-            showToast('❌ Không thể kết nối WebSocket, dùng refresh thủ công', 'warning');
+        // Listen for room updates (for room list refresh)
+        socketCleanupRef.current.handleNewSupportRequest = on('new_support_request', (data) => {
+            console.log('🆕 [AdminSupport] New support request:', data);
+            showToast('📢 Yêu cầu hỗ trợ mới!', 'info');
+            loadRooms(); // Reload room list
+        });
+
+        // Listen for admin joined event
+        socketCleanupRef.current.handleAdminJoined = on('admin_joined', (data) => {
+            console.log('👨‍💼 [AdminSupport] Admin joined room:', data);
+            if (selectedRoom && data.roomId === selectedRoom._id) {
+                showToast('Admin đã tham gia chat', 'info');
+            }
         });
 
         return () => {
@@ -255,18 +298,26 @@ const AdminSupport = () => {
             Object.values(socketCleanupRef.current).forEach(cleanup => {
                 if (typeof cleanup === 'function') cleanup();
             });
-            disconnectSocket(true);
+            if (socket.connected) {
+                socket.emit('leave_dashboard');
+            }
             setSocketConnected(false);
         };
-    }, [user]);
+    }, [user, selectedRoom, userScrolledUp]);
 
     // ✅ WEBSOCKET: Join/leave room khi chọn phòng
     useEffect(() => {
         if (selectedRoom && socketConnected) {
-            joinRoom(selectedRoom._id);
-            return () => {
-                leaveRoom(selectedRoom._id);
-            };
+            const socket = getSocket();
+            if (socket) {
+                console.log(`🚪 [AdminSupport] Joining room: ${selectedRoom._id}`);
+                socket.emit('join_room', { roomId: selectedRoom._id });
+
+                return () => {
+                    console.log(`🚪 [AdminSupport] Leaving room: ${selectedRoom._id}`);
+                    socket.emit('leave_room', { roomId: selectedRoom._id });
+                };
+            }
         }
     }, [selectedRoom, socketConnected]);
 
