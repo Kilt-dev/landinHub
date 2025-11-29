@@ -708,6 +708,51 @@ exports.getAdminStats = async (req, res) => {
 };
 
 /**
+ * Admin: Update room status or priority
+ */
+exports.updateRoomStatus = async (req, res) => {
+    try {
+        const { roomId } = req.params;
+        const { status, priority } = req.body;
+        const adminId = req.user.id;
+
+        // Find room
+        const room = await ChatRoom.findById(roomId);
+
+        if (!room) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy phòng chat'
+            });
+        }
+
+        // Update fields if provided
+        if (status) {
+            room.status = status;
+        }
+        if (priority) {
+            room.priority = priority;
+        }
+
+        await room.save();
+
+        console.log(`✅ Room ${roomId} updated: status=${status || room.status}, priority=${priority || room.priority}`);
+
+        res.json({
+            success: true,
+            message: 'Cập nhật thành công',
+            room
+        });
+    } catch (error) {
+        console.error('Error updating room:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Không thể cập nhật phòng chat'
+        });
+    }
+};
+
+/**
  * User: De-escalate from admin back to AI
  */
 exports.deEscalateRoom = async (req, res) => {

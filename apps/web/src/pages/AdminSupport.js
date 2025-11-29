@@ -566,7 +566,9 @@ const AdminSupport = () => {
                                             <Typography color="textSecondary" gutterBottom>
                                                 Tổng cuộc hội thoại
                                             </Typography>
-                                            <Typography variant="h4">{stats.totalRooms}</Typography>
+                                            <Typography variant="h4">
+                                                {(stats.byStatus?.open || 0) + (stats.byStatus?.assigned || 0) + (stats.byStatus?.resolved || 0) + (stats.byStatus?.closed || 0)}
+                                            </Typography>
                                         </CardContent>
                                     </Card>
                                 </Grid>
@@ -576,7 +578,7 @@ const AdminSupport = () => {
                                             <Typography color="textSecondary" gutterBottom>
                                                 Chờ xử lý
                                             </Typography>
-                                            <Typography variant="h4" color="#d97706">{stats.openRooms}</Typography>
+                                            <Typography variant="h4" color="#d97706">{stats.pendingRooms || 0}</Typography>
                                         </CardContent>
                                     </Card>
                                 </Grid>
@@ -586,7 +588,7 @@ const AdminSupport = () => {
                                             <Typography color="textSecondary" gutterBottom>
                                                 Đang xử lý
                                             </Typography>
-                                            <Typography variant="h4" color="#2563eb">{stats.assignedRooms}</Typography>
+                                            <Typography variant="h4" color="#2563eb">{stats.myActiveRooms || 0}</Typography>
                                         </CardContent>
                                     </Card>
                                 </Grid>
@@ -596,7 +598,7 @@ const AdminSupport = () => {
                                             <Typography color="textSecondary" gutterBottom>
                                                 Đã giải quyết hôm nay
                                             </Typography>
-                                            <Typography variant="h4" color="#16a34a">{stats.resolvedToday}</Typography>
+                                            <Typography variant="h4" color="#16a34a">{stats.today?.resolved || 0}</Typography>
                                         </CardContent>
                                     </Card>
                                 </Grid>
@@ -804,7 +806,7 @@ const AdminSupport = () => {
                                                                     </MessageBubble>
                                                                 </Box>
                                                                 <Typography variant="caption" color="textSecondary" sx={{ ml: msg.sender_type === 'admin' ? 0 : 5, mt: 0.5 }}>
-                                                                    {msg.sender_id?.name || 'Unknown'} • {new Date(msg.createdAt).toLocaleTimeString('vi-VN')}
+                                                                    {msg.sender_type === 'bot' ? 'AI Assistant' : msg.sender_type === 'admin' ? 'Admin' : (msg.sender_id?.name || 'Người dùng')} • {new Date(msg.created_at || msg.createdAt).toLocaleTimeString('vi-VN')}
                                                                 </Typography>
                                                             </Box>
                                                         )}
