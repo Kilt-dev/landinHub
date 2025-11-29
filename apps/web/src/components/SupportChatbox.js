@@ -65,8 +65,7 @@ const SupportChatbox = () => {
                 initializeChatRoom();
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen]); // Only run when isOpen changes to avoid double-loading
+    }, [isOpen]); // Only run when isOpen changes
 
     // Initialize Socket.IO
     useEffect(() => {
