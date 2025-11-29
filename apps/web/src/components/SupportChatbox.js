@@ -9,7 +9,10 @@ const SupportChatbox = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState('');
-    const [roomId, setRoomId] = useState(null);
+    const [roomId, setRoomId] = useState(() => {
+        // Initialize roomId from localStorage if exists
+        return localStorage.getItem('chatRoomId') || null;
+    });
     const [isConnected, setIsConnected] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
     const [aiStreaming, setAiStreaming] = useState(false);
@@ -22,6 +25,13 @@ const SupportChatbox = () => {
     const typingTimeoutRef = useRef(null);
     const cleanupFunctionsRef = useRef([]);
     const lastScrollRef = useRef(0);
+
+    // Save roomId to localStorage whenever it changes
+    useEffect(() => {
+        if (roomId) {
+            localStorage.setItem('chatRoomId', roomId);
+        }
+    }, [roomId]);
 
     // Auto-dismiss error after 5 seconds
     useEffect(() => {
@@ -43,12 +53,20 @@ const SupportChatbox = () => {
         scrollToBottom();
     }, [messages.length, streamingMessage.length, scrollToBottom]); // Scroll on message count or streaming length change
 
-    // Initialize chat room
+    // Initialize chat room or load messages when chatbox opens
     useEffect(() => {
-        if (isOpen && !roomId) {
-            initializeChatRoom();
+        if (isOpen) {
+            if (roomId) {
+                // If we have a roomId, just load messages
+                console.log('📜 Loading messages for existing room:', roomId);
+                loadMessages(roomId);
+            } else {
+                // Otherwise, create/get room (which will also load messages)
+                initializeChatRoom();
+            }
         }
-    }, [isOpen]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]); // Only run when isOpen changes to avoid double-loading
 
     // Initialize Socket.IO
     useEffect(() => {
@@ -188,7 +206,9 @@ const SupportChatbox = () => {
         }
     };
 
-    const loadMessages = async (chatRoomId) => {
+    const loadMessages = useCallback(async (chatRoomId) => {
+        if (!chatRoomId) return;
+
         try {
             const token = localStorage.getItem('token');
             const response = await axios.get(
@@ -197,14 +217,14 @@ const SupportChatbox = () => {
             );
 
             if (response.data.success) {
-                console.log('📜 Loaded messages:', response.data.messages.length);
+                console.log('📜 Loaded messages:', response.data.messages.length, 'messages');
                 setMessages(response.data.messages || []);
             }
         } catch (error) {
             console.error('Error loading messages:', error);
             // Don't show error to user for message loading
         }
-    };
+    }, []);
 
     const handleSendMessage = () => {
         if (!inputMessage.trim() || !isConnected) {

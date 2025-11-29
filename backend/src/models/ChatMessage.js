@@ -10,7 +10,11 @@ const chatMessageSchema = new mongoose.Schema({
   sender_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: function() {
+      // sender_id is only required for user, admin, and seller messages
+      // bot messages don't have a sender_id
+      return this.sender_type !== 'bot';
+    }
   },
   sender_type: {
     type: String,
@@ -49,6 +53,10 @@ const chatMessageSchema = new mongoose.Schema({
       type: Boolean,
       default: false
     },
+    provider: String, // 'groq', 'gemini', 'openai', etc.
+    model: String, // Model name used
+    context_used: Boolean, // Whether context was used
+    response_time: Number, // Response time in ms
     confidence: Number,
     intent: String, // 'builder_help', 'payment_issue', etc.
     suggested_actions: [String]
