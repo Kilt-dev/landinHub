@@ -5,6 +5,7 @@ const Transaction = require('../models/Transaction');
 const { v4: uuidv4 } = require('uuid');
 const s3CopyService = require('../services/s3CopyService');
 const screenshotService = require('../services/screenshotService');
+const { addScreenshotJobFromS3 } = require('../queues/screenshotQueue');
 const exportService = require('../services/exportService');
 const Order = require('../models/Order');
 const Review = require('../models/MarketplaceReview');
@@ -333,9 +334,9 @@ exports.sellPage = async (req, res) => {
         // Update page_data with new image URLs
         const updatedPageData = s3CopyService.updatePageDataImages(page.page_data, imageMap);
 
-        // Generate screenshot from HTML (not page_data)
-        console.log('Generating screenshot from S3 HTML...');
-        let screenshotUrl = null;
+        // Queue screenshot generation (background processing - non-blocking)
+        console.log('📋 Queuing screenshot generation from S3 HTML...');
+        let screenshotStatus = 'pending';
         try {
             // Get S3 key from file_path
             const getS3KeyFromFilePath = (file_path) => {
@@ -352,18 +353,25 @@ exports.sellPage = async (req, res) => {
 
             if (page.file_path) {
                 const s3Key = getS3KeyFromFilePath(page.file_path);
-                console.log('Fetching HTML from S3:', s3Key);
-                screenshotUrl = await screenshotService.generateScreenshotFromS3(
-                    s3Key,
-                    marketplaceId
-                );
-                console.log('Screenshot generated successfully:', screenshotUrl);
+                console.log('📥 Adding screenshot job to queue for S3 key:', s3Key);
+
+                // Add to queue (non-blocking, returns immediately)
+                await addScreenshotJobFromS3(s3Key, marketplaceId, {
+                    modelType: 'MarketplacePage',
+                    modelId: marketplaceId,
+                    priority: 5 // Higher priority for marketplace pages
+                });
+
+                screenshotStatus = 'processing';
+                console.log('✅ Screenshot job queued successfully, will process in background');
             } else {
                 console.warn('Page has no file_path, cannot generate screenshot from S3');
+                screenshotStatus = 'failed';
             }
         } catch (screenshotError) {
-            console.error('Screenshot generation failed:', screenshotError);
-            // Don't fail the entire request if screenshot fails
+            console.error('Failed to queue screenshot job:', screenshotError);
+            screenshotStatus = 'failed';
+            // Don't fail the entire request if screenshot queueing fails
         }
 
         // Tạo marketplace page
@@ -378,8 +386,9 @@ exports.sellPage = async (req, res) => {
             original_price: original_price ? parseFloat(original_price) : null,
             tags: tags || [],
             demo_url: demo_url || page.url || '',
-            main_screenshot: screenshotUrl,
-            screenshots: screenshotUrl ? [screenshotUrl] : [],
+            main_screenshot: null, // Will be updated by queue worker
+            screenshots: [],
+            screenshot_status: screenshotStatus, // 'processing', 'pending', or 'failed'
             status: 'PENDING',
             page_data: updatedPageData
         });
@@ -389,8 +398,9 @@ exports.sellPage = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'Đăng bán landing page thành công! Hệ thống đã tự động copy images và tạo screenshot. Đang chờ admin duyệt.',
-            data: marketplacePage
+            message: 'Đăng bán landing page thành công! Hệ thống đã tự động copy images. Screenshot đang được tạo ở background. Đang chờ admin duyệt.',
+            data: marketplacePage,
+            screenshot_status: screenshotStatus
         });
     } catch (error) {
         console.error('Sell Page Error:', error);

@@ -15,15 +15,67 @@ class ScreenshotService {
             // Lazy load puppeteer only when needed
             const puppeteer = require('puppeteer');
 
-            // Launch puppeteer
-            browser = await puppeteer.launch({
-                headless: 'new',
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage'
-                ]
-            });
+            console.log('Launching Puppeteer browser for payment screenshot');
+
+            // Launch puppeteer with better error handling
+            try {
+                browser = await puppeteer.launch({
+                    headless: 'new',
+                    args: [
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
+                        '--disable-dev-shm-usage',
+                        '--disable-gpu'
+                    ]
+                });
+            } catch (launchError) {
+                console.error('Failed to launch Puppeteer browser:', launchError.message);
+
+                // If Chrome not found, try with system Chrome
+                if (launchError.message.includes('Could not find Chrome')) {
+                    console.log('Attempting to use system Chrome...');
+
+                    // Try common Chrome paths
+                    const chromePaths = [
+                        '/usr/bin/google-chrome',
+                        '/usr/bin/chromium-browser',
+                        '/usr/bin/chromium',
+                        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+                        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+                    ];
+
+                    let chromeFound = false;
+                    for (const chromePath of chromePaths) {
+                        try {
+                            const fs = require('fs');
+                            if (fs.existsSync(chromePath)) {
+                                console.log(`Found Chrome at: ${chromePath}`);
+                                browser = await puppeteer.launch({
+                                    executablePath: chromePath,
+                                    headless: 'new',
+                                    args: [
+                                        '--no-sandbox',
+                                        '--disable-setuid-sandbox',
+                                        '--disable-dev-shm-usage',
+                                        '--disable-gpu'
+                                    ]
+                                });
+                                chromeFound = true;
+                                break;
+                            }
+                        } catch (e) {
+                            continue;
+                        }
+                    }
+
+                    if (!chromeFound) {
+                        throw new Error('Không thể khởi động trình duyệt: ' + launchError.message);
+                    }
+                } else {
+                    throw new Error('Không thể khởi động trình duyệt: ' + launchError.message);
+                }
+            }
 
             const page = await browser.newPage();
 
