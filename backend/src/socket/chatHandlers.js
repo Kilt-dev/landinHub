@@ -187,7 +187,18 @@ function initChatHandlers(io, socket) {
                 });
             }
 
-            console.log(`✅ [send_message_with_ai] Room found: ${roomId}, AI enabled: ${room.ai_enabled !== false} (value: ${room.ai_enabled}), Admin: ${room.admin_id || 'none'}`);
+            console.log(`✅ [send_message_with_ai] Room found: ${roomId}, Status: ${room.status}, AI enabled: ${room.ai_enabled !== false} (value: ${room.ai_enabled}), Admin: ${room.admin_id || 'none'}`);
+
+            // If room is closed/resolved, reopen it for new messages
+            if (room.status === 'resolved' || room.status === 'closed') {
+                console.log(`🔄 [send_message_with_ai] Reopening closed room ${roomId}`);
+                room.status = 'open';
+                room.ai_enabled = true;
+                room.admin_id = null; // Clear admin to allow new support request
+                room.resolved_at = null;
+                await room.save();
+                console.log(`✅ [send_message_with_ai] Room reopened and ready for new conversation`);
+            }
 
             // Save user message
             let userMessage;
