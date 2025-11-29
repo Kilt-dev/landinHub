@@ -10,13 +10,29 @@ exports.createOrGetRoom = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // Check if user has active room
+        // First, check if user has an ACTIVE room (open or assigned)
         let room = await ChatRoom.findOne({
             user_id: userId,
             status: { $in: ['assigned', 'open'] }
         });
 
-        // Create new room if none exists
+        // If no active room, find the most recent room (any status) and reopen it
+        if (!room) {
+            room = await ChatRoom.findOne({
+                user_id: userId
+            }).sort({ last_message_at: -1, createdAt: -1 });
+
+            if (room) {
+                // Reopen the room
+                console.log(`🔄 Reopening existing room ${room._id} for user ${userId} (was ${room.status})`);
+                room.status = 'open';
+                room.ai_enabled = true;
+                room.admin_id = null; // Reset admin assignment
+                await room.save();
+            }
+        }
+
+        // Create new room if none exists at all
         if (!room) {
             room = new ChatRoom({
                 user_id: userId,
@@ -35,6 +51,8 @@ exports.createOrGetRoom = async (req, res) => {
             await welcomeMsg.save();
 
             console.log(`✅ Created new chat room for user ${userId}`);
+        } else {
+            console.log(`✅ Using existing room ${room._id} for user ${userId} (status: ${room.status})`);
         }
 
         res.json({
