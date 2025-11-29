@@ -8,6 +8,9 @@ const jwt = require('jsonwebtoken');
 const initChatHandlers = require('./socket/chatHandlers');
 const initAdminHandlers = require('./socket/adminHandlers');
 
+// Import queue initialization
+const { initializeQueues, shutdownQueues } = require('./queues');
+
 const PORT = process.env.PORT || 5000;
 app.set('trust proxy', true);
 
@@ -98,4 +101,25 @@ server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📡 Socket.IO ready for realtime chat`);
     console.log(`🤖 AI Provider: ${process.env.GROQ_API_KEY ? 'Groq' : ''}${process.env.GEMINI_API_KEY ? ' + Gemini' : ''}`);
+
+    // Initialize background job queues
+    initializeQueues();
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    await shutdownQueues();
+    server.close(() => {
+        console.log('HTTP server closed');
+    });
+});
+
+process.on('SIGINT', async () => {
+    console.log('SIGINT signal received: closing HTTP server');
+    await shutdownQueues();
+    server.close(() => {
+        console.log('HTTP server closed');
+        process.exit(0);
+    });
 });
