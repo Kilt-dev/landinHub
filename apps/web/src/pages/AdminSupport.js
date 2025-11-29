@@ -122,8 +122,14 @@ const AdminSupport = () => {
     const messagesContainerRef = useRef(null);
     const [userScrolledUp, setUserScrolledUp] = useState(false);
     const socketCleanupRef = useRef({});
+    const selectedRoomRef = useRef(null); // Track current room for socket handlers
 
     const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+    // Keep selectedRoomRef in sync with selectedRoom state
+    useEffect(() => {
+        selectedRoomRef.current = selectedRoom;
+    }, [selectedRoom]);
 
     const showToast = (message, severity = 'info') => {
         setSnackbar({ open: true, message, severity });
@@ -249,33 +255,39 @@ const AdminSupport = () => {
         socketCleanupRef.current.handleNewMessage = on('new_message', (data) => {
             console.log('📨 [AdminSupport] New message received:', data);
 
-            // Only update if this message is for the currently selected room
-            if (selectedRoom && data.room_id === selectedRoom._id) {
-                const newMsg = {
-                    _id: data.id,
-                    room_id: data.room_id,
-                    sender_id: data.sender_id,
-                    sender_type: data.sender_type,
-                    message: data.message,
-                    created_at: data.created_at,
-                    createdAt: data.created_at
-                };
+            // Get current selected room from ref (avoids closure issues)
+            const currentRoom = selectedRoomRef.current;
 
-                setMessages(prev => {
-                    // Check if message already exists (avoid duplicates)
-                    const exists = prev.some(msg => msg._id === newMsg._id);
-                    if (exists) {
-                        return prev;
-                    }
-                    // Remove optimistic message if exists
-                    const filtered = prev.filter(msg => !msg.__optimistic);
-                    return [...filtered, newMsg];
-                });
-
-                if (!userScrolledUp) {
-                    scrollToBottom();
-                }
+            // Only process if this message is for currently selected room
+            if (!currentRoom || data.room_id !== currentRoom._id) {
+                console.log('📨 [AdminSupport] Message not for current room, ignoring');
+                return;
             }
+
+            const newMsg = {
+                _id: data.id,
+                room_id: data.room_id,
+                sender_id: data.sender_id,
+                sender_type: data.sender_type,
+                message: data.message,
+                created_at: data.created_at,
+                createdAt: data.created_at
+            };
+
+            setMessages(prev => {
+                // Check if message already exists (avoid duplicates)
+                const exists = prev.some(msg => msg._id === newMsg._id);
+                if (exists) {
+                    console.log('📨 [AdminSupport] Message already exists, skipping');
+                    return prev;
+                }
+
+                // Remove optimistic message if exists and add real message
+                const filtered = prev.filter(msg => !msg.__optimistic);
+                console.log(`✅ [AdminSupport] Added new message: ${newMsg.message.substring(0, 30)}...`);
+                scrollToBottom();
+                return [...filtered, newMsg];
+            });
         });
 
         // Listen for room updates (for room list refresh)
@@ -298,12 +310,12 @@ const AdminSupport = () => {
             Object.values(socketCleanupRef.current).forEach(cleanup => {
                 if (typeof cleanup === 'function') cleanup();
             });
-            if (socket.connected) {
+            if (socket && socket.connected) {
                 socket.emit('leave_dashboard');
             }
             setSocketConnected(false);
         };
-    }, [user, selectedRoom, userScrolledUp]);
+    }, [user]); // Only re-init if user changes
 
     // ✅ WEBSOCKET: Join/leave room khi chọn phòng
     useEffect(() => {
