@@ -128,7 +128,9 @@ function initAdminHandlers(io, socket) {
             // Broadcast system message
             io.to(`chat_${roomId}`).emit('new_message', {
                 id: systemMsg._id,
+                room_id: roomId, // ✅ Added
                 sender_type: 'bot',
+                sender_name: 'System', // ✅ Added
                 message_type: 'system',
                 message: systemMsg.message,
                 created_at: systemMsg.createdAt

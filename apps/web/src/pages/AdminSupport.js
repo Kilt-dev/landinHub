@@ -267,7 +267,10 @@ const AdminSupport = () => {
             const newMsg = {
                 _id: data.id,
                 room_id: data.room_id,
-                sender_id: data.sender_id,
+                sender_id: {
+                    _id: data.sender_id,
+                    name: data.sender_name || 'User' // Use sender_name from backend
+                },
                 sender_type: data.sender_type,
                 message: data.message,
                 created_at: data.created_at,

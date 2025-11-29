@@ -108,6 +108,9 @@ function initChatHandlers(io, socket) {
 
             await newMessage.save();
 
+            // Populate sender info
+            await newMessage.populate('sender_id', 'name email');
+
             // Update room
             room.last_message_at = new Date();
             if (room.status === 'open' && !isUser) {
@@ -115,11 +118,13 @@ function initChatHandlers(io, socket) {
             }
             await room.save();
 
-            // Broadcast to room
+            // Broadcast to room with full info
             io.to(`chat_${roomId}`).emit('new_message', {
                 id: newMessage._id,
+                room_id: roomId, // ✅ Added
                 sender_type: senderType,
-                sender_id: userId,
+                sender_id: newMessage.sender_id?._id || userId,
+                sender_name: newMessage.sender_id?.name || (senderType === 'admin' ? 'Admin' : 'User'), // ✅ Added
                 message: newMessage.message,
                 created_at: newMessage.createdAt
             });
@@ -194,7 +199,10 @@ function initChatHandlers(io, socket) {
                     message: message.trim()
                 });
                 await userMessage.save();
-                console.log(`💾 [send_message_with_ai] User message saved: ${userMessage._id}`);
+
+                // Populate sender info for broadcasting
+                await userMessage.populate('sender_id', 'name email');
+                console.log(`💾 [send_message_with_ai] User message saved: ${userMessage._id}, Sender: ${userMessage.sender_id?.name || 'Unknown'}`);
             } catch (msgError) {
                 console.error(`❌ [send_message_with_ai] Failed to save user message:`, msgError.message);
                 return socket.emit('error', {
@@ -202,16 +210,24 @@ function initChatHandlers(io, socket) {
                 });
             }
 
-            // Broadcast user message
+            // Broadcast user message with full info
             try {
-                io.to(`chat_${roomId}`).emit('new_message', {
+                const messageData = {
                     id: userMessage._id,
+                    room_id: roomId, // ✅ Added room_id!
                     sender_type: 'user',
-                    sender_id: userId,
+                    sender_id: userMessage.sender_id?._id || userId,
+                    sender_name: userMessage.sender_id?.name || 'Người dùng', // ✅ Added sender_name!
                     message: userMessage.message,
                     created_at: userMessage.createdAt
+                };
+
+                io.to(`chat_${roomId}`).emit('new_message', messageData);
+                console.log(`📡 [send_message_with_ai] User message broadcasted to room chat_${roomId}:`, {
+                    room: roomId,
+                    sender: messageData.sender_name,
+                    preview: messageData.message.substring(0, 30)
                 });
-                console.log(`📡 [send_message_with_ai] User message broadcasted to room chat_${roomId}`);
             } catch (broadcastError) {
                 console.error(`⚠️  [send_message_with_ai] Failed to broadcast user message:`, broadcastError.message);
                 // Don't fail the operation, message is saved
@@ -237,7 +253,9 @@ function initChatHandlers(io, socket) {
 
                     io.to(`chat_${roomId}`).emit('new_message', {
                         id: escalateMsg._id,
+                        room_id: roomId, // ✅ Added
                         sender_type: 'bot',
+                        sender_name: 'AI Assistant', // ✅ Added
                         message: escalateMsg.message,
                         created_at: escalateMsg.createdAt
                     });
@@ -373,6 +391,17 @@ function initChatHandlers(io, socket) {
                         message: fullResponse,
                         provider: aiResult.provider,
                         created_at: aiMessage.createdAt
+                    });
+
+                    // Also emit as new_message so admin can see it
+                    io.to(`chat_${roomId}`).emit('new_message', {
+                        id: aiMessage._id,
+                        room_id: roomId, // ✅ Added
+                        sender_type: 'bot',
+                        sender_name: 'AI Assistant', // ✅ Added
+                        message: fullResponse,
+                        created_at: aiMessage.createdAt,
+                        ai_metadata: aiMessage.ai_metadata
                     });
 
                     console.log(`🎉 [send_message_with_ai] AI response complete: ${chunkCount} chunks, ${aiResult.responseTime}ms, ${fullResponse.length} chars`);
