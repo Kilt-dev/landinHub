@@ -231,6 +231,12 @@ const SupportChatbox = () => {
             return;
         }
 
+        // Prevent sending while AI is streaming to avoid multiple concurrent responses
+        if (aiStreaming) {
+            console.warn('⏳ Cannot send message - AI is currently responding. Please wait...');
+            return;
+        }
+
         const message = inputMessage.trim();
         setInputMessage('');
 
@@ -515,13 +521,14 @@ const SupportChatbox = () => {
                 value={inputMessage}
                 onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
-                placeholder="Nhập tin nhắn..."
+                placeholder={aiStreaming ? "⏳ AI đang trả lời..." : "Nhập tin nhắn..."}
                 rows="1"
-                disabled={!isConnected}
+                disabled={!isConnected || aiStreaming}
             />
                         <button
                             onClick={handleSendMessage}
-                            disabled={!inputMessage.trim() || !isConnected}
+                            disabled={!inputMessage.trim() || !isConnected || aiStreaming}
+                            title={aiStreaming ? "Vui lòng đợi AI trả lời xong" : "Gửi tin nhắn"}
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M2 21L23 12L2 3V10L17 12L2 14V21Z" fill="currentColor"/>

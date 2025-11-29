@@ -142,9 +142,21 @@ exports.getRoomMessages = async (req, res) => {
             { [isUser ? 'read_by_user' : 'read_by_admin']: true }
         );
 
+        // Transform messages to match frontend format (created_at instead of createdAt)
+        const transformedMessages = messages.map(msg => ({
+            id: msg._id,
+            sender_id: msg.sender_id,
+            sender_type: msg.sender_type,
+            message: msg.message,
+            message_type: msg.message_type,
+            created_at: msg.createdAt,  // Transform createdAt → created_at
+            is_read: msg.is_read,
+            ai_metadata: msg.ai_metadata
+        }));
+
         res.json({
             success: true,
-            messages: messages.reverse(), // Oldest first
+            messages: transformedMessages.reverse(), // Oldest first
             hasMore: messages.length === limit
         });
     } catch (error) {
