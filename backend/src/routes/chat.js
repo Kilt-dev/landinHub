@@ -19,5 +19,6 @@ router.get('/admin/rooms', chatController.getAdminRooms);
 router.get('/admin/rooms/pending', chatController.getAdminPendingRooms);
 router.get('/admin/stats', chatController.getAdminStats);
 router.post('/admin/rooms/:roomId/assign', chatController.assignRoomToSelf);
+router.put('/admin/rooms/:roomId/status', chatController.updateRoomStatus);
 
 module.exports = router;

@@ -39,15 +39,11 @@ export const initSocket = () => {
     socket.on('connect', () => {
         console.log('✅ Socket connected:', socket.id);
         isConfigured = true;
-        // Emit custom 'connected' event for listeners
-        socket.emit('connected');
     });
 
     socket.on('disconnect', () => {
         console.log('❌ Socket disconnected');
         isConfigured = false;
-        // Emit custom 'disconnected' event for listeners
-        socket.emit('disconnected');
     });
 
     socket.on('connect_error', (error) => {
