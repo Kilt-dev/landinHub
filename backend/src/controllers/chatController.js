@@ -726,9 +726,16 @@ exports.updateRoomStatus = async (req, res) => {
             });
         }
 
+        const oldStatus = room.status;
+
         // Update fields if provided
         if (status) {
             room.status = status;
+
+            // Set resolved_at when closing/resolving
+            if (status === 'resolved' || status === 'closed') {
+                room.resolved_at = new Date();
+            }
         }
         if (priority) {
             room.priority = priority;
@@ -737,6 +744,38 @@ exports.updateRoomStatus = async (req, res) => {
         await room.save();
 
         console.log(`✅ Room ${roomId} updated: status=${status || room.status}, priority=${priority || room.priority}`);
+
+        // Send system message to user when admin closes the room
+        if (status && (status === 'resolved' || status === 'closed') && oldStatus !== status) {
+            const systemMsg = new ChatMessage({
+                room_id: roomId,
+                sender_type: 'bot',
+                message_type: 'system',
+                message: '✅ Admin đã kết thúc cuộc hội thoại. Cảm ơn bạn đã liên hệ! Nếu cần hỗ trợ thêm, bạn có thể gửi tin nhắn mới.'
+            });
+            await systemMsg.save();
+
+            // Notify user via Socket.IO
+            if (global._io) {
+                global._io.to(`chat_${roomId}`).emit('new_message', {
+                    id: systemMsg._id,
+                    room_id: roomId,
+                    sender_type: 'bot',
+                    sender_name: 'System',
+                    message_type: 'system',
+                    message: systemMsg.message,
+                    created_at: systemMsg.createdAt
+                });
+
+                // Also emit room_closed event for any special UI handling
+                global._io.to(`chat_${roomId}`).emit('room_closed', {
+                    roomId: roomId,
+                    status: status
+                });
+
+                console.log(`📢 [updateRoomStatus] System message sent to user for room ${roomId}`);
+            }
+        }
 
         res.json({
             success: true,

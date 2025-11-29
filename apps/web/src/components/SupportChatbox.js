@@ -178,6 +178,16 @@ const SupportChatbox = () => {
                 setRoomInfo(prev => ({ ...prev, admin_id: null, ai_enabled: true }));
             }));
 
+            cleanups.push(on('room_closed', (data) => {
+                console.log('🚪 Room closed by admin:', data);
+                setRoomInfo(prev => ({
+                    ...prev,
+                    status: data.status,
+                    admin_id: null,
+                    ai_enabled: true
+                }));
+            }));
+
             cleanups.push(on('error', (data) => {
                 console.error('❌ Socket error:', data.message);
                 setErrorMessage(data.message || 'Đã xảy ra lỗi');
