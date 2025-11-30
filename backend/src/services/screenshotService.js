@@ -1,4 +1,4 @@
-// const puppeteer = require('puppeteer'); // Lazy load when needed
+const puppeteer = require('puppeteer');
 const s3CopyService = require('./s3CopyService');
 const AWS = require('aws-sdk');
 const screenshotApiService = require('./screenshotApiService'); // Fallback API service
@@ -22,9 +22,6 @@ class ScreenshotService {
                 throw new Error('htmlContent must be a string (HTML), not an object. Use HTML from S3, not page_data.');
             }
 
-            // Lazy load puppeteer only when needed
-            const puppeteer = require('puppeteer');
-
             console.log('Launching Puppeteer browser');
 
             // Launch puppeteer with better error handling
@@ -43,12 +40,15 @@ class ScreenshotService {
                 console.error('Failed to launch Puppeteer browser:', launchError.message);
 
                 // If Chrome not found, try with system Chrome
-                if (launchError.message.includes('Could not find Chrome')) {
+                if (launchError.message.includes('Could not find Chrome') ||
+                    launchError.message.includes('ECONNRESET') ||
+                    launchError.message.includes('Failed to launch')) {
                     console.log('Attempting to use system Chrome...');
 
                     // Try common Chrome paths
                     const chromePaths = [
                         '/usr/bin/google-chrome',
+                        '/usr/bin/google-chrome-stable',
                         '/usr/bin/chromium-browser',
                         '/usr/bin/chromium',
                         'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
