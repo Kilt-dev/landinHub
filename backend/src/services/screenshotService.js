@@ -1,6 +1,7 @@
 // const puppeteer = require('puppeteer'); // Lazy load when needed
 const s3CopyService = require('./s3CopyService');
 const AWS = require('aws-sdk');
+const screenshotApiService = require('./screenshotApiService'); // Fallback API service
 
 const s3 = new AWS.S3();
 
@@ -42,12 +43,15 @@ class ScreenshotService {
                 console.error('Failed to launch Puppeteer browser:', launchError.message);
 
                 // If Chrome not found, try with system Chrome
-                if (launchError.message.includes('Could not find Chrome')) {
+                if (launchError.message.includes('Could not find Chrome') ||
+                    launchError.message.includes('ECONNRESET') ||
+                    launchError.message.includes('Failed to launch')) {
                     console.log('Attempting to use system Chrome...');
 
                     // Try common Chrome paths
                     const chromePaths = [
                         '/usr/bin/google-chrome',
+                        '/usr/bin/google-chrome-stable',
                         '/usr/bin/chromium-browser',
                         '/usr/bin/chromium',
                         'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -166,14 +170,23 @@ class ScreenshotService {
                 return this.generateScreenshot(htmlContent, marketplacePageId, retries - 1);
             }
 
-            // If all retries failed, throw error
-            throw error;
+            // If all Puppeteer retries failed, fallback to API service
+            console.log(`⚠️  Puppeteer failed after all retries. Attempting fallback to ScreenshotOne API...`);
+            try {
+                const screenshotUrl = await screenshotApiService.generateScreenshot(htmlContent, marketplacePageId);
+                console.log(`✅ Fallback successful! Screenshot generated via API: ${screenshotUrl}`);
+                return screenshotUrl;
+            } catch (apiError) {
+                console.error(`❌ API fallback also failed:`, apiError.message);
+                throw new Error(`Both Puppeteer and API failed. Puppeteer: ${error.message}, API: ${apiError.message}`);
+            }
         }
     }
 
     /**
      * Generate screenshot from S3 HTML file
      * This is the recommended method for marketplace pages
+     * Will try Puppeteer first, then fallback to API if needed
      */
     async generateScreenshotFromS3(s3Key, marketplacePageId) {
         try {
@@ -187,6 +200,7 @@ class ScreenshotService {
             const htmlContent = s3Response.Body.toString('utf-8');
             console.log(`HTML fetched successfully, length: ${htmlContent.length} bytes`);
 
+            // Try Puppeteer first (with automatic API fallback if it fails)
             return await this.generateScreenshot(htmlContent, marketplacePageId);
         } catch (error) {
             console.error('Failed to generate screenshot from S3:', error.message);
