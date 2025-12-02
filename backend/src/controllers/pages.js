@@ -6,6 +6,7 @@ const Page = require('../models/Page');
 const mongoose = require('mongoose');
 const { OpenAI } = require('openai');
 const { v4: uuidv4 } = require('uuid');
+const screenshotService = require('../services/screenshotService');
 
 // Cấu hình AWS SDK
 AWS.config.update({ region: process.env.AWS_REGION || 'us-east-1' });
@@ -226,28 +227,23 @@ const generateScreenshot = async (htmlContent, pageId, isUrl = false, options = 
     }
 };
 
-// Tạo screenshot từ nội dung S3
+// Tạo screenshot từ nội dung S3 - Using screenshotService with Puppeteer/API fallback
 const generateScreenshotFromS3 = async (s3Key, pageId) => {
     try {
-        console.log(`[generateScreenshotFromS3] Getting S3 object: ${s3Key}`);
+        console.log(`[generateScreenshotFromS3] Generating screenshot from S3 key: ${s3Key}`);
 
-        const s3Response = await s3.getObject({
-            Bucket: process.env.AWS_S3_BUCKET,
-            Key: s3Key
-        }).promise();
+        // Use screenshotService which has built-in Puppeteer + API fallback
+        const screenshotUrl = await screenshotService.generateScreenshotFromS3(s3Key, pageId);
 
-        const htmlContent = s3Response.Body.toString('utf-8');
-        console.log(`[generateScreenshotFromS3] HTML size: ${htmlContent.length} bytes`);
-
-        // ✅ IMPROVED: Add timeout wrapper for screenshot generation
-        const screenshotPromise = generateScreenshot(htmlContent, pageId, false);
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Screenshot generation timeout after 30s')), 30000)
-        );
-
-        return await Promise.race([screenshotPromise, timeoutPromise]);
+        if (screenshotUrl) {
+            console.log(`[generateScreenshotFromS3] Success: ${screenshotUrl}`);
+            return screenshotUrl;
+        } else {
+            console.warn(`[generateScreenshotFromS3] Failed to generate screenshot for ${pageId}`);
+            return null;
+        }
     } catch (err) {
-        console.error('[generateScreenshotFromS3] Failed:', err.message);
+        console.error('[generateScreenshotFromS3] Error:', err.message);
 
         // Log more details for debugging
         if (err.code) {
