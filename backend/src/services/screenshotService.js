@@ -1,7 +1,6 @@
-// const puppeteer = require('puppeteer'); // Lazy load when needed
+const puppeteer = require('puppeteer');
 const s3CopyService = require('./s3CopyService');
 const AWS = require('aws-sdk');
-const screenshotApiService = require('./screenshotApiService'); // Fallback API service
 
 const s3 = new AWS.S3();
 
@@ -22,83 +21,16 @@ class ScreenshotService {
                 throw new Error('htmlContent must be a string (HTML), not an object. Use HTML from S3, not page_data.');
             }
 
-            // Lazy load puppeteer only when needed
-            const puppeteer = require('puppeteer');
-
-            console.log('Launching Puppeteer browser');
-
-            // Launch puppeteer with better error handling
-            try {
-                const launchOptions = {
-                    headless: 'new',
-                    args: [
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                        '--disable-dev-shm-usage',
-                        '--disable-web-security',
-                        '--disable-gpu'
-                    ]
-                };
-
-                // Use custom Chrome/Chromium path from .env if provided
-                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-                    console.log(`Using custom Chrome path from .env: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
-                    launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-                }
-
-                browser = await puppeteer.launch(launchOptions);
-            } catch (launchError) {
-                console.error('Failed to launch Puppeteer browser:', launchError.message);
-
-                // If Chrome not found, try with system Chrome
-                if (launchError.message.includes('Could not find Chrome') ||
-                    launchError.message.includes('ECONNRESET') ||
-                    launchError.message.includes('Failed to launch')) {
-                    console.log('Attempting to use system Chrome...');
-
-                    // Try common Chrome paths
-                    const chromePaths = [
-                        '/usr/bin/google-chrome',
-                        '/usr/bin/google-chrome-stable',
-                        '/usr/bin/chromium-browser',
-                        '/usr/bin/chromium',
-                        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-                        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-                        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-                    ];
-
-                    let chromeFound = false;
-                    for (const chromePath of chromePaths) {
-                        try {
-                            const fs = require('fs');
-                            if (fs.existsSync(chromePath)) {
-                                console.log(`Found Chrome at: ${chromePath}`);
-                                browser = await puppeteer.launch({
-                                    executablePath: chromePath,
-                                    headless: 'new',
-                                    args: [
-                                        '--no-sandbox',
-                                        '--disable-setuid-sandbox',
-                                        '--disable-dev-shm-usage',
-                                        '--disable-web-security',
-                                        '--disable-gpu'
-                                    ]
-                                });
-                                chromeFound = true;
-                                break;
-                            }
-                        } catch (e) {
-                            continue;
-                        }
-                    }
-
-                    if (!chromeFound) {
-                        throw new Error('Không thể khởi động trình duyệt: ' + launchError.message);
-                    }
-                } else {
-                    throw new Error('Không thể khởi động trình duyệt: ' + launchError.message);
-                }
-            }
+            // Launch puppeteer
+            browser = await puppeteer.launch({
+                headless: 'new',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-web-security'
+                ]
+            });
 
             page = await browser.newPage();
 
@@ -178,23 +110,14 @@ class ScreenshotService {
                 return this.generateScreenshot(htmlContent, marketplacePageId, retries - 1);
             }
 
-            // If all Puppeteer retries failed, fallback to API service
-            console.log(`⚠️  Puppeteer failed after all retries. Attempting fallback to ScreenshotOne API...`);
-            try {
-                const screenshotUrl = await screenshotApiService.generateScreenshot(htmlContent, marketplacePageId);
-                console.log(`✅ Fallback successful! Screenshot generated via API: ${screenshotUrl}`);
-                return screenshotUrl;
-            } catch (apiError) {
-                console.error(`❌ API fallback also failed:`, apiError.message);
-                throw new Error(`Both Puppeteer and API failed. Puppeteer: ${error.message}, API: ${apiError.message}`);
-            }
+            // If all retries failed, throw error
+            throw error;
         }
     }
 
     /**
      * Generate screenshot from S3 HTML file
      * This is the recommended method for marketplace pages
-     * Will try Puppeteer first, then fallback to API if needed
      */
     async generateScreenshotFromS3(s3Key, marketplacePageId) {
         try {
@@ -208,7 +131,6 @@ class ScreenshotService {
             const htmlContent = s3Response.Body.toString('utf-8');
             console.log(`HTML fetched successfully, length: ${htmlContent.length} bytes`);
 
-            // Try Puppeteer first (with automatic API fallback if it fails)
             return await this.generateScreenshot(htmlContent, marketplacePageId);
         } catch (error) {
             console.error('Failed to generate screenshot from S3:', error.message);
