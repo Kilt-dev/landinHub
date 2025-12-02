@@ -7,19 +7,21 @@
  */
 
 const https = require('https');
+const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
 console.log('\n🚀 Downloading Chromium for Puppeteer...\n');
 
-// Chromium version (stable)
-const CHROMIUM_VERSION = '1181205'; // Update this to latest stable version
+// Use Puppeteer's official download method via @puppeteer/browsers
+// Or use a known stable version
+const CHROMIUM_VERSION = '1378561'; // Chromium 129 (stable as of 2024)
 const PLATFORM = process.platform === 'win32' ? 'Win_x64' :
                  process.platform === 'darwin' ? 'Mac' :
                  'Linux_x64';
 
-const DOWNLOAD_URL = `https://commondatastorage.googleapis.com/chromium-browser-snapshots/${PLATFORM}/${CHROMIUM_VERSION}/chrome-${PLATFORM === 'Win_x64' ? 'win' : PLATFORM === 'Mac' ? 'mac' : 'linux'}.zip`;
+const DOWNLOAD_URL = `https://storage.googleapis.com/chromium-browser-snapshots/${PLATFORM}/${CHROMIUM_VERSION}/chrome-${PLATFORM === 'Win_x64' ? 'win' : PLATFORM === 'Mac' ? 'mac' : 'linux'}.zip`;
 
 const CHROMIUM_DIR = path.join(__dirname, 'chromium');
 const ZIP_FILE = path.join(CHROMIUM_DIR, 'chrome.zip');
