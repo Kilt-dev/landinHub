@@ -29,7 +29,7 @@ class ScreenshotService {
 
             // Launch puppeteer with better error handling
             try {
-                browser = await puppeteer.launch({
+                const launchOptions = {
                     headless: 'new',
                     args: [
                         '--no-sandbox',
@@ -38,7 +38,15 @@ class ScreenshotService {
                         '--disable-web-security',
                         '--disable-gpu'
                     ]
-                });
+                };
+
+                // Use custom Chrome/Chromium path from .env if provided
+                if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+                    console.log(`Using custom Chrome path from .env: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+                    launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+                }
+
+                browser = await puppeteer.launch(launchOptions);
             } catch (launchError) {
                 console.error('Failed to launch Puppeteer browser:', launchError.message);
 
