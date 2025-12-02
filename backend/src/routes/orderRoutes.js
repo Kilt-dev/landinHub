@@ -23,5 +23,4 @@ router.patch('/admin/:id/refund/process', authMiddleware, isAdmin, orderControll
 
 // Transactions list
 router.get('/transactions', authMiddleware, orderController.getOrderTransactions);
-
 module.exports = router;

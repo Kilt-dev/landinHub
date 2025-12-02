@@ -244,10 +244,11 @@ exports.requestRefund = async (req, res) => {
 
     try {
         const userId = req.user?.id || req.userId;
-        const { id } = req.params;
+        const { id } = req.params; // id chính là orderId string
         const { reason } = req.body;
 
         const order = await Order.findOne({ orderId: id, buyerId: userId });
+        console.log('[requestRefund] orderId:', id, 'userId:', userId);
 
         if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
@@ -308,7 +309,7 @@ exports.processRefund = async (req, res) => {
         const { id } = req.params;
         const { refundTransactionId } = req.body;
 
-        const tx = await Transaction.findById(id);
+        const tx = await Transaction.findOne({ transactionId: order.transactionId });
         if (!tx) return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch' });
 
         if (tx.status !== 'REFUND_PENDING') {

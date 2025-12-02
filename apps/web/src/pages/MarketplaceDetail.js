@@ -102,7 +102,7 @@ const MarketplaceDetail = () => {
         setRefunding(true);
         try {
             await axios.patch(
-                `${API_BASE_URL}/api/orders/${orderId}/refund`,   // ← không có /request-refund
+                `${API_BASE_URL}/api/orders/${order.orderId}/refund`,
                 { reason: refundReason },
                 { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
             );
@@ -524,7 +524,7 @@ const MarketplaceDetail = () => {
             </div>
             {showOrderModal && order && (
                 <div className="modal-overlay" onClick={() => setShowOrderModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content1" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <h3>Chi tiết đơn hàng</h3>
                             <span className="close" onClick={() => setShowOrderModal(false)}>

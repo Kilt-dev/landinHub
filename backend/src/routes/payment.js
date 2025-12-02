@@ -78,5 +78,6 @@ router.get('/vnpay/callback', paymentController.vnpayReturn);
 router.post('/sandbox/confirm', paymentController.sandboxConfirm);
 router.post('/create-transaction', paymentController.createTransaction);
 
+router.post('/momo/ipn', paymentController.momoIPN);
 
 module.exports = router;
