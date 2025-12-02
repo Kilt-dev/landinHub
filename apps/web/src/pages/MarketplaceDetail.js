@@ -80,40 +80,14 @@ const MarketplaceDetail = () => {
     }, [id]);
     useEffect(() => {
         if (!order) return;
-
-        // Only connect to Socket.IO if backend is available
-        let socket;
-        try {
-            socket = io(API_BASE_URL, {
-                auth: { token: localStorage.getItem('token') },
-                reconnection: false, // Don't auto-reconnect to avoid spam
-                timeout: 5000 // 5 second timeout
-            });
-
-            socket.on('connect', () => {
-                console.log('✅ Socket.IO connected for refund updates');
-            });
-
-            socket.on('connect_error', (error) => {
-                console.log('ℹ️ Socket.IO not available (normal for production)');
-                // Silently fail - Socket.IO is optional
-            });
-
-            socket.on('order_refunded', (data) => {
-                if (data.orderId === order.orderId) {
-                    toast.success('Đơn hàng đã được hoàn tiền!');
-                    loadPageDetail();          // reload
-                }
-            });
-        } catch (error) {
-            console.log('ℹ️ Socket.IO initialization failed (normal for production)');
-        }
-
-        return () => {
-            if (socket) {
-                socket.disconnect();
+        const socket = io(API_BASE_URL, { auth: { token: localStorage.getItem('token') } });
+        socket.on('order_refunded', (data) => {
+            if (data.orderId === order.orderId) {
+                toast.success('Đơn hàng đã được hoàn tiền!');
+                loadPageDetail();          // reload
             }
-        };
+        });
+        return () => socket.disconnect();
     }, [order]);
     const paymentMethods = [
         { value: "SANDBOX", label: "Sandbox (Test)", description: "Môi trường test thanh toán an toàn." },
@@ -550,7 +524,7 @@ const MarketplaceDetail = () => {
             </div>
             {showOrderModal && order && (
                 <div className="modal-overlay" onClick={() => setShowOrderModal(false)}>
-                    <div className="modal-content1" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <h3>Chi tiết đơn hàng</h3>
                             <span className="close" onClick={() => setShowOrderModal(false)}>

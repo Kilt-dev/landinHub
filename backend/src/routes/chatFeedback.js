@@ -8,7 +8,6 @@ const ChatMessage = require('../models/ChatMessage');
 const ChatRoom = require('../models/ChatRoom');
 const User = require('../models/User');
 const authMiddleware = require('../middleware/authMiddleware');
-const wsService = require('../services/websocket/websocketService');
 
 /**
  * POST /api/chat/feedback

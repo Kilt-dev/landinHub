@@ -93,10 +93,17 @@ const MyMarketplaceOrders = () => {
 
             // Different endpoints for bought vs sold orders
             const endpoint = activeTab === 'bought' ? '/api/orders/my' : '/api/orders/seller';
+            console.log('🔍 Loading orders from:', endpoint);
+
             const response = await api.get(`${endpoint}?${params}`);
+
+            console.log('📦 Orders API Response:', response.data);
+            console.log('📊 Orders data array:', response.data.data);
+            console.log('📏 Orders count:', response.data.data?.length);
 
             if (response.data.success) {
                 const orderData = response.data.data || [];
+                console.log('✅ Setting orders state with', orderData.length, 'items');
                 setOrders(orderData);
                 setFilteredOrders(orderData);
                 setTotalPages(response.data.pagination?.totalPages || 1);
@@ -113,13 +120,13 @@ const MyMarketplaceOrders = () => {
                 if (activeTab === 'sold') {
                     statsData.totalRevenue = orderData.reduce((sum, order) => {
                         if (order.status === 'delivered') {
-                            return sum + (order.transactionId?.seller_amount || 0);
+                            return sum + (order.seller_revenue || 0);
                         }
                         return sum;
                     }, 0);
                     statsData.platformFees = orderData.reduce((sum, order) => {
                         if (order.status === 'delivered') {
-                            return sum + (order.transactionId?.platform_fee || 0);
+                            return sum + (order.platform_fee || 0);
                         }
                         return sum;
                     }, 0);

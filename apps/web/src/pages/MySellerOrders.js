@@ -357,7 +357,7 @@ const MySellerOrders = () => {
                                                         paddingTop: '8px',
                                                         borderTop: '1px solid #e5e7eb'
                                                     }}>
-                                                        Thu về: {formatPrice(order.transactionId?.seller_amount || 0)}
+                                                        Thu về: {formatPrice((order.transactionId?.amount || 0) - (order.transactionId?.platform_fee || 0))}
                                                     </div>
                                                 )}
                                             </div>
