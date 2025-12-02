@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+.env
+.env.local
+.git
+.gitignore
+*.md
+.chrome
+test-screenshot-*.png
+Dockerfile*
+docker-compose*.yml
