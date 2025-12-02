@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+// const puppeteer = require('puppeteer'); // Lazy load when needed
 const s3CopyService = require('./s3CopyService');
 const AWS = require('aws-sdk');
 const screenshotApiService = require('./screenshotApiService'); // Fallback API service
@@ -21,6 +21,9 @@ class ScreenshotService {
             if (typeof htmlContent !== 'string') {
                 throw new Error('htmlContent must be a string (HTML), not an object. Use HTML from S3, not page_data.');
             }
+
+            // Lazy load puppeteer only when needed
+            const puppeteer = require('puppeteer');
 
             console.log('Launching Puppeteer browser');
 
