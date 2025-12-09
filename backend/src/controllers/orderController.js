@@ -1,9 +1,8 @@
 const Order = require('../models/Order');
 const Transaction = require('../models/Transaction');
 const MarketplacePage = require('../models/MarketplacePage');
-const { sendOrderCancellation, sendRefundRequest, sendRefundCompleted } = require('../services/email');
 const Notification = require('../models/Notification');
-
+const { sendRefundRequest, sendRefundCompleted } = require('../services/email');
 /**
  * Lấy danh sách đơn hàng của user (buyer)
  */
@@ -241,40 +240,35 @@ exports.cancelOrder = async (req, res) => {
  * User yêu cầu hoàn tiền (chỉ khi đã delivered)
  */
 exports.requestRefund = async (req, res) => {
-
     try {
         const userId = req.user?.id || req.userId;
-        const { id } = req.params; // id chính là orderId string
+        const { id } = req.params; // orderId string
         const { reason } = req.body;
 
         const order = await Order.findOne({ orderId: id, buyerId: userId });
-        console.log('[requestRefund] orderId:', id, 'userId:', userId);
-
         if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
         if (order.status !== 'delivered') {
             return res.status(400).json({ success: false, message: 'Chỉ được hoàn tiền sau khi nhận hàng' });
         }
+        if (!order.transactionId) {
+            return res.status(400).json({ success: false, message: 'Đơn hàng chưa có giao dịch' });
+        }
 
         const tx = await Transaction.findById(order.transactionId);
         if (!tx) return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch' });
-
-        if (tx.status === 'REFUND_PENDING' || tx.status === 'REFUNDED') {
+        if (['REFUND_PENDING', 'REFUNDED'].includes(tx.status)) {
             return res.status(400).json({ success: false, message: 'Đã yêu cầu hoàn tiền trước đó' });
         }
 
         await sendRefundRequest(order);
         await tx.autoRefund(reason || 'Người mua yêu cầu hoàn tiền');
 
-        const recipients = [order.sellerId];
-        if (req.user.role !== 'admin') {
-            const User = require('../models/User');
-            const admins = await User.find({ role: 'admin' }, '_id');
-            admins.forEach(a => recipients.push(a._id));
-        }
-
+        // Thông báo
+        const User = require('../models/User');
+        const admins = await User.find({ role: 'admin' }, '_id');
         const notifications = await Notification.insertMany(
-            recipients.map(rid => ({
+            [order.sellerId, ...admins.map(a => a._id)].map(rid => ({
                 recipientId: rid,
                 type: 'refund_requested',
                 title: 'Yêu cầu hoàn tiền',
@@ -282,17 +276,7 @@ exports.requestRefund = async (req, res) => {
                 metadata: { orderId: order.orderId, buyerId: order.buyerId, reason }
             }))
         );
-
-        notifications.forEach(n => {
-            global._io?.to(`user_${n.recipientId}`).emit('new_notification', {
-                _id: n._id,
-                title: n.title,
-                message: n.message,
-                createdAt: n.createdAt,
-                isRead: false
-            });
-        });
-
+        notifications.forEach(n => global._io?.to(`user_${n.recipientId}`).emit('new_notification', n));
 
         res.json({ success: true, message: 'Yêu cầu hoàn tiền đã được gửi', data: tx });
     } catch (error) {
@@ -306,24 +290,28 @@ exports.requestRefund = async (req, res) => {
  */
 exports.processRefund = async (req, res) => {
     try {
-        const { id } = req.params;
+        const { id } = req.params; // orderId string
         const { refundTransactionId } = req.body;
 
-        const tx = await Transaction.findOne({ transactionId: order.transactionId });
-        if (!tx) return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch' });
+        const order = await Order.findOne({ orderId: id });
+        if (!order) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng' });
 
+        const tx = await Transaction.findById(order.transactionId);
+        if (!tx) return res.status(404).json({ success: false, message: 'Không tìm thấy giao dịch' });
         if (tx.status !== 'REFUND_PENDING') {
             return res.status(400).json({ success: false, message: 'Giao dịch không ở trạng thái chờ hoàn tiền' });
         }
 
         await tx.processRefund(refundTransactionId);
-        const order = await Order.findOne({ transactionId: tx._id });
-        if (order) {
-            order.status = 'refunded';
-            order.updatedAt = new Date();
-            await order.save();
-            await sendRefundCompleted(order);
-        }
+
+        order.status = 'refunded';
+        order.updatedAt = new Date();
+        await order.save();
+
+        await sendRefundCompleted(order);
+
+        // realtime về client
+        global._io.to(`user_${order.buyerId}`).emit('order_refunded', { orderId: order.orderId });
 
         res.json({ success: true, message: 'Hoàn tiền thành công', data: tx });
     } catch (error) {

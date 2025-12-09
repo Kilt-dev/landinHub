@@ -335,6 +335,8 @@ const sendBulkLeadEmails = async (leads, subject, content, options = {}) => {
         throw error;
     }
 };
+const sendRefundRequest = sendRefundRequestNotification;
+const sendRefundCompleted = sendDeliveryConfirmation;
 
 module.exports = {
     sendOrderConfirmation,
@@ -343,5 +345,7 @@ module.exports = {
     sendRefundRequestNotification,
     sendAdminReplyNotification,
     sendLeadEmail,
-    sendBulkLeadEmails
+    sendBulkLeadEmails,
+    sendRefundRequest,
+    sendRefundCompleted,
 };

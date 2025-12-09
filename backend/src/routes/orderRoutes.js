@@ -20,7 +20,6 @@ router.get('/admin/all', authMiddleware, isAdmin, orderController.getAllOrders);
 router.get('/admin/stats', authMiddleware, isAdmin, orderController.getOrderStats);
 router.patch('/admin/:id/status', authMiddleware, isAdmin, orderController.updateOrderStatus);
 router.patch('/admin/:id/refund/process', authMiddleware, isAdmin, orderController.processRefund);
-
 // Transactions list
 router.get('/transactions', authMiddleware, orderController.getOrderTransactions);
 module.exports = router;

@@ -80,13 +80,31 @@ const MarketplaceDetail = () => {
     }, [id]);
     useEffect(() => {
         if (!order) return;
-        const socket = io(API_BASE_URL, { auth: { token: localStorage.getItem('token') } });
+
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.warn('⚠️ Không có token, bỏ qua kết nối socket');
+            return;
+        }
+
+        const socket = io(API_BASE_URL, {
+            auth: { token },
+            transports: ['websocket'],
+            reconnection: false,
+        });
+
+        socket.on('connect', () => console.log('✅ Socket connected'));
+        socket.on('connect_error', (err) => {
+            console.error('❌ Socket connect_error:', err.message);
+        });
+
         socket.on('order_refunded', (data) => {
             if (data.orderId === order.orderId) {
                 toast.success('Đơn hàng đã được hoàn tiền!');
-                loadPageDetail();          // reload
+                loadPageDetail();
             }
         });
+
         return () => socket.disconnect();
     }, [order]);
     const paymentMethods = [

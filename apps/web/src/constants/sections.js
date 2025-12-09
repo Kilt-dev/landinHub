@@ -63,7 +63,7 @@ export const sections = {
                     name: 'Phần tiêu đề chính',
                     lucideIcon: LayoutGrid,
                     description: 'Phần tiêu đề nổi bật cho trang đích',
-                    previewImage:'https://res.cloudinary.com/dubthm5m6/image/upload/v1760965968/sectionhero_yudwaj.png',
+                    previewImage:'https://res.cloudinary.com/dubthm5m6/image/upload/v1764659397/Screenshot_2025-12-02_140925_y81mtm.png',
                     json: {
                         type: 'section',
                         componentData: {
