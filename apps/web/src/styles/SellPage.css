@@ -28,19 +28,28 @@
 .sell-page-main {
     display: flex;
     margin-top: 70px;
+    width: 100%;
 }
 
 .sell-page-content {
     flex-grow: 1;
-    padding: 50px 40px;
-    max-width: 1200px;
-    margin: 0 auto;
+    /* QUAN TRỌNG: Đẩy lề trái để bảng không bị Sidebar che mất */
+    /* Dựa trên hình ảnh, Sidebar rộng khoảng 260px */
+    padding: 50px 40px 50px 260px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Căn giữa bảng thông tin trong vùng còn lại */
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* --- HEADER SECTION --- */
 .sell-page-header {
+    text-align: center; /* Căn giữa tiêu đề */
     margin-bottom: 50px;
-    /* data-aos="fade-down" */
+    width: 100%;
+    max-width: 1100px;
     opacity: 0;
     transform: translateY(-20px);
     animation: fadeInDown 0.6s ease-out forwards;
@@ -71,18 +80,17 @@
 
 /* --- FORM GRID & COLUMNS --- */
 .form-layout-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 40px;
+    width: 100%;
+    max-width: 1000px; /* Thu nhỏ max-width một chút để bảng nằm gọn ở giữa */
     background-color: var(--color-card-white);
-    padding: 50px;
+    padding: 40px;
     border-radius: var(--border-radius-sharp);
     box-shadow: var(--shadow-high-contrast);
-    border: 1px solid #EAECEE;
-    /* data-aos="fade-up" */
-    opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInUp 0.6s ease-out 0.1s forwards;
+
+    /* Grid layout bên trong bảng */
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 30px;
 }
 
 .form-group {

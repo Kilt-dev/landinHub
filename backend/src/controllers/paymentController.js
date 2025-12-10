@@ -4,7 +4,7 @@ const MarketplacePage = require('../models/MarketplacePage');
 const Page = require('../models/Page');
 const paymentService = require('../services/payment/paymentService');
 const { v4: uuidv4 } = require('uuid');
-const Order = require('../models/Order'); // Add this line
+const Order = require('../models/Order');
 
 /**
  * Tạo transaction và payment URL
@@ -85,7 +85,7 @@ exports.createTransaction = async (req, res) => {
             platform_fee: platform_fee,
             seller_amount: seller_amount,
             payment_method: payment_method,
-            status: 'PENDING',
+            status: 'PENDING', // Trạng thái khởi tạo
             ip_address: ip_address,
             user_agent: user_agent,
             metadata: {
@@ -110,14 +110,27 @@ exports.createTransaction = async (req, res) => {
             });
         }
 
+        // 💡 CẬP NHẬT QUAN TRỌNG: Chuyển trạng thái sang PROCESSING sau khi tạo URL thành công
+        // Điều này giúp phân biệt giao dịch đang chờ thanh toán với giao dịch bị lỗi ngay từ đầu.
+        transaction.status = 'PROCESSING';
+        transaction.payment_url = paymentResult.paymentUrl || paymentResult.payUrl;
+        transaction.qr_code_url = paymentResult.qrCodeUrl;
+        transaction.deep_link = paymentResult.deeplink;
+        if (paymentResult.expires_at) {
+            transaction.expires_at = paymentResult.expires_at;
+        }
+
+        await transaction.save();
+
+
         res.json({
             success: true,
             message: 'Giao dịch đã được tạo',
             data: {
                 transaction_id: transaction._id,
-                payment_url: paymentResult.paymentUrl || paymentResult.payUrl,
-                qr_code_url: paymentResult.qrCodeUrl,
-                deep_link: paymentResult.deeplink,
+                payment_url: transaction.payment_url, // Lấy từ transaction đã cập nhật
+                qr_code_url: transaction.qr_code_url, // Lấy từ transaction đã cập nhật
+                deep_link: transaction.deep_link, // Lấy từ transaction đã cập nhật
                 amount: amount,
                 expires_at: transaction.expires_at
             }
@@ -131,6 +144,8 @@ exports.createTransaction = async (req, res) => {
         });
     }
 };
+
+
 
 exports.momoIPN = async (req, res) => {
     try {
@@ -297,6 +312,8 @@ exports.vnpayReturn = async (req, res) => {
             return res.redirect(`${process.env.FRONTEND_URL}/payment/result?status=failed&transaction_id=${result.data?.orderId || 'undefined'}&error=${encodeURIComponent(result.error)}`);
         }
         if (result.success) {
+            // LƯU Ý: VNPAY return có thể không đáng tin cậy bằng IPN.
+            // Tuy nhiên, việc gọi processPaymentSuccess ở đây để đảm bảo cập nhật trạng thái nếu IPN bị trễ.
             const processResult = await paymentService.processPaymentSuccess(result.data.orderId, result.data);
             if (processResult.success) {
                 console.log('✅ VNPay Callback Success:', { transactionId: result.data.orderId });

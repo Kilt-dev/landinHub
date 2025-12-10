@@ -37,19 +37,19 @@
 
 /* Chat Window */
 .chat-window {
-    position: fixed;
+    position: fixed; /* Đã đúng */
     bottom: 90px;
     right: 20px;
     width: 380px;
     max-width: calc(100vw - 40px);
     height: 600px;
-    max-height: calc(100vh - 120px);
+    max-height: calc(100vh - 120px); /* Đảm bảo chiều cao tối đa phù hợp với viewport */
     background: white;
     border-radius: 12px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: hidden; /* Rất quan trọng để nội dung bên trong (messages) cuộn được */
     z-index: 9999;
     animation: slideUp 0.3s ease;
 }
@@ -136,8 +136,8 @@
 
 /* Messages Area */
 .chat-messages {
-    flex: 1;
-    overflow-y: auto;
+    flex: 1; /* Chiếm hết không gian dọc có sẵn */
+    overflow-y: auto; /* Kích hoạt thanh cuộn */
     padding: 16px;
     background: #f5f7fa;
     display: flex;
@@ -162,8 +162,8 @@
 .message {
     display: flex;
     flex-direction: column;
-    max-width: 80%;
     animation: messageSlide 0.2s ease;
+    /*max-width: 80%;*/
 }
 
 @keyframes messageSlide {
@@ -188,9 +188,19 @@
 .message-content {
     padding: 10px 14px;
     border-radius: 12px;
-    word-wrap: break-word;
     line-height: 1.5;
-    font-size: 14px;
+    font-size: 12px;
+
+    /* Đã là fit-content, nên không cần đặt min-width quá rõ ràng */
+    width: fit-content;
+    min-width: 20px;
+    max-width: 100%;
+    text-align: left;
+
+    /* Quan trọng: Kiểm tra lại việc sử dụng break-word và white-space */
+    white-space: pre-wrap; /* Thử thay thế: Cho phép ngắt dòng tự động nhưng vẫn giữ các khoảng trắng và ngắt dòng */
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .message.user .message-content {

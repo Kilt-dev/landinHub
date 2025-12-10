@@ -512,7 +512,7 @@ const SupportChatbox = () => {
                                     {msg.message_type === 'system' ? (
                                         <em style={{ color: '#6b7280' }}>{msg.message}</em>
                                     ) : (
-                                        msg.message
+                                        msg.message.trim().replace(/\s+/g, ' ')
                                     )}
                                 </div>
                                 <div className="message-time">
