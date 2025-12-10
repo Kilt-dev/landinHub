@@ -22,6 +22,7 @@ const corsOptions = {
             process.env.REACT_APP_API_URL || 'http://localhost:3000',
             'http://localhost:3000',
             'http://localhost:5000',
+            'https://landing-hub-web.vercel.app',
         ];
 
         // Allow CloudFront domains (*.cloudfront.net)
