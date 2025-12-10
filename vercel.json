@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+        // Thay 'build' bằng thư mục output thực tế của React (thường là build hoặc dist)
+      }
+    },
+    {
+      "src": "backend/VercelAPI/vercel.json",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/$1"
+    }
+  ],
+  "installCommand": "npm install --prefix ./frontend && npm install --prefix ./backend"
+  // Hoặc dùng một lệnh install phù hợp với Monorepo của bạn
+}
