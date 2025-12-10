@@ -24,7 +24,9 @@ import MyMarketplaceOrders from './pages/MyMarketplaceOrders';
 import PaymentSandbox from './pages/PaymentSandbox';
 import PaymentResult from './pages/PaymentResult';
 import FormData from './pages/FormData';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+// ❌ Đã xoá GoogleOAuthProvider
+// import { GoogleOAuthProvider } from '@react-oauth/google';
+
 import ErrorBoundary from './components/ErrorBoundary';
 import { UserProvider } from './context/UserContext';
 import CreateLandingPage from './components/CreateLanding';
@@ -32,9 +34,9 @@ import GioiThieu from './components/about_public/GioiThieu';
 import Contact from './components/about_public/Contact';
 import PageAbout from './components/about_public/Pages ';
 import Blog from './components/about_public/Blog';
-import AdminAddTemplate from './components/AdminAddTemplate'; // Thêm component cho admin
+import AdminAddTemplate from './components/AdminAddTemplate';
 import AdminMarketplace from './pages/AdminMarketplace';
-    import AdminUser from "./pages/AdminUsers";
+import AdminUser from "./pages/AdminUsers";
 import UnifiedPayments from './pages/UnifiedPayments';
 import DeploymentSettings from './components/DeploymentSettings';
 import AdminSupport from './pages/AdminSupport';
@@ -42,72 +44,75 @@ import SupportChatbox from './components/SupportChatbox';
 import AdminAnalytics from './pages/AdminAnalytics';
 
 
-
 function App() {
-    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
     return (
-        <GoogleOAuthProvider clientId={clientId}>
-            <ErrorBoundary>
-                <Router>
-                    <UserProvider>
-                        <Routes>
-                            {/* Public routes */}
-                            <Route path="/public">
-                                <Route index element={<Navigate to="/public/gioithieu" replace />} />
-                                <Route path="gioithieu" element={<GioiThieu />} />
-                                <Route path="lienhe" element={<Contact />} />
-                                <Route path="pages" element={<PageAbout />} />
-                                <Route path="bai-viet" element={<Blog />} />
-                            </Route>
-                            {/* Auth routes */}
-                            <Route path="/auth" element={<AuthPage />} />
-                            <Route path="/" element={<Navigate to="/auth" replace />} />
-                            {/* Protected routes */}
-                            <Route path="/pages" element={<Pages />} />
-                            {/* Deployment route - must be before :pageId routes */}
-                            <Route path="/pages/:pageId/deploy" element={<DeploymentSettings />} />
-                            <Route path="/pages/create" element={<CreateLandingPage />} />
-                            <Route path="/create-landing" element={<Navigate to="/pages/create" replace />} />
-                            <Route path="/templates" element={<Templates />} />
-                            <Route path="/market" element={<Marketplace />} />
-                            <Route path="/marketplace" element={<Marketplace />} />
-                            <Route path="/marketplace/:id" element={<MarketplaceDetail />} />
-                            <Route path="/purchased-pages" element={<PurchasedPages />} />
-                            <Route path="/sell-page" element={<SellPage />} />
-                            <Route path="/my-sales" element={<MySales />} />
-                            <Route path="/my-marketplace-listings" element={<MySales />} />
-                            <Route path="/my-orders" element={<MyOrders />} />
-                            <Route path="/seller-orders" element={<MySellerOrders />} />
-                            <Route path="/my-marketplace-orders" element={<MyMarketplaceOrders />} />
-                            <Route path="/setting-form" element={<FormData />} />
-                            <Route path="/payments" element={<UnifiedPayments />} />
-                            <Route path="/my-payouts" element={<MyPayouts />} />
-                            <Route path="/payment/sandbox" element={<PaymentSandbox />} />
-                            <Route path="/payment/result" element={<PaymentResult />} />
+        // ❌ Không còn GoogleOAuthProvider bao ngoài
+        <ErrorBoundary>
+            <Router>
+                <UserProvider>
+                    <Routes>
 
-                            {/* Admin route */}
-                            <Route path="/dashboard" element={<Dashboard />} />
-                            <Route path="/qltemplates" element={<AdminAddTemplate />} />
-                            <Route path="/admin/marketplace" element={<AdminMarketplace />} />
-                            <Route path="/admin/payouts" element={<AdminPayoutManagement />} />
-                            <Route path="/admin/support" element={<AdminSupport />} />
-                            <Route path="/admin/analytics" element={<AdminAnalytics />} />
-                            <Route path="/reports" element={<Reports />} />
-                            <Route path="/users" element={<AdminUser />} />
-                            {/* Catch-all route */}
-                            <Route path="*" element={<Navigate to="/auth" replace />} />
+                        {/* Public routes */}
+                        <Route path="/public">
+                            <Route index element={<Navigate to="/public/gioithieu" replace />} />
+                            <Route path="gioithieu" element={<GioiThieu />} />
+                            <Route path="lienhe" element={<Contact />} />
+                            <Route path="pages" element={<PageAbout />} />
+                            <Route path="bai-viet" element={<Blog />} />
+                        </Route>
 
-                        </Routes>
+                        {/* Auth routes */}
+                        <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/" element={<Navigate to="/auth" replace />} />
 
-                        {/* Toast notification */}
-                        <ToastContainer position="bottom-right" autoClose={3000} />
+                        {/* Protected routes */}
+                        <Route path="/pages" element={<Pages />} />
+                        <Route path="/pages/:pageId/deploy" element={<DeploymentSettings />} />
+                        <Route path="/pages/create" element={<CreateLandingPage />} />
+                        <Route path="/create-landing" element={<Navigate to="/pages/create" replace />} />
 
+                        <Route path="/templates" element={<Templates />} />
+                        <Route path="/market" element={<Marketplace />} />
+                        <Route path="/marketplace" element={<Marketplace />} />
+                        <Route path="/marketplace/:id" element={<MarketplaceDetail />} />
 
-                        <SupportChatbox />
-                    </UserProvider>
-                </Router>
-            </ErrorBoundary>
-        </GoogleOAuthProvider>
+                        <Route path="/purchased-pages" element={<PurchasedPages />} />
+                        <Route path="/sell-page" element={<SellPage />} />
+                        <Route path="/my-sales" element={<MySales />} />
+                        <Route path="/my-marketplace-listings" element={<MySales />} />
+                        <Route path="/my-orders" element={<MyOrders />} />
+                        <Route path="/seller-orders" element={<MySellerOrders />} />
+                        <Route path="/my-marketplace-orders" element={<MyMarketplaceOrders />} />
+
+                        <Route path="/setting-form" element={<FormData />} />
+                        <Route path="/payments" element={<UnifiedPayments />} />
+                        <Route path="/my-payouts" element={<MyPayouts />} />
+                        <Route path="/payment/sandbox" element={<PaymentSandbox />} />
+                        <Route path="/payment/result" element={<PaymentResult />} />
+
+                        {/* Admin routes */}
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/qltemplates" element={<AdminAddTemplate />} />
+                        <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+                        <Route path="/admin/payouts" element={<AdminPayoutManagement />} />
+                        <Route path="/admin/support" element={<AdminSupport />} />
+                        <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="/users" element={<AdminUser />} />
+
+                        {/* Catch-all */}
+                        <Route path="*" element={<Navigate to="/auth" replace />} />
+
+                    </Routes>
+
+                    {/* Toast notification */}
+                    <ToastContainer position="bottom-right" autoClose={3000} />
+
+                    <SupportChatbox />
+                </UserProvider>
+            </Router>
+        </ErrorBoundary>
     );
 }
 
